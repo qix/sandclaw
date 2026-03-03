@@ -107,10 +107,53 @@ function Editor({ onSubmit, onCancel }: EditorProps) {
       const insertion = input.length > 1 ? input.replace(/\r\n?/g, '\n') : '\n';
       setText(t => t.slice(0, cursor) + insertion + t.slice(cursor));
       setCursor(c => c + insertion.length);
-    } else if (key.backspace || key.delete) {
+    } else if (key.ctrl && input === 'a') {
+      // Move to beginning of line
+      setCursor(c => {
+        const before = text.slice(0, c);
+        return before.lastIndexOf('\n') + 1;
+      });
+    } else if (key.ctrl && input === 'e') {
+      // Move to end of line
+      setCursor(c => {
+        const nextNewline = text.indexOf('\n', c);
+        return nextNewline === -1 ? text.length : nextNewline;
+      });
+    } else if (key.ctrl && input === 'k') {
+      // Kill from cursor to end of line (if at end of line, kill the newline)
+      const nextNewline = text.indexOf('\n', cursor);
+      const endOfLine = nextNewline === -1 ? text.length : nextNewline;
+      if (cursor < endOfLine) {
+        setText(t => t.slice(0, cursor) + t.slice(endOfLine));
+      } else if (nextNewline !== -1) {
+        setText(t => t.slice(0, cursor) + t.slice(cursor + 1));
+      }
+    } else if (key.ctrl && input === 'u') {
+      // Kill from beginning of line to cursor
+      const before = text.slice(0, cursor);
+      const lineStart = before.lastIndexOf('\n') + 1;
+      if (cursor > lineStart) {
+        setText(t => t.slice(0, lineStart) + t.slice(cursor));
+        setCursor(() => lineStart);
+      }
+    } else if (key.ctrl && input === 'w') {
+      // Delete previous word
+      if (cursor > 0) {
+        let pos = cursor;
+        while (pos > 0 && /\s/.test(text[pos - 1])) pos--;
+        while (pos > 0 && !/\s/.test(text[pos - 1])) pos--;
+        setText(t => t.slice(0, pos) + t.slice(cursor));
+        setCursor(() => pos);
+      }
+    } else if (key.backspace) {
       if (cursor > 0) {
         setText(t => t.slice(0, cursor - 1) + t.slice(cursor));
         setCursor(c => c - 1);
+      }
+    } else if (key.delete) {
+      // Forward delete
+      if (cursor < text.length) {
+        setText(t => t.slice(0, cursor) + t.slice(cursor + 1));
       }
     } else if (input && !key.ctrl && !key.meta) {
       // Regular input — normalize \r for multi-line paste support
@@ -168,7 +211,7 @@ function Editor({ onSubmit, onCancel }: EditorProps) {
       </Box>
 
       <Box marginTop={1}>
-        <Text dimColor>  ctrl+d to submit  ·  ctrl+c to cancel</Text>
+        <Text dimColor>  ctrl+d submit  ·  ctrl+c cancel  ·  ctrl+a/e home/end  ·  ctrl+k/u kill  ·  ctrl+w del word</Text>
       </Box>
     </Box>
   );
