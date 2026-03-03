@@ -210,25 +210,31 @@ function AmendPrompt({ onAmend, onSkip }: AmendPromptProps) {
 async function main(): Promise<void> {
   checkGitClean();
 
-  let promptText: string | null = null;
-  let cancelled = false;
+  // Accept prompt from command line arguments, skipping the TUI editor
+  const cliPrompt = process.argv.slice(2).join(' ').trim();
 
-  const { waitUntilExit } = render(
-    React.createElement(Editor, {
-      onSubmit: (text: string) => {
-        promptText = text;
-      },
-      onCancel: () => {
-        cancelled = true;
-      },
-    }),
-  );
+  let promptText: string | null = cliPrompt || null;
 
-  await waitUntilExit();
+  if (!promptText) {
+    let cancelled = false;
 
-  if (cancelled || !promptText) {
-    console.log(chalk.dim('\n  Cancelled.'));
-    process.exit(0);
+    const { waitUntilExit } = render(
+      React.createElement(Editor, {
+        onSubmit: (text: string) => {
+          promptText = text;
+        },
+        onCancel: () => {
+          cancelled = true;
+        },
+      }),
+    );
+
+    await waitUntilExit();
+
+    if (cancelled || !promptText) {
+      console.log(chalk.dim('\n  Cancelled.'));
+      process.exit(0);
+    }
   }
 
   // Create an empty git commit stamping the prompt into history
