@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { render, Box, Text, useInput, useApp } from 'ink';
 import chalk from 'chalk';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { startProxy } from './proxy.js';
 
 // --- Git status check ---
 
@@ -52,184 +53,19 @@ function checkGitClean(): void {
   }
 }
 
-// --- TUI Editor ---
+// --- Commit Prompt ---
 
-interface EditorProps {
-  onSubmit: (text: string) => void;
-  onCancel: () => void;
-}
-
-function Editor({ onSubmit, onCancel }: EditorProps) {
-  const [text, setText] = useState('');
-  const [cursor, setCursor] = useState(0);
-  const { exit } = useApp();
-
-  useInput((input, key) => {
-    if (key.ctrl && input === 'd') {
-      const trimmed = text.trim();
-      if (trimmed) {
-        onSubmit(trimmed);
-        exit();
-      }
-    } else if (key.ctrl && input === 'c') {
-      onCancel();
-      exit();
-    } else if (key.leftArrow) {
-      setCursor(c => Math.max(0, c - 1));
-    } else if (key.rightArrow) {
-      setCursor(c => Math.min(text.length, c + 1));
-    } else if (key.upArrow) {
-      // Move cursor up one line
-      setCursor(c => {
-        const before = text.slice(0, c);
-        const currentLineStart = before.lastIndexOf('\n') + 1;
-        const col = c - currentLineStart;
-        if (currentLineStart === 0) return 0; // already on first line, go to start
-        const prevLineStart = before.lastIndexOf('\n', currentLineStart - 2) + 1;
-        const prevLineLen = currentLineStart - 1 - prevLineStart;
-        return prevLineStart + Math.min(col, prevLineLen);
-      });
-    } else if (key.downArrow) {
-      // Move cursor down one line
-      setCursor(c => {
-        const before = text.slice(0, c);
-        const currentLineStart = before.lastIndexOf('\n') + 1;
-        const col = c - currentLineStart;
-        const nextNewline = text.indexOf('\n', c);
-        if (nextNewline === -1) return text.length; // already on last line, go to end
-        const nextLineStart = nextNewline + 1;
-        const nextNextNewline = text.indexOf('\n', nextLineStart);
-        const nextLineLen = (nextNextNewline === -1 ? text.length : nextNextNewline) - nextLineStart;
-        return nextLineStart + Math.min(col, nextLineLen);
-      });
-    } else if (key.return) {
-      // Enter — also handle multi-char paste ending with return
-      const insertion = input.length > 1 ? input.replace(/\r\n?/g, '\n') : '\n';
-      setText(t => t.slice(0, cursor) + insertion + t.slice(cursor));
-      setCursor(c => c + insertion.length);
-    } else if (key.ctrl && input === 'a') {
-      // Move to beginning of line
-      setCursor(c => {
-        const before = text.slice(0, c);
-        return before.lastIndexOf('\n') + 1;
-      });
-    } else if (key.ctrl && input === 'e') {
-      // Move to end of line
-      setCursor(c => {
-        const nextNewline = text.indexOf('\n', c);
-        return nextNewline === -1 ? text.length : nextNewline;
-      });
-    } else if (key.ctrl && input === 'k') {
-      // Kill from cursor to end of line (if at end of line, kill the newline)
-      const nextNewline = text.indexOf('\n', cursor);
-      const endOfLine = nextNewline === -1 ? text.length : nextNewline;
-      if (cursor < endOfLine) {
-        setText(t => t.slice(0, cursor) + t.slice(endOfLine));
-      } else if (nextNewline !== -1) {
-        setText(t => t.slice(0, cursor) + t.slice(cursor + 1));
-      }
-    } else if (key.ctrl && input === 'u') {
-      // Kill from beginning of line to cursor
-      const before = text.slice(0, cursor);
-      const lineStart = before.lastIndexOf('\n') + 1;
-      if (cursor > lineStart) {
-        setText(t => t.slice(0, lineStart) + t.slice(cursor));
-        setCursor(() => lineStart);
-      }
-    } else if (key.ctrl && input === 'w') {
-      // Delete previous word
-      if (cursor > 0) {
-        let pos = cursor;
-        while (pos > 0 && /\s/.test(text[pos - 1])) pos--;
-        while (pos > 0 && !/\s/.test(text[pos - 1])) pos--;
-        setText(t => t.slice(0, pos) + t.slice(cursor));
-        setCursor(() => pos);
-      }
-    } else if (key.backspace) {
-      if (cursor > 0) {
-        setText(t => t.slice(0, cursor - 1) + t.slice(cursor));
-        setCursor(c => c - 1);
-      }
-    } else if (key.delete) {
-      // Forward delete
-      if (cursor < text.length) {
-        setText(t => t.slice(0, cursor) + t.slice(cursor + 1));
-      }
-    } else if (input && !key.ctrl && !key.meta) {
-      // Regular input — normalize \r for multi-line paste support
-      const insertion = input.replace(/\r\n?/g, '\n');
-      setText(t => t.slice(0, cursor) + insertion + t.slice(cursor));
-      setCursor(c => c + insertion.length);
-    }
-  });
-
-  const lines = text.split('\n');
-  const hasContent = text.trim().length > 0;
-
-  // Find which line and column the cursor is on
-  let cursorLine = 0;
-  let cursorCol = 0;
-  {
-    let pos = 0;
-    for (let i = 0; i < lines.length; i++) {
-      if (cursor <= pos + lines[i].length) {
-        cursorLine = i;
-        cursorCol = cursor - pos;
-        break;
-      }
-      pos += lines[i].length + 1; // +1 for \n
-    }
-  }
-
-  return (
-    <Box flexDirection="column" marginY={1}>
-      <Box marginBottom={1} gap={2}>
-        <Text bold color="cyan">
-          cm
-        </Text>
-        <Text color="white">what should claude do?</Text>
-      </Box>
-
-      <Box
-        flexDirection="column"
-        borderStyle="round"
-        borderColor={hasContent ? 'cyan' : 'gray'}
-        paddingX={1}
-        minWidth={60}
-      >
-        {lines.map((line, i) =>
-          i === cursorLine ? (
-            <Text key={i}>
-              {line.slice(0, cursorCol)}
-              <Text inverse>{line[cursorCol] ?? ' '}</Text>
-              {line.slice(cursorCol + 1)}
-            </Text>
-          ) : (
-            <Text key={i}>{line || ' '}</Text>
-          ),
-        )}
-      </Box>
-
-      <Box marginTop={1}>
-        <Text dimColor>  ctrl+d submit  ·  ctrl+c cancel  ·  ctrl+a/e home/end  ·  ctrl+k/u kill  ·  ctrl+w del word</Text>
-      </Box>
-    </Box>
-  );
-}
-
-// --- Amend Prompt ---
-
-interface AmendPromptProps {
-  onAmend: () => void;
+interface CommitPromptProps {
+  onCommit: () => void;
   onSkip: () => void;
 }
 
-function AmendPrompt({ onAmend, onSkip }: AmendPromptProps) {
+function CommitPrompt({ onCommit, onSkip }: CommitPromptProps) {
   const { exit } = useApp();
 
   useInput((input, key) => {
     if (input === 'y' || input === 'Y') {
-      onAmend();
+      onCommit();
       exit();
     } else if (input === 'n' || input === 'N' || (key.ctrl && input === 'c')) {
       onSkip();
@@ -242,7 +78,7 @@ function AmendPrompt({ onAmend, onSkip }: AmendPromptProps) {
       <Text bold color="cyan">
         ◆
       </Text>
-      <Text>Amend changes to initial commit?</Text>
+      <Text>Commit changes?</Text>
       <Text dimColor>(y/n)</Text>
     </Box>
   );
@@ -251,58 +87,42 @@ function AmendPrompt({ onAmend, onSkip }: AmendPromptProps) {
 // --- Main ---
 
 async function main(): Promise<void> {
-  checkGitClean();
+  const args = process.argv.slice(2);
+  const allowDirty = args.includes('--allow-dirty');
+  const promptText = args.filter((a) => a !== '--allow-dirty').join(' ').trim() || null;
 
-  // Accept prompt from command line arguments, skipping the TUI editor
-  const cliPrompt = process.argv.slice(2).join(' ').trim();
-
-  let promptText: string | null = cliPrompt || null;
-
-  if (!promptText) {
-    let cancelled = false;
-
-    const { waitUntilExit } = render(
-      React.createElement(Editor, {
-        onSubmit: (text: string) => {
-          promptText = text;
-        },
-        onCancel: () => {
-          cancelled = true;
-        },
-      }),
-    );
-
-    await waitUntilExit();
-
-    if (cancelled || !promptText) {
-      console.log(chalk.dim('\n  Cancelled.'));
-      process.exit(0);
-    }
+  if (!allowDirty) {
+    checkGitClean();
   }
 
-  // Create an empty git commit stamping the prompt into history
-  console.log('\n' + chalk.cyan('◆') + ' Creating commit…');
-  try {
-    execFileSync('git', ['commit', '--allow-empty', '-m', promptText], {
-      stdio: 'inherit',
-    });
-  } catch {
-    console.error(chalk.red.bold('\n  ✗ Failed to create git commit'));
-    process.exit(1);
-  }
-
-  // Save the commit hash so we can amend to it later
+  // Save the current HEAD so we can diff against it later
   const commitHash = execFileSync('git', ['rev-parse', 'HEAD'], {
     encoding: 'utf8',
   }).trim();
 
-  // Hand off to claude inside the devcontainer
+  // Start the proxy to intercept API calls and collect conversation prompts
+  const proxy = await startProxy();
+  console.log('\n' + chalk.cyan('◆') + ' Proxy started on port ' + proxy.port);
+
+  const baseUrl = `http://127.0.0.1:${proxy.port}`;
+  console.log(chalk.cyan('◆') + ` ANTHROPIC_BASE_URL=${baseUrl}`);
+
+  // Hand off to claude — must use async spawn so the event loop stays free
+  // for the proxy server to handle requests.
   console.log('\n' + chalk.cyan('◆') + ' Starting claude…\n');
-  const result = spawnSync(
-    'devcontainer',
-    ['exec', 'claude', '--dangerously-skip-permissions', promptText],
-    { stdio: 'inherit' },
-  );
+  const claudeArgs = [
+    `ANTHROPIC_BASE_URL=${baseUrl}`,
+    'claude',
+    '--dangerously-skip-permissions',
+    ...(promptText ? [promptText] : []),
+  ];
+  const result = await new Promise<{ status: number | null }>((resolve) => {
+    const child = spawn('env', claudeArgs, { stdio: 'inherit' });
+    child.on('close', (code) => resolve({ status: code }));
+    child.on('error', () => resolve({ status: 1 }));
+  });
+
+  proxy.close();
 
   // --- Post-run: diff and amend ---
 
@@ -319,10 +139,10 @@ async function main(): Promise<void> {
     process.exit(result.status ?? 0);
   }
 
-  // Show a diff of everything that changed since our initial commit
-  console.log('\n' + chalk.cyan('◆') + ' Changes since initial commit:\n');
+  // Show a diff of everything that changed
+  console.log('\n' + chalk.cyan('◆') + ' Changes:\n');
 
-  spawnSync('git', ['diff', '--stat', '--color=always', commitHash], {
+  spawnSync('git', ['-c', 'core.pager=less -FX', 'diff', '--stat', '--color=always', commitHash], {
     stdio: 'inherit',
   });
 
@@ -339,39 +159,41 @@ async function main(): Promise<void> {
   }
 
   console.log('');
-  spawnSync('git', ['diff', '--color=always', commitHash], {
+  spawnSync('git', ['-c', 'core.pager=less -FX', 'diff', '--color=always', commitHash], {
     stdio: 'inherit',
   });
 
-  // Ask whether to amend all changes into the initial commit
-  let shouldAmend = false;
+  // Ask whether to commit all changes
+  let shouldCommit = false;
 
-  const { waitUntilExit: waitAmend } = render(
-    React.createElement(AmendPrompt, {
-      onAmend: () => {
-        shouldAmend = true;
+  const { waitUntilExit: waitCommit } = render(
+    React.createElement(CommitPrompt, {
+      onCommit: () => {
+        shouldCommit = true;
       },
       onSkip: () => {},
     }),
   );
 
-  await waitAmend();
+  await waitCommit();
 
-  if (shouldAmend) {
+  if (shouldCommit) {
     try {
       execFileSync('git', ['add', '-A']);
 
-      if (hasNewCommits) {
-        execFileSync('git', ['reset', '--soft', commitHash]);
-      }
+      // Use collected conversation prompts as the commit message
+      const commitMessage =
+        proxy.prompts.length > 0
+          ? proxy.prompts.join('\n\n')
+          : promptText || 'Claude prompt not found';
 
-      execFileSync('git', ['commit', '--amend', '--no-edit'], {
+      execFileSync('git', ['commit', '-m', commitMessage], {
         stdio: 'inherit',
       });
 
-      console.log('\n' + chalk.green('✓') + ' Changes amended to initial commit.');
+      console.log('\n' + chalk.green('✓') + ' Changes committed.');
     } catch {
-      console.error(chalk.red.bold('\n  ✗ Failed to amend commit'));
+      console.error(chalk.red.bold('\n  ✗ Failed to commit'));
       process.exit(1);
     }
   }
