@@ -7,6 +7,9 @@ default.nix
 # Packages
 node_modules/
 
+# Build output
+dist/
+
 # Previous iteration and local testing
 prev-source/
 daveus-app/
