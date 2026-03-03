@@ -6,5 +6,6 @@ default.nix
 # Packages
 node_modules/
 
-# Previous iteration
+# Previous iteration and local testing
 prev-source/
+daveus-app/
