@@ -47,6 +47,49 @@ export interface RunAgentResult {
  */
 export type RunAgentFn = (prompt: string) => Promise<RunAgentResult>;
 
+// ---------------------------------------------------------------------------
+// Dependency Injection (Backstage-style, parallel to gatekeeper-plugin-api)
+// ---------------------------------------------------------------------------
+
+/** Typed DI token. */
+export interface ServiceRef<T> {
+  readonly id: string;
+  /** @internal */ readonly __type?: T;
+}
+
+export function createServiceRef<T>(config: { id: string }): ServiceRef<T> {
+  return { id: config.id } as ServiceRef<T>;
+}
+
+/** Hooks that plugins can register to react to muteworker lifecycle events. */
+export interface MuteworkerHooks {
+  register(hooks: {
+    'muteworker:start'?: () => void | Promise<void>;
+    'muteworker:stop'?: () => void | Promise<void>;
+  }): void;
+}
+
+/** Core service refs available to all muteworker plugins. */
+export const muteworkerDeps = {
+  hooks: createServiceRef<MuteworkerHooks>({ id: 'core.hooks' }),
+};
+
+type ResolveDeps<T extends Record<string, ServiceRef<any>>> = {
+  [K in keyof T]: T[K] extends ServiceRef<infer U> ? U : never;
+};
+
+/** Passed to a plugin's `registerMuteworker` callback so it can declare initialisation work. */
+export interface MuteworkerEnvironment {
+  registerInit<TDeps extends Record<string, ServiceRef<any>>>(config: {
+    deps: TDeps;
+    init: (resolved: ResolveDeps<TDeps>) => void | Promise<void>;
+  }): void;
+}
+
+// ---------------------------------------------------------------------------
+// Plugin interface
+// ---------------------------------------------------------------------------
+
 /**
  * A muteworker plugin.  Plugins can contribute:
  *
@@ -73,6 +116,8 @@ export interface MuteworkerPlugin {
       runAgent: RunAgentFn,
     ) => Promise<void>;
   };
+  /** Backstage-style registration hook for declaring deps and muteworker lifecycle hooks. */
+  readonly registerMuteworker: (env: MuteworkerEnvironment) => void;
 }
 
 export function createMuteworkerPlugin(options: MuteworkerPlugin): MuteworkerPlugin {

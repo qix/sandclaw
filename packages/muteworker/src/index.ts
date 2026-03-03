@@ -1,4 +1,4 @@
-import type { MuteworkerPlugin } from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPlugin, MuteworkerHooks } from '@sandclaw/muteworker-plugin-api';
 import path from 'path';
 import { MuteworkerApiClient } from './apiClient';
 import { DEFAULT_CONFIG, MuteworkerConfig } from './config';
@@ -54,9 +54,40 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
   const client = new MuteworkerApiClient(config, logger);
   const loop = new MuteworkerQueueLoop(client, config, logger, plugins, promptsDir, memoryDir);
 
-  const shutdown = () => {
+  // Plugin lifecycle: create services, run registerMuteworker + init
+  const startHooks: Array<() => Promise<void>> = [];
+  const stopHooks: Array<() => Promise<void>> = [];
+  const hooksService: MuteworkerHooks = {
+    register(hooks) {
+      if (hooks['muteworker:start']) startHooks.push(async () => hooks['muteworker:start']!());
+      if (hooks['muteworker:stop']) stopHooks.push(async () => hooks['muteworker:stop']!());
+    },
+  };
+
+  const services = new Map<string, any>();
+  services.set('core.hooks', hooksService);
+
+  const initFns: Array<() => void | Promise<void>> = [];
+  for (const plugin of plugins) {
+    if (!plugin.registerMuteworker) {
+      throw new Error(`Plugin "${plugin.id}" is missing required registerMuteworker method`);
+    }
+    plugin.registerMuteworker({
+      registerInit({ deps, init }) {
+        const resolved: Record<string, any> = {};
+        for (const [key, ref] of Object.entries(deps)) {
+          resolved[key] = services.get(ref.id);
+        }
+        initFns.push(() => init(resolved as any));
+      },
+    });
+  }
+  for (const fn of initFns) { await fn(); }
+
+  const shutdown = async () => {
     logger.info('muteworker.shutdown.requested');
     loop.stop();
+    for (const fn of stopHooks) { await fn(); }
   };
 
   process.on('SIGINT', shutdown);
@@ -70,6 +101,9 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
     promptsDir,
     memoryDir,
   });
+
+  // Fire start hooks
+  for (const fn of startHooks) { await fn(); }
 
   await loop.start();
 }

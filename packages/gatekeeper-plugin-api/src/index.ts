@@ -7,6 +7,50 @@ type Hono = any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Knex = any;
 
+// ---------------------------------------------------------------------------
+// Dependency Injection (Backstage-style)
+// ---------------------------------------------------------------------------
+
+/** Typed DI token. */
+export interface ServiceRef<T> {
+  readonly id: string;
+  /** @internal */ readonly __type?: T;
+}
+
+export function createServiceRef<T>(config: { id: string }): ServiceRef<T> {
+  return { id: config.id } as ServiceRef<T>;
+}
+
+/** Hooks that plugins can register to react to gatekeeper lifecycle events. */
+export interface GatekeeperHooks {
+  register(hooks: {
+    'gatekeeper:start'?: () => void | Promise<void>;
+    'gatekeeper:stop'?: () => void | Promise<void>;
+  }): void;
+}
+
+/** Core service refs available to all plugins. */
+export const gatekeeperDeps = {
+  db: createServiceRef<Knex>({ id: 'core.db' }),
+  hooks: createServiceRef<GatekeeperHooks>({ id: 'core.hooks' }),
+};
+
+type ResolveDeps<T extends Record<string, ServiceRef<any>>> = {
+  [K in keyof T]: T[K] extends ServiceRef<infer U> ? U : never;
+};
+
+/** Passed to a plugin's `registerGateway` callback so it can declare initialisation work. */
+export interface PluginEnvironment {
+  registerInit<TDeps extends Record<string, ServiceRef<any>>>(config: {
+    deps: TDeps;
+    init: (resolved: ResolveDeps<TDeps>) => void | Promise<void>;
+  }): void;
+}
+
+// ---------------------------------------------------------------------------
+// Plugin interfaces
+// ---------------------------------------------------------------------------
+
 /**
  * A fully-resolved Gatekeeper plugin.  Returned by `createGatekeeperPlugin`.
  */
@@ -32,6 +76,8 @@ export interface GatekeeperPlugin {
    * `startGatekeeper` before routes are registered.
    */
   readonly migrations?: (knex: Knex) => Promise<void>;
+  /** Backstage-style registration hook for declaring deps and gatekeeper lifecycle hooks. */
+  readonly registerGateway: (env: PluginEnvironment) => void;
 }
 
 export interface CreateGatekeeperPluginOptions {
@@ -45,6 +91,8 @@ export interface CreateGatekeeperPluginOptions {
   routes?: (app: Hono, db: Knex) => void;
   /** Optional DB migration callback. */
   migrations?: (knex: Knex) => Promise<void>;
+  /** Backstage-style registration hook for declaring deps and gatekeeper lifecycle hooks. */
+  registerGateway: (env: PluginEnvironment) => void;
 }
 
 /**
@@ -62,9 +110,9 @@ export interface CreateGatekeeperPluginOptions {
 export function createGatekeeperPlugin(
   options: CreateGatekeeperPluginOptions,
 ): GatekeeperPlugin {
-  const { id, title, component, routes, migrations } = options;
+  const { id, title, component, routes, migrations, registerGateway } = options;
   if (!id) throw new Error('GatekeeperPlugin: id is required');
   if (!title) throw new Error('GatekeeperPlugin: title is required');
   if (!component) throw new Error('GatekeeperPlugin: component is required');
-  return { id, title, component, routes, migrations };
+  return { id, title, component, routes, migrations, registerGateway };
 }

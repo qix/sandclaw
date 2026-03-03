@@ -1,5 +1,6 @@
 import React from 'react';
-import type { MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPluginContext, RunAgentFn, MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
+import type { PluginEnvironment } from '@sandclaw/gatekeeper-plugin-api';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -97,6 +98,9 @@ export function createGmailPlugin(config: GmailPluginConfig) {
     id: 'gmail' as const,
     title: 'Gmail',
     component: GmailPanel,
+
+    registerGateway(_env: PluginEnvironment) {},
+    registerMuteworker(_env: MuteworkerEnvironment) {},
 
     tools(ctx: MuteworkerPluginContext) {
       return [createSendEmailTool(ctx)];

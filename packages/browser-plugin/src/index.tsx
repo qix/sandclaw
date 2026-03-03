@@ -1,5 +1,6 @@
 import React from 'react';
-import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPluginContext, MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
+import type { PluginEnvironment } from '@sandclaw/gatekeeper-plugin-api';
 import { randomUUID } from 'node:crypto';
 
 // ---------------------------------------------------------------------------
@@ -46,6 +47,9 @@ export function createBrowserPlugin() {
     id: 'browser' as const,
     title: 'Browser',
     component: BrowserPanel,
+
+    registerGateway(_env: PluginEnvironment) {},
+    registerMuteworker(_env: MuteworkerEnvironment) {},
 
     tools(ctx: MuteworkerPluginContext) {
       return [createRequestBrowserTool(ctx)];

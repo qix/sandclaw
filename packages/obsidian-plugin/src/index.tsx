@@ -1,5 +1,6 @@
 import React from 'react';
-import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPluginContext, MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
+import type { PluginEnvironment } from '@sandclaw/gatekeeper-plugin-api';
 import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -81,6 +82,9 @@ export function createObsidianPlugin(config: ObsidianPluginConfig) {
     id: 'obsidian' as const,
     title: 'Obsidian',
     component: ObsidianPanel,
+
+    registerGateway(_env: PluginEnvironment) {},
+    registerMuteworker(_env: MuteworkerEnvironment) {},
 
     tools(ctx: MuteworkerPluginContext) {
       return [createSearchTool(ctx), createReadTool(ctx), createWriteTool(ctx)];

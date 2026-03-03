@@ -1,5 +1,7 @@
 import React from 'react';
 import type { MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-plugin-api';
+import { gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
+import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
 import TelegramBot from 'node-telegram-bot-api';
 
 // ---------------------------------------------------------------------------
@@ -481,21 +483,6 @@ function registerRoutes(app: any, db: any, operatorChatIds: ReadonlySet<string>)
 
     return c.json({ success: true, verificationStatus: 'approved' });
   });
-
-  // Auto-reconnect: check DB for existing session with a token
-  (async () => {
-    try {
-      const session = await db('telegram_sessions')
-        .where('status', 'connected')
-        .first();
-      if (session?.bot_token) {
-        console.log('[telegram] Found existing session, auto-reconnecting...');
-        await connectTelegram(db, session.bot_token);
-      }
-    } catch (err: any) {
-      console.error('[telegram] Auto-reconnect failed:', err.message);
-    }
-  })();
 }
 
 // ---------------------------------------------------------------------------
@@ -534,6 +521,30 @@ export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions = {
     component: TelegramPanel,
     routes: (app: any, db: any) => registerRoutes(app, db, operatorChatIds),
     migrations,
+
+    registerGateway(env: import('@sandclaw/gatekeeper-plugin-api').PluginEnvironment) {
+      env.registerInit({
+        deps: { db: gatekeeperDeps.db, hooks: gatekeeperDeps.hooks },
+        async init({ db, hooks }) {
+          hooks.register({
+            async 'gatekeeper:start'() {
+              try {
+                const session = await db('telegram_sessions').where('status', 'connected').first();
+                if (session?.bot_token) {
+                  console.log('[telegram] Found existing session, auto-reconnecting...');
+                  await connectTelegram(db, session.bot_token);
+                }
+              } catch (err: any) {
+                console.error('[telegram] Auto-reconnect failed:', err.message);
+              }
+            },
+            'gatekeeper:stop': () => disconnectTelegram(db),
+          });
+        },
+      });
+    },
+
+    registerMuteworker(_env: MuteworkerEnvironment) {},
 
     tools(ctx: MuteworkerPluginContext) {
       return [createSendTelegramTool(ctx)];

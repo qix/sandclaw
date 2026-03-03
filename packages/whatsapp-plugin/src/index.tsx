@@ -1,5 +1,7 @@
 import React from 'react';
 import type { MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-plugin-api';
+import { gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
+import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
 import makeWASocket, {
   BufferJSON,
   DisconnectReason,
@@ -285,6 +287,16 @@ async function connectWhatsApp(db: any) {
   });
 }
 
+function disconnectWhatsApp() {
+  if (waState.waSocket) {
+    waState.waSocket.end(undefined);
+    waState.waSocket = null;
+  }
+  waState.connectionStatus = 'disconnected';
+  waState.qrDataUrl = null;
+  waState.phoneNumber = null;
+}
+
 // ---------------------------------------------------------------------------
 // SSR React component
 // ---------------------------------------------------------------------------
@@ -460,11 +472,6 @@ function registerRoutes(app: any, db: any, operatorJids: ReadonlySet<string>) {
 
     return c.json({ success: true, verificationStatus: 'approved' });
   });
-
-  // Fire-and-forget: start WhatsApp connection
-  connectWhatsApp(db).catch((err: any) => {
-    console.error('[whatsapp] Failed to connect:', err);
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -510,6 +517,20 @@ export function buildWhatsappPlugin(options: WhatsappGatekeeperPluginOptions = {
     component: WhatsAppPanel,
     routes: (app: any, db: any) => registerRoutes(app, db, operatorJids),
     migrations,
+
+    registerGateway(env: import('@sandclaw/gatekeeper-plugin-api').PluginEnvironment) {
+      env.registerInit({
+        deps: { db: gatekeeperDeps.db, hooks: gatekeeperDeps.hooks },
+        async init({ db, hooks }) {
+          hooks.register({
+            'gatekeeper:start': () => connectWhatsApp(db),
+            'gatekeeper:stop': () => disconnectWhatsApp(),
+          });
+        },
+      });
+    },
+
+    registerMuteworker(_env: MuteworkerEnvironment) {},
 
     tools(ctx: MuteworkerPluginContext) {
       return [createSendWhatsappTool(ctx)];

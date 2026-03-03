@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import type { Knex } from 'knex';
-import type { GatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
+import type { GatekeeperPlugin, GatekeeperHooks } from '@sandclaw/gatekeeper-plugin-api';
 import { App } from './App';
 import { createDb, runCoreMigrations } from './db';
 import { logger } from './logger';
@@ -55,10 +55,41 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
     }
   }
 
-  // 2. Register core API routes
+  // 2. Plugin lifecycle: create services, run register + init
+  const startHooks: Array<() => Promise<void>> = [];
+  const stopHooks: Array<() => Promise<void>> = [];
+  const hooksService: GatekeeperHooks = {
+    register(hooks) {
+      if (hooks['gatekeeper:start']) startHooks.push(async () => hooks['gatekeeper:start']!());
+      if (hooks['gatekeeper:stop']) stopHooks.push(async () => hooks['gatekeeper:stop']!());
+    },
+  };
+
+  const services = new Map<string, any>();
+  services.set('core.db', db);
+  services.set('core.hooks', hooksService);
+
+  const initFns: Array<() => void | Promise<void>> = [];
+  for (const plugin of plugins) {
+    if (!plugin.registerGateway) {
+      throw new Error(`Plugin "${plugin.id}" is missing required registerGateway method`);
+    }
+    plugin.registerGateway({
+      registerInit({ deps, init }) {
+        const resolved: Record<string, any> = {};
+        for (const [key, ref] of Object.entries(deps)) {
+          resolved[key] = services.get(ref.id);
+        }
+        initFns.push(() => init(resolved as any));
+      },
+    });
+  }
+  for (const fn of initFns) { await fn(); }
+
+  // 3. Register core API routes
   registerCoreRoutes(app, db);
 
-  // 3. Register plugin API routes under /api/<plugin-id>/
+  // 4. Register plugin API routes under /api/<plugin-id>/
   for (const plugin of plugins) {
     if (plugin.routes) {
       const sub = new Hono();
@@ -67,11 +98,11 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
     }
   }
 
-  // 4. Form-action routes for the Verifications page (approve / reject with
+  // 5. Form-action routes for the Verifications page (approve / reject with
   //    redirect back to the page).
   registerVerificationFormRoutes(app, db);
 
-  // 5. SSR — render the React shell on every GET and use ?plugin= to track
+  // 6. SSR — render the React shell on every GET and use ?plugin= to track
   //    the active tab.  ?page=verifications shows the core verifications page.
   app.get('/*', async (c) => {
     const page = c.req.query('page');
@@ -100,6 +131,17 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
 
   serve({ fetch: app.fetch, port });
   logger.info({ port }, 'Gatekeeper listening');
+
+  // Fire start hooks (after server is accepting connections)
+  for (const fn of startHooks) { await fn(); }
+
+  // Graceful shutdown
+  const shutdown = async () => {
+    for (const fn of stopHooks) { await fn(); }
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
 function registerCoreRoutes(app: Hono, db: Knex): void {
