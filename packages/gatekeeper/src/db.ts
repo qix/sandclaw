@@ -1,9 +1,11 @@
 import knex, { Knex } from 'knex';
 import { mkdirSync } from 'fs';
 import { dirname } from 'path';
+import { logger } from './logger';
 
 export function createDb(dbPath: string): Knex {
   mkdirSync(dirname(dbPath), { recursive: true });
+  logger.info({ dbPath }, 'Opening SQLite database');
   return knex({
     client: 'better-sqlite3',
     connection: { filename: dbPath },

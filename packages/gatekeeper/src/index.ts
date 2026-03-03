@@ -6,6 +6,7 @@ import type { Knex } from 'knex';
 import type { GatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
 import { App } from './App';
 import { createDb, runCoreMigrations } from './db';
+import { logger } from './logger';
 
 export interface GatekeeperOptions {
   /** Plugins to load into the gatekeeper. */
@@ -36,6 +37,14 @@ export interface GatekeeperOptions {
 export async function startGatekeeper(options: GatekeeperOptions): Promise<void> {
   const { plugins, dbPath, port = 3000 } = options;
   const app = new Hono();
+
+  // Request logging middleware
+  app.use('*', async (c, next) => {
+    const start = Date.now();
+    await next();
+    const ms = Date.now() - start;
+    logger.info({ method: c.req.method, path: c.req.path, status: c.res.status, ms }, 'request');
+  });
 
   // 1. Initialise DB and run core + plugin migrations
   const db = createDb(dbPath);
@@ -69,7 +78,7 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   });
 
   serve({ fetch: app.fetch, port });
-  console.log(`Gatekeeper listening on http://localhost:${port}`);
+  logger.info({ port }, 'Gatekeeper listening');
 }
 
 function registerCoreRoutes(app: Hono, db: Knex): void {
