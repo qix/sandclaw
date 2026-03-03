@@ -1,0 +1,17 @@
+{
+  "name": "@sandclaw/gatekeeper-plugin-api",
+  "version": "0.1.0",
+  "description": "API for creating Sandclaw Gatekeeper plugins",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "typescript": "*"
+  }
+}

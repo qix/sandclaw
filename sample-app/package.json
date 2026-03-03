@@ -1,0 +1,16 @@
+{
+  "name": "sample-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "tsx gatekeeper.ts"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper": "*",
+    "@sandclaw/whatsapp-plugin": "*"
+  },
+  "devDependencies": {
+    "tsx": "*",
+    "typescript": "*"
+  }
+}

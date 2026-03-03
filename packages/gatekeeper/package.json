@@ -1,0 +1,24 @@
+{
+  "name": "@sandclaw/gatekeeper",
+  "version": "0.1.0",
+  "description": "Sandclaw Gatekeeper — control-centre web app",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@hono/node-server": "*",
+    "@sandclaw/gatekeeper-plugin-api": "*",
+    "hono": "*",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "@types/react-dom": "*",
+    "tsx": "*",
+    "typescript": "*"
+  }
+}
