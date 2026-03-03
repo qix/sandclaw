@@ -2,6 +2,7 @@
 .direnv
 .envrc
 default.nix
+.claude/
 
 # Packages
 node_modules/
