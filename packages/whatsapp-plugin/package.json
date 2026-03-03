@@ -9,12 +9,16 @@
   },
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "*",
-    "@sandclaw/muteworker-plugin-api": "*"
+    "@sandclaw/muteworker-plugin-api": "*",
+    "@whiskeysockets/baileys": "^6.7.16",
+    "qrcode": "^1.5.4",
+    "pino": "^9.6.0"
   },
   "peerDependencies": {
     "react": "^18.0.0"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.5",
     "@types/react": "*",
     "typescript": "*"
   }

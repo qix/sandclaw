@@ -48,6 +48,17 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
     });
   }
 
+  if (!(await db.schema.hasTable('conversations'))) {
+    await db.schema.createTable('conversations', (t) => {
+      t.increments('id');
+      t.text('plugin').notNullable();
+      t.text('channel').notNullable();
+      t.text('external_id').notNullable();
+      t.integer('created_at');
+      t.unique(['plugin', 'channel', 'external_id']);
+    });
+  }
+
   if (!(await db.schema.hasTable('conversation_message'))) {
     await db.schema.createTable('conversation_message', (t) => {
       t.increments('id');
