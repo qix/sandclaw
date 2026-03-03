@@ -74,11 +74,17 @@ function Editor({ onSubmit, onCancel }: EditorProps) {
       onCancel();
       exit();
     } else if (key.return) {
-      setText(t => t + '\n');
+      // Enter / Shift+Enter — also handle multi-char paste ending with return
+      if (input.length > 1) {
+        setText(t => t + input.replace(/\r\n?/g, '\n'));
+      } else {
+        setText(t => t + '\n');
+      }
     } else if (key.backspace || key.delete) {
       setText(t => t.slice(0, -1));
     } else if (input && !key.ctrl && !key.meta) {
-      setText(t => t + input);
+      // Regular input — normalize \r for multi-line paste support
+      setText(t => t + input.replace(/\r\n?/g, '\n'));
     }
   });
 
@@ -110,7 +116,7 @@ function Editor({ onSubmit, onCancel }: EditorProps) {
               <Text inverse> </Text>
             </Text>
           ) : (
-            <Text key={i}>{line}</Text>
+            <Text key={i}>{line || ' '}</Text>
           ),
         )}
       </Box>
@@ -118,6 +124,37 @@ function Editor({ onSubmit, onCancel }: EditorProps) {
       <Box marginTop={1}>
         <Text dimColor>  ctrl+d to submit  ·  ctrl+c to cancel</Text>
       </Box>
+    </Box>
+  );
+}
+
+// --- Amend Prompt ---
+
+interface AmendPromptProps {
+  onAmend: () => void;
+  onSkip: () => void;
+}
+
+function AmendPrompt({ onAmend, onSkip }: AmendPromptProps) {
+  const { exit } = useApp();
+
+  useInput((input, key) => {
+    if (input === 'y' || input === 'Y') {
+      onAmend();
+      exit();
+    } else if (input === 'n' || input === 'N' || (key.ctrl && input === 'c')) {
+      onSkip();
+      exit();
+    }
+  });
+
+  return (
+    <Box marginY={1} gap={1}>
+      <Text bold color="cyan">
+        ◆
+      </Text>
+      <Text>Amend changes to initial commit?</Text>
+      <Text dimColor>(y/n)</Text>
     </Box>
   );
 }
@@ -159,6 +196,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Save the commit hash so we can amend to it later
+  const commitHash = execFileSync('git', ['rev-parse', 'HEAD'], {
+    encoding: 'utf8',
+  }).trim();
+
   // Hand off to claude inside the devcontainer
   console.log('\n' + chalk.cyan('◆') + ' Starting claude…\n');
   const result = spawnSync(
@@ -166,6 +208,78 @@ async function main(): Promise<void> {
     ['exec', 'claude', '--dangerously-skip-permissions', promptText],
     { stdio: 'inherit' },
   );
+
+  // --- Post-run: diff and amend ---
+
+  const status = execFileSync('git', ['status', '--porcelain'], {
+    encoding: 'utf8',
+  });
+  const currentHead = execFileSync('git', ['rev-parse', 'HEAD'], {
+    encoding: 'utf8',
+  }).trim();
+  const hasUncommitted = status.trim().length > 0;
+  const hasNewCommits = currentHead !== commitHash;
+
+  if (!hasUncommitted && !hasNewCommits) {
+    process.exit(result.status ?? 0);
+  }
+
+  // Show a diff of everything that changed since our initial commit
+  console.log('\n' + chalk.cyan('◆') + ' Changes since initial commit:\n');
+
+  spawnSync('git', ['diff', '--stat', '--color=always', commitHash], {
+    stdio: 'inherit',
+  });
+
+  // List any new untracked files (not shown by git diff)
+  if (hasUncommitted) {
+    const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
+      encoding: 'utf8',
+    }).trim();
+    if (untracked) {
+      for (const file of untracked.split('\n')) {
+        console.log(chalk.green(' ' + file + ' (new untracked)'));
+      }
+    }
+  }
+
+  console.log('');
+  spawnSync('git', ['diff', '--color=always', commitHash], {
+    stdio: 'inherit',
+  });
+
+  // Ask whether to amend all changes into the initial commit
+  let shouldAmend = false;
+
+  const { waitUntilExit: waitAmend } = render(
+    React.createElement(AmendPrompt, {
+      onAmend: () => {
+        shouldAmend = true;
+      },
+      onSkip: () => {},
+    }),
+  );
+
+  await waitAmend();
+
+  if (shouldAmend) {
+    try {
+      execFileSync('git', ['add', '-A']);
+
+      if (hasNewCommits) {
+        execFileSync('git', ['reset', '--soft', commitHash]);
+      }
+
+      execFileSync('git', ['commit', '--amend', '--no-edit'], {
+        stdio: 'inherit',
+      });
+
+      console.log('\n' + chalk.green('✓') + ' Changes amended to initial commit.');
+    } catch {
+      console.error(chalk.red.bold('\n  ✗ Failed to amend commit'));
+      process.exit(1);
+    }
+  }
 
   process.exit(result.status ?? 0);
 }
