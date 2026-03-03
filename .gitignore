@@ -5,3 +5,6 @@ default.nix
 
 # Packages
 node_modules/
+
+# Previous iteration
+prev-source/
