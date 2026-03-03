@@ -1,0 +1,13 @@
+{
+  "name": "@sandclaw/muteworker-plugin-api",
+  "version": "0.1.0",
+  "description": "Sandclaw muteworker plugin API contract",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "*"
+  }
+}
