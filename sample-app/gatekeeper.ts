@@ -6,6 +6,7 @@
  */
 import { startGatekeeper } from '@sandclaw/gatekeeper';
 import { whatsappPlugin } from '@sandclaw/whatsapp-plugin';
+import { telegramPlugin } from '@sandclaw/telegram-plugin';
 import { createObsidianPlugin } from '@sandclaw/obsidian-plugin';
 import { createGmailPlugin } from '@sandclaw/gmail-plugin';
 import { createBrowserPlugin } from '@sandclaw/browser-plugin';
@@ -24,7 +25,7 @@ const gmailPlugin = createGmailPlugin({
 const browserPlugin = createBrowserPlugin();
 
 startGatekeeper({
-  plugins: [whatsappPlugin, obsidianPlugin, gmailPlugin, browserPlugin],
+  plugins: [whatsappPlugin, telegramPlugin, obsidianPlugin, gmailPlugin, browserPlugin],
   dbPath: './sample-app/data/db.sqlite',
   port: 3000,
 });

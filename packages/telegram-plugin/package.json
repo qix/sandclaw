@@ -1,0 +1,23 @@
+{
+  "name": "@sandclaw/telegram-plugin",
+  "version": "0.1.0",
+  "description": "Sandclaw Telegram plugin — connects to Telegram via Bot API",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper-plugin-api": "*",
+    "@sandclaw/muteworker-plugin-api": "*",
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/node-telegram-bot-api": "^0.64.0",
+    "@types/react": "*",
+    "typescript": "*"
+  }
+}
