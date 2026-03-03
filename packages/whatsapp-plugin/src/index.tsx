@@ -17,14 +17,31 @@ import pino from 'pino';
 
 // ---------------------------------------------------------------------------
 // Module-level state (shared between SSR component and route handlers)
+// Uses globalThis so state survives module re-evaluation on refresh.
 // ---------------------------------------------------------------------------
 
 type ConnectionStatus = 'disconnected' | 'qr_pending' | 'connecting' | 'connected';
 
-let waSocket: any = null;
-let connectionStatus: ConnectionStatus = 'disconnected';
-let qrDataUrl: string | null = null;
-let phoneNumber: string | null = null;
+interface WhatsAppState {
+  waSocket: any;
+  connectionStatus: ConnectionStatus;
+  qrDataUrl: string | null;
+  phoneNumber: string | null;
+}
+
+const STATE_KEY = '__sandclaw_whatsapp_state__';
+
+const _g = globalThis as any;
+if (!_g[STATE_KEY]) {
+  _g[STATE_KEY] = {
+    waSocket: null,
+    connectionStatus: 'disconnected' as ConnectionStatus,
+    qrDataUrl: null,
+    phoneNumber: null,
+  };
+}
+
+const waState: WhatsAppState = _g[STATE_KEY];
 
 // ---------------------------------------------------------------------------
 // DB-backed auth state for Baileys
@@ -132,25 +149,25 @@ async function connectWhatsApp(db: any) {
     version,
   });
 
-  waSocket = sock;
+  waState.waSocket = sock;
 
   sock.ev.on('connection.update', async (update: any) => {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
-      qrDataUrl = await QRCode.toDataURL(qr);
-      connectionStatus = 'qr_pending';
+      waState.qrDataUrl = await QRCode.toDataURL(qr);
+      waState.connectionStatus = 'qr_pending';
       await upsertSession(db, {
         status: 'qr_pending',
-        qr_data_url: qrDataUrl,
+        qr_data_url: waState.qrDataUrl,
         updated_at: Date.now(),
       });
     }
 
     if (connection === 'close') {
-      connectionStatus = 'disconnected';
-      qrDataUrl = null;
-      waSocket = null;
+      waState.connectionStatus = 'disconnected';
+      waState.qrDataUrl = null;
+      waState.waSocket = null;
 
       const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
       const loggedOut = statusCode === DisconnectReason.loggedOut;
@@ -166,23 +183,23 @@ async function connectWhatsApp(db: any) {
     }
 
     if (connection === 'connecting') {
-      connectionStatus = 'connecting';
+      waState.connectionStatus = 'connecting';
     }
 
     if (connection === 'open') {
-      connectionStatus = 'connected';
-      qrDataUrl = null;
-      phoneNumber = sock.user?.id?.split(':')[0] ?? sock.user?.id ?? null;
+      waState.connectionStatus = 'connected';
+      waState.qrDataUrl = null;
+      waState.phoneNumber = sock.user?.id?.split(':')[0] ?? sock.user?.id ?? null;
 
       await upsertSession(db, {
         status: 'connected',
         qr_data_url: null,
-        phone_number: phoneNumber,
+        phone_number: waState.phoneNumber,
         last_heartbeat: Date.now(),
         updated_at: Date.now(),
       });
 
-      console.log(`[whatsapp] Connected as ${phoneNumber}`);
+      console.log(`[whatsapp] Connected as ${waState.phoneNumber}`);
     }
   });
 
@@ -222,7 +239,7 @@ async function connectWhatsApp(db: any) {
         message_id: messageId,
         thread_id: jid,
         from: jid,
-        to: phoneNumber,
+        to: waState.phoneNumber,
         timestamp,
         direction: 'inbound',
         text,
@@ -280,7 +297,7 @@ async function connectWhatsApp(db: any) {
 function WhatsAppPanel() {
   let statusBlock: React.ReactNode;
 
-  switch (connectionStatus) {
+  switch (waState.connectionStatus) {
     case 'disconnected':
       statusBlock = (
         <p style={{ color: '#ef4444' }}>
@@ -294,10 +311,10 @@ function WhatsAppPanel() {
           <p style={{ color: '#f59e0b' }}>
             <strong>Status:</strong> Waiting for QR scan
           </p>
-          {qrDataUrl && (
+          {waState.qrDataUrl && (
             <div>
               <img
-                src={qrDataUrl}
+                src={waState.qrDataUrl}
                 alt="WhatsApp QR Code"
                 style={{ width: 264, height: 264, imageRendering: 'pixelated' }}
               />
@@ -320,13 +337,13 @@ function WhatsAppPanel() {
     case 'connected':
       statusBlock = (
         <p style={{ color: '#22c55e' }}>
-          <strong>Status:</strong> Connected as {phoneNumber ?? 'unknown'}
+          <strong>Status:</strong> Connected as {waState.phoneNumber ?? 'unknown'}
         </p>
       );
       break;
   }
 
-  const needsRefresh = connectionStatus !== 'connected';
+  const needsRefresh = waState.connectionStatus !== 'connected';
 
   return (
     <div style={{ padding: '1.5rem' }}>
@@ -357,9 +374,9 @@ function registerRoutes(app: any, db: any) {
   // GET /status — current connection state
   app.get('/status', (_c: any) => {
     return _c.json({
-      status: connectionStatus,
-      phoneNumber,
-      hasQr: !!qrDataUrl,
+      status: waState.connectionStatus,
+      phoneNumber: waState.phoneNumber,
+      hasQr: !!waState.qrDataUrl,
     });
   });
 
@@ -403,11 +420,11 @@ function registerRoutes(app: any, db: any) {
 
     const { jid, text } = JSON.parse(request.data);
 
-    if (!waSocket) {
+    if (!waState.waSocket) {
       return c.json({ error: 'WhatsApp not connected' }, 503);
     }
 
-    await waSocket.sendMessage(jid, { text });
+    await waState.waSocket.sendMessage(jid, { text });
 
     await db('verification_requests')
       .where('id', id)
@@ -420,7 +437,7 @@ function registerRoutes(app: any, db: any) {
       channel: 'whatsapp',
       message_id: `sent-${Date.now()}`,
       thread_id: jid,
-      from: phoneNumber,
+      from: waState.phoneNumber,
       to: jid,
       timestamp: Math.floor(Date.now() / 1000),
       direction: 'outbound',
