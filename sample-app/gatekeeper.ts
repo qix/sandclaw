@@ -5,7 +5,7 @@
  *   npx tsx sample-app/gatekeeper.ts
  */
 import { startGatekeeper } from '@sandclaw/gatekeeper';
-import { whatsappPlugin } from '@sandclaw/whatsapp-plugin';
+import { buildWhatsappGatekeeperPlugin } from '@sandclaw/whatsapp-plugin';
 import { telegramPlugin } from '@sandclaw/telegram-plugin';
 import { createObsidianPlugin } from '@sandclaw/obsidian-plugin';
 import { createGmailPlugin } from '@sandclaw/gmail-plugin';
@@ -23,6 +23,12 @@ const gmailPlugin = createGmailPlugin({
 });
 
 const browserPlugin = createBrowserPlugin();
+
+const whatsappPlugin = buildWhatsappGatekeeperPlugin({
+  operatorJids: [
+    // Add trusted operator JIDs here, e.g. '27821234567@s.whatsapp.net'
+  ],
+});
 
 startGatekeeper({
   plugins: [whatsappPlugin, telegramPlugin, obsidianPlugin, gmailPlugin, browserPlugin],

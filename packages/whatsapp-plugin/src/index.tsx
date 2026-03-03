@@ -370,7 +370,31 @@ function WhatsAppPanel() {
 // Route registration
 // ---------------------------------------------------------------------------
 
-function registerRoutes(app: any, db: any) {
+/** Send a WhatsApp message and record it in conversation_message. */
+async function deliverMessage(db: any, jid: string, text: string) {
+  if (!waState.waSocket) {
+    throw new Error('WhatsApp not connected');
+  }
+
+  await waState.waSocket.sendMessage(jid, { text });
+
+  const conversationId = await getOrCreateConversationId(db, jid);
+  await db('conversation_message').insert({
+    conversation_id: conversationId,
+    plugin: 'whatsapp',
+    channel: 'whatsapp',
+    message_id: `sent-${Date.now()}`,
+    thread_id: jid,
+    from: waState.phoneNumber,
+    to: jid,
+    timestamp: Math.floor(Date.now() / 1000),
+    direction: 'outbound',
+    text,
+    created_at: Date.now(),
+  });
+}
+
+function registerRoutes(app: any, db: any, operatorJids: ReadonlySet<string>) {
   // GET /status — current connection state
   app.get('/status', (_c: any) => {
     return _c.json({
@@ -389,19 +413,28 @@ function registerRoutes(app: any, db: any) {
       return c.json({ error: 'jid and text are required' }, 400);
     }
 
+    const autoApprove = operatorJids.has(jid);
     const now = Date.now();
     const [id] = await db('verification_requests').insert({
       plugin: 'whatsapp',
       action: 'send_message',
       data: JSON.stringify({ jid, text }),
-      status: 'pending',
+      status: autoApprove ? 'approved' : 'pending',
       created_at: now,
       updated_at: now,
     });
 
+    if (autoApprove) {
+      try {
+        await deliverMessage(db, jid, text);
+      } catch {
+        return c.json({ error: 'WhatsApp not connected' }, 503);
+      }
+    }
+
     return c.json({
       verificationRequestId: id,
-      verificationStatus: 'pending',
+      verificationStatus: autoApprove ? 'approved' : 'pending',
     });
   });
 
@@ -420,30 +453,15 @@ function registerRoutes(app: any, db: any) {
 
     const { jid, text } = JSON.parse(request.data);
 
-    if (!waState.waSocket) {
+    try {
+      await deliverMessage(db, jid, text);
+    } catch {
       return c.json({ error: 'WhatsApp not connected' }, 503);
     }
-
-    await waState.waSocket.sendMessage(jid, { text });
 
     await db('verification_requests')
       .where('id', id)
       .update({ status: 'approved', updated_at: Date.now() });
-
-    const conversationId = await getOrCreateConversationId(db, jid);
-    await db('conversation_message').insert({
-      conversation_id: conversationId,
-      plugin: 'whatsapp',
-      channel: 'whatsapp',
-      message_id: `sent-${Date.now()}`,
-      thread_id: jid,
-      from: waState.phoneNumber,
-      to: jid,
-      timestamp: Math.floor(Date.now() / 1000),
-      direction: 'outbound',
-      text,
-      created_at: Date.now(),
-    });
 
     return c.json({ success: true, verificationStatus: 'approved' });
   });
@@ -482,13 +500,26 @@ async function migrations(knex: any): Promise<void> {
 // Gatekeeper plugin export
 // ---------------------------------------------------------------------------
 
-export const whatsappPlugin = createGatekeeperPlugin({
-  id: 'whatsapp',
-  title: 'WhatsApp',
-  component: WhatsAppPanel,
-  routes: registerRoutes,
-  migrations,
-});
+export interface WhatsappGatekeeperPluginOptions {
+  /** JIDs that are trusted operators. Incoming messages from non-operator JIDs are
+   *  ignored; sends to operator JIDs are auto-approved without human verification. */
+  operatorJids?: string[];
+}
+
+export function buildWhatsappGatekeeperPlugin(options: WhatsappGatekeeperPluginOptions = {}) {
+  const operatorJids: ReadonlySet<string> = new Set(options.operatorJids ?? []);
+
+  return createGatekeeperPlugin({
+    id: 'whatsapp',
+    title: 'WhatsApp',
+    component: WhatsAppPanel,
+    routes: (app, db) => registerRoutes(app, db, operatorJids),
+    migrations,
+  });
+}
+
+/** Default gatekeeper plugin instance (no operator JIDs configured). */
+export const whatsappPlugin = buildWhatsappGatekeeperPlugin();
 
 // ---------------------------------------------------------------------------
 // Muteworker plugin
@@ -542,16 +573,7 @@ function clampReply(reply: string): string {
   return normalized.length <= 1200 ? normalized : `${normalized.slice(0, 1197)}...`;
 }
 
-async function autoApproveVerificationRequest(
-  apiBaseUrl: string,
-  verificationRequestId: number,
-): Promise<void> {
-  await fetch(`${apiBaseUrl}/api/whatsapp/approve/${verificationRequestId}`, {
-    method: 'POST',
-  });
-}
-
-function createSendWhatsappTool(ctx: MuteworkerPluginContext, operatorJids: ReadonlySet<string>) {
+function createSendWhatsappTool(ctx: MuteworkerPluginContext) {
   return {
     name: 'send_whatsapp_message',
     label: 'Send WhatsApp Message',
@@ -584,16 +606,6 @@ function createSendWhatsappTool(ctx: MuteworkerPluginContext, operatorJids: Read
         verificationStatus?: 'pending' | 'approved' | 'rejected';
       };
 
-      // Auto-approve sends to operator JIDs
-      if (
-        result.verificationStatus === 'pending' &&
-        result.verificationRequestId &&
-        operatorJids.has(jid)
-      ) {
-        await autoApproveVerificationRequest(ctx.apiBaseUrl, result.verificationRequestId);
-        result.verificationStatus = 'approved';
-      }
-
       ctx.artifacts.push({ type: 'text', label: `Sent to ${jid}`, value: text });
 
       const needsVerification = result.verificationStatus === 'pending';
@@ -612,20 +624,12 @@ function createSendWhatsappTool(ctx: MuteworkerPluginContext, operatorJids: Read
   };
 }
 
-export interface WhatsappMuteworkerPluginOptions {
-  /** JIDs that are trusted operators. Messages from these JIDs are auto-verified;
-   *  sends to these JIDs skip human verification. */
-  operatorJids?: string[];
-}
-
-export function buildWhatsappMuteworkerPlugin(options: WhatsappMuteworkerPluginOptions = {}) {
-  const operatorJids: ReadonlySet<string> = new Set(options.operatorJids ?? []);
-
+export function buildWhatsappMuteworkerPlugin() {
   return createMuteworkerPlugin({
     id: 'whatsapp',
 
     tools(ctx: MuteworkerPluginContext) {
-      return [createSendWhatsappTool(ctx, operatorJids)];
+      return [createSendWhatsappTool(ctx)];
     },
 
     jobHandlers: {
@@ -647,28 +651,11 @@ export function buildWhatsappMuteworkerPlugin(options: WhatsappMuteworkerPluginO
             const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
             if (jobCtx.channel === 'whatsapp' && typeof jobCtx.jid === 'string') {
               const reply = clampReply(result.reply);
-              const sendResponse = await fetch(`${ctx.apiBaseUrl}/api/whatsapp/send`, {
+              await fetch(`${ctx.apiBaseUrl}/api/whatsapp/send`, {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({ jid: jobCtx.jid, text: reply }),
               });
-
-              // Auto-approve replies to operator JIDs
-              if (sendResponse.ok && operatorJids.has(jobCtx.jid)) {
-                const sendResult = (await sendResponse.json()) as {
-                  verificationRequestId?: number;
-                  verificationStatus?: string;
-                };
-                if (
-                  sendResult.verificationStatus === 'pending' &&
-                  sendResult.verificationRequestId
-                ) {
-                  await autoApproveVerificationRequest(
-                    ctx.apiBaseUrl,
-                    sendResult.verificationRequestId,
-                  );
-                }
-              }
 
               ctx.artifacts.push({ type: 'text', label: 'Auto-Reply', value: reply });
               ctx.logger.info('whatsapp.auto_reply', { jobId: ctx.job.id, jid: jobCtx.jid });
