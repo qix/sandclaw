@@ -399,6 +399,27 @@ function registerRoutes(app: any, db: any, operatorChatIds: ReadonlySet<string>)
     return c.json({ status: 'disconnected' });
   });
 
+  // POST /typing — send a "typing" chat action to a chat
+  app.post('/typing', async (c: any) => {
+    const body = await c.req.json();
+    const { chatId } = body;
+
+    if (!chatId || typeof chatId !== 'string') {
+      return c.json({ error: 'chatId is required' }, 400);
+    }
+
+    if (!tgState.bot) {
+      return c.json({ error: 'Telegram bot not connected' }, 503);
+    }
+
+    try {
+      await tgState.bot.sendChatAction(chatId, 'typing');
+      return c.json({ success: true });
+    } catch (err: any) {
+      return c.json({ error: err?.message || 'Failed to send typing action' }, 500);
+    }
+  });
+
   // POST /send — create a verification request for sending a message
   app.post('/send', async (c: any) => {
     const body = await c.req.json();
@@ -529,8 +550,23 @@ export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions = {
 
         if (!payload.chatId) throw new Error(`Job ${ctx.job.id} payload missing chatId`);
 
+        // Send typing indicator while the agent works
+        const sendTyping = () =>
+          fetch(`${ctx.apiBaseUrl}/api/telegram/typing`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ chatId: payload.chatId }),
+          }).catch(() => {});
+        await sendTyping();
+        const typingInterval = setInterval(sendTyping, 4000);
+
         const prompt = buildTelegramPrompt(payload);
-        const result = await runAgent(prompt);
+        let result: Awaited<ReturnType<RunAgentFn>>;
+        try {
+          result = await runAgent(prompt);
+        } finally {
+          clearInterval(typingInterval);
+        }
 
         if (result.reply && ctx.job.context) {
           try {
