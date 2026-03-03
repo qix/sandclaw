@@ -67,12 +67,33 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
     }
   }
 
-  // 4. SSR — render the React shell on every GET and use ?plugin= to track
-  //    the active tab.
-  app.get('/*', (c) => {
+  // 4. Form-action routes for the Verifications page (approve / reject with
+  //    redirect back to the page).
+  registerVerificationFormRoutes(app, db);
+
+  // 5. SSR — render the React shell on every GET and use ?plugin= to track
+  //    the active tab.  ?page=verifications shows the core verifications page.
+  app.get('/*', async (c) => {
+    const page = c.req.query('page');
     const activePluginId = c.req.query('plugin') ?? plugins[0]?.id ?? '';
+
+    let verificationRequests: any[] | undefined;
+    if (page === 'verifications') {
+      const rows = await db('verification_requests')
+        .where('status', 'pending')
+        .orderBy('created_at', 'desc');
+      verificationRequests = rows.map((r: any) => ({
+        id: r.id,
+        plugin: r.plugin,
+        action: r.action,
+        data: r.data,
+        status: r.status,
+        createdAt: r.created_at,
+      }));
+    }
+
     const html = renderToString(
-      createElement(App, { plugins, activePluginId }),
+      createElement(App, { plugins, activePluginId, activePage: page, verificationRequests }),
     );
     return c.html(`<!DOCTYPE html>${html}`);
   });
@@ -246,6 +267,45 @@ function registerCoreRoutes(app: Hono, db: Knex): void {
 
     if (updated === 0) return c.json({ error: 'Job not found' }, 404);
     return c.json({ success: true });
+  });
+}
+
+function registerVerificationFormRoutes(app: Hono, db: Knex): void {
+  // POST /verifications/approve/:id — forward to the plugin's approve endpoint, then redirect
+  app.post('/verifications/approve/:id', async (c) => {
+    const id = parseInt(c.req.param('id'), 10);
+    if (!id || isNaN(id)) return c.redirect('/?page=verifications');
+
+    const request = await db('verification_requests').where('id', id).first();
+    if (!request || request.status !== 'pending') {
+      return c.redirect('/?page=verifications');
+    }
+
+    // Try the plugin-specific approve endpoint (it may deliver the message, etc.)
+    const pluginApproveUrl = `/api/${request.plugin}/approve/${id}`;
+    const res = await app.request(pluginApproveUrl, { method: 'POST' });
+
+    // If the plugin doesn't have an approve endpoint, fall back to a direct DB update
+    if (res.status === 404) {
+      await db('verification_requests')
+        .where('id', id)
+        .update({ status: 'approved', updated_at: Date.now() });
+    }
+
+    return c.redirect('/?page=verifications');
+  });
+
+  // POST /verifications/reject/:id — reject and redirect
+  app.post('/verifications/reject/:id', async (c) => {
+    const id = parseInt(c.req.param('id'), 10);
+    if (!id || isNaN(id)) return c.redirect('/?page=verifications');
+
+    await db('verification_requests')
+      .where('id', id)
+      .where('status', 'pending')
+      .update({ status: 'rejected', updated_at: Date.now() });
+
+    return c.redirect('/?page=verifications');
   });
 }
 

@@ -1,10 +1,15 @@
 import React, { createElement } from 'react';
 import type { GatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
+import { VerificationsPage, type VerificationRequest } from './VerificationsPage';
 
 interface AppProps {
   plugins: GatekeeperPlugin[];
   /** The `id` of the currently active plugin tab. */
   activePluginId: string;
+  /** When set, a core page is active instead of a plugin tab. */
+  activePage?: string;
+  /** Pending verification requests (only populated when activePage === 'verifications'). */
+  verificationRequests?: VerificationRequest[];
 }
 
 /**
@@ -16,8 +21,8 @@ interface AppProps {
  *
  * Future: replace with a full Vite SPA + client-side hydration.
  */
-export function App({ plugins, activePluginId }: AppProps) {
-  const active = plugins.find((p) => p.id === activePluginId) ?? plugins[0];
+export function App({ plugins, activePluginId, activePage, verificationRequests }: AppProps) {
+  const active = activePage ? null : (plugins.find((p) => p.id === activePluginId) ?? plugins[0]);
 
   return (
     <html lang="en">
@@ -46,6 +51,13 @@ export function App({ plugins, activePluginId }: AppProps) {
           <div className="brand">
             Sand<span>Claw</span>
           </div>
+          <a
+            href="?page=verifications"
+            className={activePage === 'verifications' ? 'active' : undefined}
+          >
+            Verifications
+          </a>
+          <div style={{ borderTop: '1px solid #374151', margin: '0.5rem 1rem' }} />
           {plugins.map((p) => (
             <a
               key={p.id}
@@ -57,7 +69,13 @@ export function App({ plugins, activePluginId }: AppProps) {
           ))}
         </nav>
         <main>
-          {active ? createElement(active.component) : <NoPlugins />}
+          {activePage === 'verifications' ? (
+            <VerificationsPage requests={verificationRequests ?? []} />
+          ) : active ? (
+            createElement(active.component)
+          ) : (
+            <NoPlugins />
+          )}
         </main>
       </body>
     </html>
