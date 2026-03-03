@@ -526,7 +526,8 @@ export function buildWhatsappPlugin(options: WhatsappGatekeeperPluginOptions = {
 
         if (!payload.jid) throw new Error(`Job ${ctx.job.id} payload missing jid`);
 
-        const prompt = buildWhatsappPrompt(payload);
+        const isOperator = operatorJids.has(payload.jid);
+        const prompt = buildWhatsappPrompt(payload, isOperator);
         const result = await runAgent(prompt);
 
         if (result.reply && ctx.job.context) {
@@ -571,7 +572,7 @@ interface IncomingWhatsappPayload {
   history?: Array<{ role: 'user' | 'assistant'; text: string; timestamp: number }>;
 }
 
-function buildWhatsappPrompt(payload: IncomingWhatsappPayload): string {
+function buildWhatsappPrompt(payload: IncomingWhatsappPayload, isOperator: boolean): string {
   const displayName = payload.pushName || '(unknown)';
   const body = payload.text?.trim() || '[No text content]';
   const replyContext = payload.replyToText
@@ -595,6 +596,11 @@ function buildWhatsappPrompt(payload: IncomingWhatsappPayload): string {
     `Is group message: ${Boolean(payload.isGroup)}`,
     payload.groupJid ? `Group JID: ${payload.groupJid}` : 'Direct message.',
     replyContext,
+    ...(isOperator
+      ? [
+          'NOTE: This sender is a trusted operator. Do NOT use the send_whatsapp_message tool to reply — just respond with your message text directly.',
+        ]
+      : []),
     ...historyLines,
     'Latest WhatsApp message:',
     body,

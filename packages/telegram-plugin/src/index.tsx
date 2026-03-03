@@ -560,7 +560,8 @@ export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions = {
         await sendTyping();
         const typingInterval = setInterval(sendTyping, 4000);
 
-        const prompt = buildTelegramPrompt(payload);
+        const isOperator = operatorChatIds.has(String(payload.chatId));
+        const prompt = buildTelegramPrompt(payload, isOperator);
         let result: Awaited<ReturnType<RunAgentFn>>;
         try {
           result = await runAgent(prompt);
@@ -610,7 +611,7 @@ interface IncomingTelegramPayload {
   history?: Array<{ role: 'user' | 'assistant'; text: string; timestamp: number }>;
 }
 
-function buildTelegramPrompt(payload: IncomingTelegramPayload): string {
+function buildTelegramPrompt(payload: IncomingTelegramPayload, isOperator: boolean): string {
   const displayName =
     [payload.firstName, payload.lastName].filter(Boolean).join(' ') ||
     payload.username ||
@@ -638,6 +639,11 @@ function buildTelegramPrompt(payload: IncomingTelegramPayload): string {
     `Is group message: ${Boolean(payload.isGroup)}`,
     payload.groupTitle ? `Group: ${payload.groupTitle}` : 'Direct message.',
     replyContext,
+    ...(isOperator
+      ? [
+          'NOTE: This sender is a trusted operator. Do NOT use the send_telegram_message tool to reply — just respond with your message text directly.',
+        ]
+      : []),
     ...historyLines,
     'Latest Telegram message:',
     body,
