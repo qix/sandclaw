@@ -4,7 +4,7 @@
 import type { GatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
 import type { MuteworkerPlugin } from '@sandclaw/muteworker-plugin-api';
 import { buildWhatsappPlugin } from '@sandclaw/whatsapp-plugin';
-import { telegramPlugin } from '@sandclaw/telegram-plugin';
+import { buildTelegramPlugin } from '@sandclaw/telegram-plugin';
 import { createObsidianPlugin } from '@sandclaw/obsidian-plugin';
 import { createGmailPlugin } from '@sandclaw/gmail-plugin';
 import { createBrowserPlugin } from '@sandclaw/browser-plugin';
@@ -17,7 +17,11 @@ export const plugins: SandclawPlugin[] = [
       // Add trusted operator JIDs here, e.g. '27821234567@s.whatsapp.net'
     ],
   }),
-  telegramPlugin,
+  buildTelegramPlugin({
+    operatorChatIds: [
+      // Add trusted operator chat IDs here, e.g. '123456789'
+    ],
+  }),
   createObsidianPlugin({
     vaultRoot: process.env.OBSIDIAN_VAULT_ROOT || '~/obsidian',
   }),

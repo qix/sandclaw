@@ -59,6 +59,26 @@ async function upsertSession(db: any, data: Record<string, any>) {
   }
 }
 
+/** Send a message via the bot and record it in conversation_message. Throws if bot is not connected. */
+async function deliverMessage(db: any, chatId: string, text: string) {
+  if (!tgState.bot) throw new Error('Telegram bot not connected');
+  await tgState.bot.sendMessage(chatId, text);
+  const conversationId = await getOrCreateConversationId(db, chatId);
+  await db('conversation_message').insert({
+    conversation_id: conversationId,
+    plugin: 'telegram',
+    channel: 'telegram',
+    message_id: `sent-${Date.now()}`,
+    thread_id: chatId,
+    from: tgState.botUsername,
+    to: chatId,
+    timestamp: Math.floor(Date.now() / 1000),
+    direction: 'outbound',
+    text,
+    created_at: Date.now(),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Telegram Bot connection
 // ---------------------------------------------------------------------------
@@ -321,7 +341,7 @@ function TelegramPanel() {
 // Route registration
 // ---------------------------------------------------------------------------
 
-function registerRoutes(app: any, db: any) {
+function registerRoutes(app: any, db: any, operatorChatIds: ReadonlySet<string>) {
   // GET /status — current connection state
   app.get('/status', (_c: any) => {
     return _c.json({
@@ -388,19 +408,28 @@ function registerRoutes(app: any, db: any) {
       return c.json({ error: 'chatId and text are required' }, 400);
     }
 
+    const autoApprove = operatorChatIds.has(chatId);
     const now = Date.now();
     const [id] = await db('verification_requests').insert({
       plugin: 'telegram',
       action: 'send_message',
       data: JSON.stringify({ chatId, text }),
-      status: 'pending',
+      status: autoApprove ? 'approved' : 'pending',
       created_at: now,
       updated_at: now,
     });
 
+    if (autoApprove) {
+      try {
+        await deliverMessage(db, chatId, text);
+      } catch {
+        return c.json({ error: 'Telegram bot not connected' }, 503);
+      }
+    }
+
     return c.json({
       verificationRequestId: id,
-      verificationStatus: 'pending',
+      verificationStatus: autoApprove ? 'approved' : 'pending',
     });
   });
 
@@ -419,30 +448,15 @@ function registerRoutes(app: any, db: any) {
 
     const { chatId, text } = JSON.parse(request.data);
 
-    if (!tgState.bot) {
+    try {
+      await deliverMessage(db, chatId, text);
+    } catch {
       return c.json({ error: 'Telegram bot not connected' }, 503);
     }
-
-    await tgState.bot.sendMessage(chatId, text);
 
     await db('verification_requests')
       .where('id', id)
       .update({ status: 'approved', updated_at: Date.now() });
-
-    const conversationId = await getOrCreateConversationId(db, chatId);
-    await db('conversation_message').insert({
-      conversation_id: conversationId,
-      plugin: 'telegram',
-      channel: 'telegram',
-      message_id: `sent-${Date.now()}`,
-      thread_id: chatId,
-      from: tgState.botUsername,
-      to: chatId,
-      timestamp: Math.floor(Date.now() / 1000),
-      direction: 'outbound',
-      text,
-      created_at: Date.now(),
-    });
 
     return c.json({ success: true, verificationStatus: 'approved' });
   });
@@ -484,51 +498,63 @@ async function migrations(knex: any): Promise<void> {
 // Gatekeeper plugin export
 // ---------------------------------------------------------------------------
 
-export const telegramPlugin = {
-  id: 'telegram' as const,
-  title: 'Telegram',
-  component: TelegramPanel,
-  routes: registerRoutes,
-  migrations,
+export interface TelegramGatekeeperPluginOptions {
+  /** Chat IDs that are trusted operators. Sends to operator chat IDs are
+   *  auto-approved without human verification. */
+  operatorChatIds?: string[];
+}
 
-  tools(ctx: MuteworkerPluginContext) {
-    return [createSendTelegramTool(ctx)];
-  },
+export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions = {}) {
+  const operatorChatIds: ReadonlySet<string> = new Set(options.operatorChatIds ?? []);
 
-  jobHandlers: {
-    async 'telegram:incoming_message'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
-      let payload: IncomingTelegramPayload;
-      try {
-        payload = JSON.parse(ctx.job.data) as IncomingTelegramPayload;
-      } catch {
-        throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
-      }
+  return {
+    id: 'telegram' as const,
+    title: 'Telegram',
+    component: TelegramPanel,
+    routes: (app: any, db: any) => registerRoutes(app, db, operatorChatIds),
+    migrations,
 
-      if (!payload.chatId) throw new Error(`Job ${ctx.job.id} payload missing chatId`);
-
-      const prompt = buildTelegramPrompt(payload);
-      const result = await runAgent(prompt);
-
-      if (result.reply && ctx.job.context) {
-        try {
-          const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
-          if (jobCtx.channel === 'telegram' && typeof jobCtx.chatId === 'string') {
-            const reply = clampReply(result.reply);
-            await fetch(`${ctx.apiBaseUrl}/api/telegram/send`, {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ chatId: jobCtx.chatId, text: reply }),
-            });
-            ctx.artifacts.push({ type: 'text', label: 'Auto-Reply', value: reply });
-            ctx.logger.info('telegram.auto_reply', { jobId: ctx.job.id, chatId: jobCtx.chatId });
-          }
-        } catch {
-          ctx.logger.warn('telegram.auto_reply.failed', { jobId: ctx.job.id });
-        }
-      }
+    tools(ctx: MuteworkerPluginContext) {
+      return [createSendTelegramTool(ctx)];
     },
-  },
-};
+
+    jobHandlers: {
+      async 'telegram:incoming_message'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
+        let payload: IncomingTelegramPayload;
+        try {
+          payload = JSON.parse(ctx.job.data) as IncomingTelegramPayload;
+        } catch {
+          throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
+        }
+
+        if (!payload.chatId) throw new Error(`Job ${ctx.job.id} payload missing chatId`);
+
+        const prompt = buildTelegramPrompt(payload);
+        const result = await runAgent(prompt);
+
+        if (result.reply && ctx.job.context) {
+          try {
+            const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
+            if (jobCtx.channel === 'telegram' && typeof jobCtx.chatId === 'string') {
+              const reply = clampReply(result.reply);
+              await fetch(`${ctx.apiBaseUrl}/api/telegram/send`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ chatId: jobCtx.chatId, text: reply }),
+              });
+              ctx.artifacts.push({ type: 'text', label: 'Auto-Reply', value: reply });
+              ctx.logger.info('telegram.auto_reply', { jobId: ctx.job.id, chatId: jobCtx.chatId });
+            }
+          } catch {
+            ctx.logger.warn('telegram.auto_reply.failed', { jobId: ctx.job.id });
+          }
+        }
+      },
+    },
+  };
+}
+
+export const telegramPlugin = buildTelegramPlugin();
 
 // ---------------------------------------------------------------------------
 // Muteworker internals
