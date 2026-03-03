@@ -61,6 +61,7 @@ interface EditorProps {
 
 function Editor({ onSubmit, onCancel }: EditorProps) {
   const [text, setText] = useState('');
+  const [cursor, setCursor] = useState(0);
   const { exit } = useApp();
 
   useInput((input, key) => {
@@ -73,25 +74,69 @@ function Editor({ onSubmit, onCancel }: EditorProps) {
     } else if (key.ctrl && input === 'c') {
       onCancel();
       exit();
+    } else if (key.leftArrow) {
+      setCursor(c => Math.max(0, c - 1));
+    } else if (key.rightArrow) {
+      setCursor(c => Math.min(text.length, c + 1));
+    } else if (key.upArrow) {
+      // Move cursor up one line
+      setCursor(c => {
+        const before = text.slice(0, c);
+        const currentLineStart = before.lastIndexOf('\n') + 1;
+        const col = c - currentLineStart;
+        if (currentLineStart === 0) return 0; // already on first line, go to start
+        const prevLineStart = before.lastIndexOf('\n', currentLineStart - 2) + 1;
+        const prevLineLen = currentLineStart - 1 - prevLineStart;
+        return prevLineStart + Math.min(col, prevLineLen);
+      });
+    } else if (key.downArrow) {
+      // Move cursor down one line
+      setCursor(c => {
+        const before = text.slice(0, c);
+        const currentLineStart = before.lastIndexOf('\n') + 1;
+        const col = c - currentLineStart;
+        const nextNewline = text.indexOf('\n', c);
+        if (nextNewline === -1) return text.length; // already on last line, go to end
+        const nextLineStart = nextNewline + 1;
+        const nextNextNewline = text.indexOf('\n', nextLineStart);
+        const nextLineLen = (nextNextNewline === -1 ? text.length : nextNextNewline) - nextLineStart;
+        return nextLineStart + Math.min(col, nextLineLen);
+      });
     } else if (key.return) {
-      // Enter / Shift+Enter — also handle multi-char paste ending with return
-      if (input.length > 1) {
-        setText(t => t + input.replace(/\r\n?/g, '\n'));
-      } else {
-        setText(t => t + '\n');
-      }
+      // Enter — also handle multi-char paste ending with return
+      const insertion = input.length > 1 ? input.replace(/\r\n?/g, '\n') : '\n';
+      setText(t => t.slice(0, cursor) + insertion + t.slice(cursor));
+      setCursor(c => c + insertion.length);
     } else if (key.backspace || key.delete) {
-      setText(t => t.slice(0, -1));
+      if (cursor > 0) {
+        setText(t => t.slice(0, cursor - 1) + t.slice(cursor));
+        setCursor(c => c - 1);
+      }
     } else if (input && !key.ctrl && !key.meta) {
       // Regular input — normalize \r for multi-line paste support
-      setText(t => t + input.replace(/\r\n?/g, '\n'));
+      const insertion = input.replace(/\r\n?/g, '\n');
+      setText(t => t.slice(0, cursor) + insertion + t.slice(cursor));
+      setCursor(c => c + insertion.length);
     }
   });
 
-  // Append a trailing space so the last line always shows a cursor slot
-  const lines = (text + ' ').split('\n');
-  const lastIdx = lines.length - 1;
+  const lines = text.split('\n');
   const hasContent = text.trim().length > 0;
+
+  // Find which line and column the cursor is on
+  let cursorLine = 0;
+  let cursorCol = 0;
+  {
+    let pos = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (cursor <= pos + lines[i].length) {
+        cursorLine = i;
+        cursorCol = cursor - pos;
+        break;
+      }
+      pos += lines[i].length + 1; // +1 for \n
+    }
+  }
 
   return (
     <Box flexDirection="column" marginY={1}>
@@ -110,10 +155,11 @@ function Editor({ onSubmit, onCancel }: EditorProps) {
         minWidth={60}
       >
         {lines.map((line, i) =>
-          i === lastIdx ? (
+          i === cursorLine ? (
             <Text key={i}>
-              {line.slice(0, -1)}
-              <Text inverse> </Text>
+              {line.slice(0, cursorCol)}
+              <Text inverse>{line[cursorCol] ?? ' '}</Text>
+              {line.slice(cursorCol + 1)}
             </Text>
           ) : (
             <Text key={i}>{line || ' '}</Text>
