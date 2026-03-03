@@ -13,6 +13,7 @@ import {
 
 export class MuteworkerQueueLoop {
   private shouldRun = true;
+  private pollAbort: AbortController | null = null;
   private readonly backoff = createBackoffState();
 
   constructor(
@@ -26,6 +27,7 @@ export class MuteworkerQueueLoop {
 
   stop(): void {
     this.shouldRun = false;
+    this.pollAbort?.abort();
   }
 
   async start(): Promise<void> {
@@ -33,7 +35,8 @@ export class MuteworkerQueueLoop {
 
     while (this.shouldRun) {
       try {
-        const job = await this.client.readNextJob();
+        this.pollAbort = new AbortController();
+        const job = await this.client.readNextJob(this.pollAbort.signal);
 
         if (!job) {
           resetBackoff(this.backoff);
@@ -69,6 +72,9 @@ export class MuteworkerQueueLoop {
           });
         }
       } catch (error) {
+        if (!this.shouldRun && error instanceof Error && error.name === 'AbortError') {
+          break;
+        }
         if (error instanceof ApiError) {
           this.logger.error('queue.api.error', {
             status: error.status,

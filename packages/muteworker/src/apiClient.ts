@@ -21,11 +21,12 @@ export class MuteworkerApiClient {
     private readonly logger?: Logger,
   ) {}
 
-  async readNextJob(): Promise<MuteworkerQueueJob | null> {
+  async readNextJob(signal?: AbortSignal): Promise<MuteworkerQueueJob | null> {
     const timeoutSec = Math.max(1, Math.floor(this.config.longPollTimeoutMs / 1000));
     const response = await this.request(
       `/api/muteworker-queue/next?timeout=${encodeURIComponent(String(timeoutSec))}`,
       { method: 'GET' },
+      signal,
     );
     if (response.status === 204) return null;
     if (!response.ok) {
@@ -45,11 +46,11 @@ export class MuteworkerApiClient {
     }
   }
 
-  private request(path: string, init: RequestInit): Promise<Response> {
+  private request(path: string, init: RequestInit, signal?: AbortSignal): Promise<Response> {
     const startedAt = Date.now();
     const headers = new Headers(init.headers ?? {});
     headers.set('content-type', 'application/json');
-    return fetch(new URL(path, this.config.apiBaseUrl), { ...init, headers }).then(
+    return fetch(new URL(path, this.config.apiBaseUrl), { ...init, headers, signal }).then(
       (response) => {
         this.logger?.debug('api.request', {
           path,
