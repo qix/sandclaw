@@ -1,9 +1,5 @@
 import React from 'react';
-import { createGatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
-import {
-  createMuteworkerPlugin,
-  type MuteworkerPluginContext,
-} from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
 import { randomUUID } from 'node:crypto';
 
 // ---------------------------------------------------------------------------
@@ -46,12 +42,48 @@ function BrowserPanel() {
 }
 
 export function createBrowserPlugin() {
-  return createGatekeeperPlugin({
-    id: 'browser',
+  return {
+    id: 'browser' as const,
     title: 'Browser',
     component: BrowserPanel,
 
-    routes(app, db) {
+    tools(ctx: MuteworkerPluginContext) {
+      return [createRequestBrowserTool(ctx)];
+    },
+
+    jobHandlers: {
+      async 'browser:research_result'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
+        let payload: { requestId: string; result: string };
+        try {
+          payload = JSON.parse(ctx.job.data);
+        } catch {
+          throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
+        }
+
+        ctx.logger.info('browser.result.received', {
+          jobId: ctx.job.id,
+          requestId: payload.requestId,
+        });
+
+        ctx.artifacts.push({
+          type: 'text',
+          label: 'Browser Result',
+          value: payload.result.slice(0, 200),
+        });
+
+        const prompt = [
+          '--- Browser Research Result ---',
+          `Request ID: ${payload.requestId}`,
+          '',
+          payload.result,
+          '-------------------------------',
+        ].join('\n');
+
+        await runAgent(prompt);
+      },
+    },
+
+    routes(app: any, db: any) {
       // POST /request — create a verification request for browser research
       app.post('/request', async (c) => {
         const body = await c.req.json() as {
@@ -153,11 +185,11 @@ export function createBrowserPlugin() {
         return c.json({ success: true, jobId });
       });
     },
-  });
+  };
 }
 
 // ---------------------------------------------------------------------------
-// Muteworker Plugin (Tool + Job Handler)
+// Muteworker internals (Tool)
 // ---------------------------------------------------------------------------
 
 function createRequestBrowserTool(ctx: MuteworkerPluginContext) {
@@ -216,46 +248,6 @@ function createRequestBrowserTool(ctx: MuteworkerPluginContext) {
     },
   };
 }
-
-export const browserMuteworkerPlugin = createMuteworkerPlugin({
-  id: 'browser',
-
-  tools(ctx: MuteworkerPluginContext) {
-    return [createRequestBrowserTool(ctx)];
-  },
-
-  jobHandlers: {
-    async 'browser:research_result'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
-      let payload: { requestId: string; result: string };
-      try {
-        payload = JSON.parse(ctx.job.data);
-      } catch {
-        throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
-      }
-
-      ctx.logger.info('browser.result.received', {
-        jobId: ctx.job.id,
-        requestId: payload.requestId,
-      });
-
-      ctx.artifacts.push({
-        type: 'text',
-        label: 'Browser Result',
-        value: payload.result.slice(0, 200),
-      });
-
-      const prompt = [
-        '--- Browser Research Result ---',
-        `Request ID: ${payload.requestId}`,
-        '',
-        payload.result,
-        '-------------------------------',
-      ].join('\n');
-
-      await runAgent(prompt);
-    },
-  },
-});
 
 // Re-export for import convenience
 import type { RunAgentFn } from '@sandclaw/muteworker-plugin-api';

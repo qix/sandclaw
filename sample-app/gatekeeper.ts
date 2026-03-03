@@ -5,33 +5,10 @@
  *   npx tsx sample-app/gatekeeper.ts
  */
 import { startGatekeeper } from '@sandclaw/gatekeeper';
-import { buildWhatsappGatekeeperPlugin } from '@sandclaw/whatsapp-plugin';
-import { telegramPlugin } from '@sandclaw/telegram-plugin';
-import { createObsidianPlugin } from '@sandclaw/obsidian-plugin';
-import { createGmailPlugin } from '@sandclaw/gmail-plugin';
-import { createBrowserPlugin } from '@sandclaw/browser-plugin';
-
-const obsidianPlugin = createObsidianPlugin({
-  vaultRoot: process.env.OBSIDIAN_VAULT_ROOT || '~/obsidian',
-});
-
-const gmailPlugin = createGmailPlugin({
-  clientId: process.env.GMAIL_CLIENT_ID || '',
-  clientSecret: process.env.GMAIL_CLIENT_SECRET || '',
-  refreshToken: process.env.GMAIL_REFRESH_TOKEN || '',
-  userEmail: process.env.GMAIL_USER_EMAIL || '',
-});
-
-const browserPlugin = createBrowserPlugin();
-
-const whatsappPlugin = buildWhatsappGatekeeperPlugin({
-  operatorJids: [
-    // Add trusted operator JIDs here, e.g. '27821234567@s.whatsapp.net'
-  ],
-});
+import { plugins } from './plugins';
 
 startGatekeeper({
-  plugins: [whatsappPlugin, telegramPlugin, obsidianPlugin, gmailPlugin, browserPlugin],
+  plugins,
   dbPath: './sample-app/data/db.sqlite',
   port: 3000,
 });

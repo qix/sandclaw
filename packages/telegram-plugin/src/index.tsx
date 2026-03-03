@@ -1,10 +1,5 @@
 import React from 'react';
-import { createGatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
-import {
-  createMuteworkerPlugin,
-  type MuteworkerPluginContext,
-  type RunAgentFn,
-} from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-plugin-api';
 import TelegramBot from 'node-telegram-bot-api';
 
 // ---------------------------------------------------------------------------
@@ -489,16 +484,54 @@ async function migrations(knex: any): Promise<void> {
 // Gatekeeper plugin export
 // ---------------------------------------------------------------------------
 
-export const telegramPlugin = createGatekeeperPlugin({
-  id: 'telegram',
+export const telegramPlugin = {
+  id: 'telegram' as const,
   title: 'Telegram',
   component: TelegramPanel,
   routes: registerRoutes,
   migrations,
-});
+
+  tools(ctx: MuteworkerPluginContext) {
+    return [createSendTelegramTool(ctx)];
+  },
+
+  jobHandlers: {
+    async 'telegram:incoming_message'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
+      let payload: IncomingTelegramPayload;
+      try {
+        payload = JSON.parse(ctx.job.data) as IncomingTelegramPayload;
+      } catch {
+        throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
+      }
+
+      if (!payload.chatId) throw new Error(`Job ${ctx.job.id} payload missing chatId`);
+
+      const prompt = buildTelegramPrompt(payload);
+      const result = await runAgent(prompt);
+
+      if (result.reply && ctx.job.context) {
+        try {
+          const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
+          if (jobCtx.channel === 'telegram' && typeof jobCtx.chatId === 'string') {
+            const reply = clampReply(result.reply);
+            await fetch(`${ctx.apiBaseUrl}/api/telegram/send`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ chatId: jobCtx.chatId, text: reply }),
+            });
+            ctx.artifacts.push({ type: 'text', label: 'Auto-Reply', value: reply });
+            ctx.logger.info('telegram.auto_reply', { jobId: ctx.job.id, chatId: jobCtx.chatId });
+          }
+        } catch {
+          ctx.logger.warn('telegram.auto_reply.failed', { jobId: ctx.job.id });
+        }
+      }
+    },
+  },
+};
 
 // ---------------------------------------------------------------------------
-// Muteworker plugin
+// Muteworker internals
 // ---------------------------------------------------------------------------
 
 interface IncomingTelegramPayload {
@@ -605,45 +638,3 @@ function createSendTelegramTool(ctx: MuteworkerPluginContext) {
     },
   };
 }
-
-export const telegramMuteworkerPlugin = createMuteworkerPlugin({
-  id: 'telegram',
-
-  tools(ctx: MuteworkerPluginContext) {
-    return [createSendTelegramTool(ctx)];
-  },
-
-  jobHandlers: {
-    async 'telegram:incoming_message'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
-      let payload: IncomingTelegramPayload;
-      try {
-        payload = JSON.parse(ctx.job.data) as IncomingTelegramPayload;
-      } catch {
-        throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
-      }
-
-      if (!payload.chatId) throw new Error(`Job ${ctx.job.id} payload missing chatId`);
-
-      const prompt = buildTelegramPrompt(payload);
-      const result = await runAgent(prompt);
-
-      if (result.reply && ctx.job.context) {
-        try {
-          const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
-          if (jobCtx.channel === 'telegram' && typeof jobCtx.chatId === 'string') {
-            const reply = clampReply(result.reply);
-            await fetch(`${ctx.apiBaseUrl}/api/telegram/send`, {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ chatId: jobCtx.chatId, text: reply }),
-            });
-            ctx.artifacts.push({ type: 'text', label: 'Auto-Reply', value: reply });
-            ctx.logger.info('telegram.auto_reply', { jobId: ctx.job.id, chatId: jobCtx.chatId });
-          }
-        } catch {
-          ctx.logger.warn('telegram.auto_reply.failed', { jobId: ctx.job.id });
-        }
-      }
-    },
-  },
-});

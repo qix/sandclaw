@@ -1,10 +1,5 @@
 import React from 'react';
-import { createGatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
-import {
-  createMuteworkerPlugin,
-  type MuteworkerPluginContext,
-  type RunAgentFn,
-} from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-plugin-api';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -98,12 +93,32 @@ export function createGmailPlugin(config: GmailPluginConfig) {
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   let lastHistoryId: string | null = null;
 
-  return createGatekeeperPlugin({
-    id: 'gmail',
+  return {
+    id: 'gmail' as const,
     title: 'Gmail',
     component: GmailPanel,
 
-    routes(app, db) {
+    tools(ctx: MuteworkerPluginContext) {
+      return [createSendEmailTool(ctx)];
+    },
+
+    jobHandlers: {
+      async 'gmail:incoming_email'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
+        let payload: IncomingEmailPayload;
+        try {
+          payload = JSON.parse(ctx.job.data) as IncomingEmailPayload;
+        } catch {
+          throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
+        }
+
+        if (!payload.from) throw new Error(`Job ${ctx.job.id} payload missing from`);
+
+        const prompt = buildEmailPrompt(payload);
+        await runAgent(prompt);
+      },
+    },
+
+    routes(app: any, db: any) {
       // POST /send — create a verification request for an email send
       app.post('/send', async (c) => {
         const body = await (c.req.json() as { to?: string; subject?: string; text?: string });
@@ -245,7 +260,7 @@ export function createGmailPlugin(config: GmailPluginConfig) {
         // Polling failed to start — likely missing credentials
       });
     },
-  });
+  };
 }
 
 async function startEmailPolling(
@@ -445,27 +460,3 @@ function createSendEmailTool(ctx: MuteworkerPluginContext) {
     },
   };
 }
-
-export const gmailMuteworkerPlugin = createMuteworkerPlugin({
-  id: 'gmail',
-
-  tools(ctx: MuteworkerPluginContext) {
-    return [createSendEmailTool(ctx)];
-  },
-
-  jobHandlers: {
-    async 'gmail:incoming_email'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
-      let payload: IncomingEmailPayload;
-      try {
-        payload = JSON.parse(ctx.job.data) as IncomingEmailPayload;
-      } catch {
-        throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
-      }
-
-      if (!payload.from) throw new Error(`Job ${ctx.job.id} payload missing from`);
-
-      const prompt = buildEmailPrompt(payload);
-      await runAgent(prompt);
-    },
-  },
-});

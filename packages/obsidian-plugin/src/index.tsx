@@ -1,9 +1,5 @@
 import React from 'react';
-import { createGatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
-import {
-  createMuteworkerPlugin,
-  type MuteworkerPluginContext,
-} from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
 import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -81,12 +77,16 @@ export function createObsidianPlugin(config: ObsidianPluginConfig) {
   const vaultRoot = resolveVaultRoot(config.vaultRoot);
   const vaultIndex = new ObsidianVaultIndex(vaultRoot);
 
-  return createGatekeeperPlugin({
-    id: 'obsidian',
+  return {
+    id: 'obsidian' as const,
     title: 'Obsidian',
     component: ObsidianPanel,
 
-    routes(app, db) {
+    tools(ctx: MuteworkerPluginContext) {
+      return [createSearchTool(ctx), createReadTool(ctx), createWriteTool(ctx)];
+    },
+
+    routes(app: any, db: any) {
       // POST /search — BM25 search across vault
       app.post('/search', async (c) => {
         const body = await c.req.json() as { query?: string; limit?: number };
@@ -246,11 +246,11 @@ export function createObsidianPlugin(config: ObsidianPluginConfig) {
         });
       });
     },
-  });
+  };
 }
 
 // ---------------------------------------------------------------------------
-// Muteworker Plugin (Tools)
+// Muteworker internals (Tools)
 // ---------------------------------------------------------------------------
 
 function createSearchTool(ctx: MuteworkerPluginContext) {
@@ -419,10 +419,3 @@ function createWriteTool(ctx: MuteworkerPluginContext) {
   };
 }
 
-export const obsidianMuteworkerPlugin = createMuteworkerPlugin({
-  id: 'obsidian',
-
-  tools(ctx: MuteworkerPluginContext) {
-    return [createSearchTool(ctx), createReadTool(ctx), createWriteTool(ctx)];
-  },
-});

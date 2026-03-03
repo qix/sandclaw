@@ -1,10 +1,5 @@
 import React from 'react';
-import { createGatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
-import {
-  createMuteworkerPlugin,
-  type MuteworkerPluginContext,
-  type RunAgentFn,
-} from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-plugin-api';
 import makeWASocket, {
   BufferJSON,
   DisconnectReason,
@@ -506,23 +501,62 @@ export interface WhatsappGatekeeperPluginOptions {
   operatorJids?: string[];
 }
 
-export function buildWhatsappGatekeeperPlugin(options: WhatsappGatekeeperPluginOptions = {}) {
+export function buildWhatsappPlugin(options: WhatsappGatekeeperPluginOptions = {}) {
   const operatorJids: ReadonlySet<string> = new Set(options.operatorJids ?? []);
 
-  return createGatekeeperPlugin({
-    id: 'whatsapp',
+  return {
+    id: 'whatsapp' as const,
     title: 'WhatsApp',
     component: WhatsAppPanel,
-    routes: (app, db) => registerRoutes(app, db, operatorJids),
+    routes: (app: any, db: any) => registerRoutes(app, db, operatorJids),
     migrations,
-  });
+
+    tools(ctx: MuteworkerPluginContext) {
+      return [createSendWhatsappTool(ctx)];
+    },
+
+    jobHandlers: {
+      async 'whatsapp:incoming_message'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
+        let payload: IncomingWhatsappPayload;
+        try {
+          payload = JSON.parse(ctx.job.data) as IncomingWhatsappPayload;
+        } catch {
+          throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
+        }
+
+        if (!payload.jid) throw new Error(`Job ${ctx.job.id} payload missing jid`);
+
+        const prompt = buildWhatsappPrompt(payload);
+        const result = await runAgent(prompt);
+
+        if (result.reply && ctx.job.context) {
+          try {
+            const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
+            if (jobCtx.channel === 'whatsapp' && typeof jobCtx.jid === 'string') {
+              const reply = clampReply(result.reply);
+              await fetch(`${ctx.apiBaseUrl}/api/whatsapp/send`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ jid: jobCtx.jid, text: reply }),
+              });
+
+              ctx.artifacts.push({ type: 'text', label: 'Auto-Reply', value: reply });
+              ctx.logger.info('whatsapp.auto_reply', { jobId: ctx.job.id, jid: jobCtx.jid });
+            }
+          } catch {
+            ctx.logger.warn('whatsapp.auto_reply.failed', { jobId: ctx.job.id });
+          }
+        }
+      },
+    },
+  };
 }
 
-/** Default gatekeeper plugin instance (no operator JIDs configured). */
-export const whatsappPlugin = buildWhatsappGatekeeperPlugin();
+/** Default plugin instance (no operator JIDs configured). */
+export const whatsappPlugin = buildWhatsappPlugin();
 
 // ---------------------------------------------------------------------------
-// Muteworker plugin
+// Muteworker internals
 // ---------------------------------------------------------------------------
 
 interface IncomingWhatsappPayload {
@@ -624,50 +658,3 @@ function createSendWhatsappTool(ctx: MuteworkerPluginContext) {
   };
 }
 
-export function buildWhatsappMuteworkerPlugin() {
-  return createMuteworkerPlugin({
-    id: 'whatsapp',
-
-    tools(ctx: MuteworkerPluginContext) {
-      return [createSendWhatsappTool(ctx)];
-    },
-
-    jobHandlers: {
-      async 'whatsapp:incoming_message'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
-        let payload: IncomingWhatsappPayload;
-        try {
-          payload = JSON.parse(ctx.job.data) as IncomingWhatsappPayload;
-        } catch {
-          throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
-        }
-
-        if (!payload.jid) throw new Error(`Job ${ctx.job.id} payload missing jid`);
-
-        const prompt = buildWhatsappPrompt(payload);
-        const result = await runAgent(prompt);
-
-        if (result.reply && ctx.job.context) {
-          try {
-            const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
-            if (jobCtx.channel === 'whatsapp' && typeof jobCtx.jid === 'string') {
-              const reply = clampReply(result.reply);
-              await fetch(`${ctx.apiBaseUrl}/api/whatsapp/send`, {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ jid: jobCtx.jid, text: reply }),
-              });
-
-              ctx.artifacts.push({ type: 'text', label: 'Auto-Reply', value: reply });
-              ctx.logger.info('whatsapp.auto_reply', { jobId: ctx.job.id, jid: jobCtx.jid });
-            }
-          } catch {
-            ctx.logger.warn('whatsapp.auto_reply.failed', { jobId: ctx.job.id });
-          }
-        }
-      },
-    },
-  });
-}
-
-/** Default muteworker plugin instance (no operator JIDs configured). */
-export const whatsappMuteworkerPlugin = buildWhatsappMuteworkerPlugin();
