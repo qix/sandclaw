@@ -34,10 +34,10 @@ export interface MuteworkerOptions {
  * ```ts
  * import path from 'path';
  * import { startMuteworker } from '@sandclaw/muteworker';
- * import { whatsappMuteworkerPlugin } from '@sandclaw/whatsapp-plugin';
+ * import { buildWhatsappMuteworkerPlugin } from '@sandclaw/whatsapp-plugin';
  *
  * startMuteworker({
- *   plugins: [whatsappMuteworkerPlugin],
+ *   plugins: [buildWhatsappMuteworkerPlugin({ operatorJids: ['99999999@s.whatsapp.net'] })],
  *   config: { apiBaseUrl: 'http://localhost:3000' },
  *   promptsDir: path.resolve('./prompts'),
  *   memoryDir:  path.resolve('./memory'),

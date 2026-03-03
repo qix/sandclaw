@@ -542,7 +542,16 @@ function clampReply(reply: string): string {
   return normalized.length <= 1200 ? normalized : `${normalized.slice(0, 1197)}...`;
 }
 
-function createSendWhatsappTool(ctx: MuteworkerPluginContext) {
+async function autoApproveVerificationRequest(
+  apiBaseUrl: string,
+  verificationRequestId: number,
+): Promise<void> {
+  await fetch(`${apiBaseUrl}/api/whatsapp/approve/${verificationRequestId}`, {
+    method: 'POST',
+  });
+}
+
+function createSendWhatsappTool(ctx: MuteworkerPluginContext, operatorJids: ReadonlySet<string>) {
   return {
     name: 'send_whatsapp_message',
     label: 'Send WhatsApp Message',
@@ -575,6 +584,16 @@ function createSendWhatsappTool(ctx: MuteworkerPluginContext) {
         verificationStatus?: 'pending' | 'approved' | 'rejected';
       };
 
+      // Auto-approve sends to operator JIDs
+      if (
+        result.verificationStatus === 'pending' &&
+        result.verificationRequestId &&
+        operatorJids.has(jid)
+      ) {
+        await autoApproveVerificationRequest(ctx.apiBaseUrl, result.verificationRequestId);
+        result.verificationStatus = 'approved';
+      }
+
       ctx.artifacts.push({ type: 'text', label: `Sent to ${jid}`, value: text });
 
       const needsVerification = result.verificationStatus === 'pending';
@@ -593,44 +612,75 @@ function createSendWhatsappTool(ctx: MuteworkerPluginContext) {
   };
 }
 
-export const whatsappMuteworkerPlugin = createMuteworkerPlugin({
-  id: 'whatsapp',
+export interface WhatsappMuteworkerPluginOptions {
+  /** JIDs that are trusted operators. Messages from these JIDs are auto-verified;
+   *  sends to these JIDs skip human verification. */
+  operatorJids?: string[];
+}
 
-  tools(ctx: MuteworkerPluginContext) {
-    return [createSendWhatsappTool(ctx)];
-  },
+export function buildWhatsappMuteworkerPlugin(options: WhatsappMuteworkerPluginOptions = {}) {
+  const operatorJids: ReadonlySet<string> = new Set(options.operatorJids ?? []);
 
-  jobHandlers: {
-    async 'whatsapp:incoming_message'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
-      let payload: IncomingWhatsappPayload;
-      try {
-        payload = JSON.parse(ctx.job.data) as IncomingWhatsappPayload;
-      } catch {
-        throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
-      }
+  return createMuteworkerPlugin({
+    id: 'whatsapp',
 
-      if (!payload.jid) throw new Error(`Job ${ctx.job.id} payload missing jid`);
-
-      const prompt = buildWhatsappPrompt(payload);
-      const result = await runAgent(prompt);
-
-      if (result.reply && ctx.job.context) {
-        try {
-          const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
-          if (jobCtx.channel === 'whatsapp' && typeof jobCtx.jid === 'string') {
-            const reply = clampReply(result.reply);
-            await fetch(`${ctx.apiBaseUrl}/api/whatsapp/send`, {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ jid: jobCtx.jid, text: reply }),
-            });
-            ctx.artifacts.push({ type: 'text', label: 'Auto-Reply', value: reply });
-            ctx.logger.info('whatsapp.auto_reply', { jobId: ctx.job.id, jid: jobCtx.jid });
-          }
-        } catch {
-          ctx.logger.warn('whatsapp.auto_reply.failed', { jobId: ctx.job.id });
-        }
-      }
+    tools(ctx: MuteworkerPluginContext) {
+      return [createSendWhatsappTool(ctx, operatorJids)];
     },
-  },
-});
+
+    jobHandlers: {
+      async 'whatsapp:incoming_message'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
+        let payload: IncomingWhatsappPayload;
+        try {
+          payload = JSON.parse(ctx.job.data) as IncomingWhatsappPayload;
+        } catch {
+          throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
+        }
+
+        if (!payload.jid) throw new Error(`Job ${ctx.job.id} payload missing jid`);
+
+        const prompt = buildWhatsappPrompt(payload);
+        const result = await runAgent(prompt);
+
+        if (result.reply && ctx.job.context) {
+          try {
+            const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
+            if (jobCtx.channel === 'whatsapp' && typeof jobCtx.jid === 'string') {
+              const reply = clampReply(result.reply);
+              const sendResponse = await fetch(`${ctx.apiBaseUrl}/api/whatsapp/send`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ jid: jobCtx.jid, text: reply }),
+              });
+
+              // Auto-approve replies to operator JIDs
+              if (sendResponse.ok && operatorJids.has(jobCtx.jid)) {
+                const sendResult = (await sendResponse.json()) as {
+                  verificationRequestId?: number;
+                  verificationStatus?: string;
+                };
+                if (
+                  sendResult.verificationStatus === 'pending' &&
+                  sendResult.verificationRequestId
+                ) {
+                  await autoApproveVerificationRequest(
+                    ctx.apiBaseUrl,
+                    sendResult.verificationRequestId,
+                  );
+                }
+              }
+
+              ctx.artifacts.push({ type: 'text', label: 'Auto-Reply', value: reply });
+              ctx.logger.info('whatsapp.auto_reply', { jobId: ctx.job.id, jid: jobCtx.jid });
+            }
+          } catch {
+            ctx.logger.warn('whatsapp.auto_reply.failed', { jobId: ctx.job.id });
+          }
+        }
+      },
+    },
+  });
+}
+
+/** Default muteworker plugin instance (no operator JIDs configured). */
+export const whatsappMuteworkerPlugin = buildWhatsappMuteworkerPlugin();
