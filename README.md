@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/sandclaw-versus-robot.jpg" alt="Sandclaw" width="200" />
+  <img src="assets/sandclaw-versus-robot.jpg" alt="Sandclaw" width="600" />
 </p>
 
 <h1 align="center">Sandclaw</h1>
