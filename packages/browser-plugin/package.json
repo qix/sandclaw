@@ -1,0 +1,21 @@
+{
+  "name": "@sandclaw/browser-plugin",
+  "version": "0.1.0",
+  "description": "Sandclaw Browser plugin — web research via Confidante with human approval",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper-plugin-api": "*",
+    "@sandclaw/muteworker-plugin-api": "*"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "typescript": "*"
+  }
+}

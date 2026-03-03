@@ -8,7 +8,10 @@
   "dependencies": {
     "@sandclaw/gatekeeper": "*",
     "@sandclaw/muteworker": "*",
-    "@sandclaw/whatsapp-plugin": "*"
+    "@sandclaw/whatsapp-plugin": "*",
+    "@sandclaw/obsidian-plugin": "*",
+    "@sandclaw/gmail-plugin": "*",
+    "@sandclaw/browser-plugin": "*"
   },
   "devDependencies": {
     "tsx": "*",

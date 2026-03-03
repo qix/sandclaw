@@ -7,9 +7,17 @@
 import path from 'path';
 import { startMuteworker } from '@sandclaw/muteworker';
 import { whatsappMuteworkerPlugin } from '@sandclaw/whatsapp-plugin';
+import { obsidianMuteworkerPlugin } from '@sandclaw/obsidian-plugin';
+import { gmailMuteworkerPlugin } from '@sandclaw/gmail-plugin';
+import { browserMuteworkerPlugin } from '@sandclaw/browser-plugin';
 
 startMuteworker({
-  plugins: [whatsappMuteworkerPlugin],
+  plugins: [
+    whatsappMuteworkerPlugin,
+    obsidianMuteworkerPlugin,
+    gmailMuteworkerPlugin,
+    browserMuteworkerPlugin,
+  ],
   config: {
     apiBaseUrl: 'http://localhost:3000',
     modelProvider: 'anthropic',

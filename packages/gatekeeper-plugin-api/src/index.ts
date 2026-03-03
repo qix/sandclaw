@@ -24,8 +24,9 @@ export interface GatekeeperPlugin {
   /**
    * Registers Hono route handlers for this plugin.  Called once during
    * `startGatekeeper` before the server begins accepting connections.
+   * The `db` parameter is the shared Knex instance for database access.
    */
-  readonly routes?: (app: Hono) => void;
+  readonly routes?: (app: Hono, db: Knex) => void;
   /**
    * Runs any database migrations needed by this plugin.  Called once during
    * `startGatekeeper` before routes are registered.
@@ -41,7 +42,7 @@ export interface CreateGatekeeperPluginOptions {
   /** React component for the plugin UI panel. */
   component: ComponentType;
   /** Optional Hono route registration callback. */
-  routes?: (app: Hono) => void;
+  routes?: (app: Hono, db: Knex) => void;
   /** Optional DB migration callback. */
   migrations?: (knex: Knex) => Promise<void>;
 }

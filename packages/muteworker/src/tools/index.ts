@@ -4,10 +4,8 @@ import type { MuteworkerApiClient } from '../apiClient';
 import type { MuteworkerConfig } from '../config';
 import type { Logger } from '../logger';
 import type { MuteworkerQueueJob } from '../types';
-import { createRequestBrowserTool } from './browser';
 import { createGoogleMapsTool } from './google_maps';
 import { createMemoryTools } from './memory';
-import { createObsidianTools } from './obsidian';
 import { createPromptTools } from './prompts';
 import { createBraveWebSearchTool } from './web_search';
 
@@ -33,10 +31,8 @@ export function getTools(artifacts: Artifact[], args: ToolArgs): AgentTool[] {
   const tools: AgentTool[] = [];
 
   // Built-in tools
-  tools.push(createRequestBrowserTool(artifacts, args));
   tools.push(createBraveWebSearchTool(artifacts, args));
   tools.push(createGoogleMapsTool(artifacts, args));
-  tools.push(...createObsidianTools(artifacts, args));
   tools.push(...createMemoryTools(artifacts, args.memoryDir));
   tools.push(...createPromptTools(artifacts, args.promptsDir));
 

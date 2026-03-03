@@ -1,13 +1,8 @@
 import type { MuteworkerConfig } from './config';
 import type { Logger } from './logger';
 import type {
-  BrowserResearchRequestBody,
-  BrowserResearchRequestResponse,
   MuteworkerQueueJob,
   MuteworkerQueueNextResponse,
-  ObsidianReadResponse,
-  ObsidianSearchResponse,
-  ObsidianWriteResponse,
 } from './types';
 
 export class ApiError extends Error {
@@ -48,62 +43,6 @@ export class MuteworkerApiClient {
     if (!response.ok) {
       throw await this.createError('Failed to mark muteworker job complete', response);
     }
-  }
-
-  async requestBrowserResearch(
-    payload: BrowserResearchRequestBody,
-  ): Promise<BrowserResearchRequestResponse> {
-    const response = await this.request('/api/browser/request', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      throw await this.createError('Failed to request browser research', response);
-    }
-    return (await response.json()) as BrowserResearchRequestResponse;
-  }
-
-  async searchObsidianNotes(payload: {
-    query: string;
-    limit?: number;
-  }): Promise<ObsidianSearchResponse> {
-    const response = await this.request('/api/obsidian/search', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      throw await this.createError('Failed to search Obsidian notes', response);
-    }
-    return (await response.json()) as ObsidianSearchResponse;
-  }
-
-  async readObsidianNote(payload: {
-    path: string;
-    maxChars?: number;
-  }): Promise<ObsidianReadResponse> {
-    const response = await this.request('/api/obsidian/read', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      throw await this.createError('Failed to read Obsidian note', response);
-    }
-    return (await response.json()) as ObsidianReadResponse;
-  }
-
-  async requestObsidianWrite(payload: {
-    path: string;
-    content: string;
-    append?: boolean;
-  }): Promise<ObsidianWriteResponse> {
-    const response = await this.request('/api/obsidian/write', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      throw await this.createError('Failed to request Obsidian write', response);
-    }
-    return (await response.json()) as ObsidianWriteResponse;
   }
 
   private request(path: string, init: RequestInit): Promise<Response> {

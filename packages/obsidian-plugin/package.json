@@ -1,0 +1,21 @@
+{
+  "name": "@sandclaw/obsidian-plugin",
+  "version": "0.1.0",
+  "description": "Sandclaw Obsidian plugin — read/write access to an Obsidian vault",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper-plugin-api": "*",
+    "@sandclaw/muteworker-plugin-api": "*"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "typescript": "*"
+  }
+}
