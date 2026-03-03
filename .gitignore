@@ -1,0 +1,7 @@
+# Local environment setup
+.direnv
+.envrc
+default.nix
+
+# Packages
+node_modules/
