@@ -4,10 +4,13 @@ import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import type { GatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
 import { App } from './App';
+import { createDb, runCoreMigrations } from './db';
 
 export interface GatekeeperOptions {
   /** Plugins to load into the gatekeeper. */
   plugins: GatekeeperPlugin[];
+  /** Path to the SQLite database file. Parent directory is created if absent. */
+  dbPath: string;
   /** TCP port to listen on. Defaults to 3000. */
   port?: number;
 }
@@ -29,14 +32,15 @@ export interface GatekeeperOptions {
  * ```
  */
 export async function startGatekeeper(options: GatekeeperOptions): Promise<void> {
-  const { plugins, port = 3000 } = options;
+  const { plugins, dbPath, port = 3000 } = options;
   const app = new Hono();
 
-  // 1. Run plugin migrations (db setup deferred to full implementation)
+  // 1. Initialise DB and run core + plugin migrations
+  const db = createDb(dbPath);
+  await runCoreMigrations(db);
   for (const plugin of plugins) {
     if (plugin.migrations) {
-      // TODO: pass a Knex instance once DB is wired up
-      // await plugin.migrations(knex);
+      await plugin.migrations(db);
     }
   }
 

@@ -9,5 +9,6 @@ import { whatsappPlugin } from '@sandclaw/whatsapp-plugin';
 
 startGatekeeper({
   plugins: [whatsappPlugin],
+  dbPath: './sample-app/data/db.sqlite',
   port: 3000,
 });

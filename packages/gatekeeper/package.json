@@ -11,11 +11,14 @@
   "dependencies": {
     "@hono/node-server": "*",
     "@sandclaw/gatekeeper-plugin-api": "*",
+    "better-sqlite3": "^11.0.0",
     "hono": "*",
+    "knex": "^3.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "*",
     "@types/react": "*",
     "@types/react-dom": "*",
     "tsx": "*",
