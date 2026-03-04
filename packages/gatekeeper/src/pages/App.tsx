@@ -3,7 +3,7 @@ import type { StatusColorValue, VerificationRendererProps } from '@sandclaw/gate
 import { getGlobalStyles } from '@sandclaw/ui';
 import { StatusDot } from '@sandclaw/ui';
 import { Badge } from '@sandclaw/ui';
-import { VerificationsPage, type VerificationRequest } from './VerificationsPage';
+import { VerificationsPage, type VerificationRequest, type VerificationHistoryPage } from './VerificationsPage';
 import type { ComponentType } from 'react';
 
 export interface TabRenderData {
@@ -19,6 +19,7 @@ interface AppProps {
   activeTabKey: string;
   activePage?: string;
   verificationRequests?: VerificationRequest[];
+  verificationHistory?: VerificationHistoryPage;
   pendingVerificationCount: number;
   renderers: Record<string, ComponentType<VerificationRendererProps>>;
 }
@@ -28,6 +29,7 @@ export function App({
   activeTabKey,
   activePage,
   verificationRequests,
+  verificationHistory,
   pendingVerificationCount,
   renderers,
 }: AppProps) {
@@ -138,7 +140,7 @@ export function App({
         </div>
         <main className="sc-main">
           {activePage === 'verifications' ? (
-            <VerificationsPage requests={verificationRequests ?? []} renderers={renderers} />
+            <VerificationsPage requests={verificationRequests ?? []} history={verificationHistory} renderers={renderers} />
           ) : activeTab ? (
             createElement(activeTab.component)
           ) : (

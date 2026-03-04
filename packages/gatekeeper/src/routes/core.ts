@@ -115,6 +115,38 @@ export function registerCoreRoutes(app: Hono, db: Knex): void {
     });
   });
 
+  // GET /api/verifications/history — list resolved verification requests with pagination
+  app.get('/api/verifications/history', async (c) => {
+    const page = Math.max(1, parseInt(c.req.query('page') || '1', 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10) || 20));
+    const offset = (page - 1) * limit;
+
+    const [{ count: total }] = await db('verification_requests')
+      .whereIn('status', ['approved', 'rejected'])
+      .count('* as count');
+
+    const requests = await db('verification_requests')
+      .whereIn('status', ['approved', 'rejected'])
+      .orderBy('updated_at', 'desc')
+      .limit(limit)
+      .offset(offset);
+
+    return c.json({
+      requests: requests.map((r: any) => ({
+        id: r.id,
+        plugin: r.plugin,
+        action: r.action,
+        data: r.data,
+        status: r.status,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      })),
+      page,
+      totalPages: Math.ceil(Number(total) / limit),
+      total: Number(total),
+    });
+  });
+
   // --- Confidante Queue ---
 
   // GET /api/confidante-queue/next — long-poll for the next pending confidante job

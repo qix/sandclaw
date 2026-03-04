@@ -7,6 +7,7 @@ import type { GatekeeperPlugin, GatekeeperHooks, StatusColorValue, TabsService, 
 import type { ComponentType } from 'react';
 import { App } from './pages/App';
 import type { TabRenderData } from './pages/App';
+import type { VerificationHistoryPage } from './pages/VerificationsPage';
 import { createDb, runCoreMigrations } from './db';
 import { logger } from './logger';
 import { registerCoreRoutes, registerVerificationFormRoutes } from './routes';
@@ -167,6 +168,7 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
     }));
 
     let verificationRequests: any[] | undefined;
+    let verificationHistory: VerificationHistoryPage | undefined;
     if (page === 'verifications') {
       const rows = await db('verification_requests')
         .where('status', 'pending')
@@ -179,6 +181,40 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
         status: r.status,
         createdAt: r.created_at,
       }));
+
+      // Fetch resolved verifications history with pagination
+      const historyPageParam = parseInt(c.req.query('historyPage') || '1', 10);
+      const historyPage = Math.max(1, isNaN(historyPageParam) ? 1 : historyPageParam);
+      const historyLimit = 20;
+      const historyOffset = (historyPage - 1) * historyLimit;
+
+      const [{ count: totalResolved }] = await db('verification_requests')
+        .whereIn('status', ['approved', 'rejected'])
+        .count('* as count');
+
+      const total = Number(totalResolved);
+      if (total > 0) {
+        const historyRows = await db('verification_requests')
+          .whereIn('status', ['approved', 'rejected'])
+          .orderBy('updated_at', 'desc')
+          .limit(historyLimit)
+          .offset(historyOffset);
+
+        verificationHistory = {
+          requests: historyRows.map((r: any) => ({
+            id: r.id,
+            plugin: r.plugin,
+            action: r.action,
+            data: r.data,
+            status: r.status,
+            createdAt: r.created_at,
+            updatedAt: r.updated_at,
+          })),
+          page: historyPage,
+          totalPages: Math.ceil(total / historyLimit),
+          total,
+        };
+      }
     }
 
     const html = renderToString(
@@ -187,6 +223,7 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
         activeTabKey,
         activePage: page,
         verificationRequests,
+        verificationHistory,
         pendingVerificationCount: Number(pendingVerificationCount),
         renderers,
       }),

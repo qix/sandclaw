@@ -377,6 +377,44 @@ main.sc-main {
   body { flex-direction: column; }
 }
 
+/* --- Pagination --- */
+.sc-pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.sc-pagination-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.375rem;
+  font-size: 0.82rem;
+  color: ${colors.muted};
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.sc-pagination-link:hover {
+  background: ${colors.surfaceHover};
+  color: ${colors.text};
+}
+.sc-pagination-link.active {
+  background: ${colors.accent};
+  color: #fff;
+  pointer-events: none;
+}
+.sc-pagination-gap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  color: ${colors.muted};
+  font-size: 0.82rem;
+}
+
 .sc-mono { font-family: monospace; }
 .sc-flex-row { display: flex; align-items: center; gap: 0.75rem; }
 .sc-message-bubble {
