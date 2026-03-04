@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import type { Knex } from 'knex';
 
-export function registerCoreRoutes(app: Hono, db: Knex): void {
+export function registerCoreRoutes(app: Hono, db: Knex, onVerificationChange?: () => void): void {
   // --- Safe Queue (Muteworker) ---
 
   // GET /api/muteworker-queue/next — long-poll for the next pending job
@@ -94,6 +94,7 @@ export function registerCoreRoutes(app: Hono, db: Knex): void {
       .where('id', id)
       .update({ status: 'rejected', updated_at: Date.now() });
 
+    onVerificationChange?.();
     return c.json({ success: true });
   });
 

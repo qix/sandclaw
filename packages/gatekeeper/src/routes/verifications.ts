@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import type { Knex } from 'knex';
 
-export function registerVerificationFormRoutes(app: Hono, db: Knex): void {
+export function registerVerificationFormRoutes(app: Hono, db: Knex, onVerificationChange?: () => void): void {
   // POST /verifications/approve/:id — forward to the plugin's approve endpoint, then redirect
   app.post('/verifications/approve/:id', async (c) => {
     const id = parseInt(c.req.param('id'), 10);
@@ -23,6 +23,7 @@ export function registerVerificationFormRoutes(app: Hono, db: Knex): void {
         .update({ status: 'approved', updated_at: Date.now() });
     }
 
+    onVerificationChange?.();
     return c.redirect('/?page=verifications');
   });
 
@@ -36,6 +37,7 @@ export function registerVerificationFormRoutes(app: Hono, db: Knex): void {
       .where('status', 'pending')
       .update({ status: 'rejected', updated_at: Date.now() });
 
+    onVerificationChange?.();
     return c.redirect('/?page=verifications');
   });
 }

@@ -54,11 +54,12 @@ export function App({
             className={`sc-nav-link ${activePage === 'verifications' ? 'active' : ''}`}
           >
             Verifications
-            {pendingVerificationCount > 0 && (
+            <StatusDot id="sc-sidebar-verification-dot" color="yellow" style={{ display: pendingVerificationCount > 0 ? undefined : 'none', marginLeft: '0.4rem' }} />
+            <span id="sc-sidebar-verification-badge" style={{ display: pendingVerificationCount > 0 ? undefined : 'none' }}>
               <Badge bg="#ef4444" fg="#fff" style={{ marginLeft: '0.4rem', fontSize: '0.65rem' }}>
-                {pendingVerificationCount}
+                <span id="sc-sidebar-verification-count">{pendingVerificationCount}</span>
               </Badge>
-            )}
+            </span>
           </a>
           <div className="sc-nav-divider" />
           {tabs.map((t) => (
@@ -97,11 +98,12 @@ export function App({
               >
                 <span className="sc-dropdown-check">{activePage === 'verifications' ? '\u2713' : ''}</span>
                 Verifications
-                {pendingVerificationCount > 0 && (
-                  <Badge bg="#ef4444" fg="#fff" style={{ marginLeft: 'auto', fontSize: '0.65rem' }}>
-                    {pendingVerificationCount}
+                <StatusDot id="sc-mobile-verification-dot" color="yellow" style={{ display: pendingVerificationCount > 0 ? undefined : 'none', marginLeft: '0.4rem' }} />
+                <span id="sc-mobile-verification-badge" style={{ display: pendingVerificationCount > 0 ? undefined : 'none', marginLeft: 'auto' }}>
+                  <Badge bg="#ef4444" fg="#fff" style={{ fontSize: '0.65rem' }}>
+                    <span id="sc-mobile-verification-count">{pendingVerificationCount}</span>
                   </Badge>
-                )}
+                </span>
               </a>
               <div className="sc-dropdown-separator" />
               {tabs.map((t) => {
@@ -147,6 +149,42 @@ export function App({
             <NoPlugins />
           )}
         </main>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){
+  var ids = {
+    sidebarCount: 'sc-sidebar-verification-count',
+    sidebarBadge: 'sc-sidebar-verification-badge',
+    sidebarDot: 'sc-sidebar-verification-dot',
+    mobileCount: 'sc-mobile-verification-count',
+    mobileBadge: 'sc-mobile-verification-badge',
+    mobileDot: 'sc-mobile-verification-dot'
+  };
+  function update(count) {
+    var pairs = [
+      [ids.sidebarCount, ids.sidebarBadge, ids.sidebarDot],
+      [ids.mobileCount, ids.mobileBadge, ids.mobileDot]
+    ];
+    for (var i = 0; i < pairs.length; i++) {
+      var countEl = document.getElementById(pairs[i][0]);
+      var badgeEl = document.getElementById(pairs[i][1]);
+      var dotEl = document.getElementById(pairs[i][2]);
+      if (countEl) countEl.textContent = String(count);
+      if (badgeEl) badgeEl.style.display = count > 0 ? '' : 'none';
+      if (dotEl) dotEl.style.display = count > 0 ? '' : 'none';
+    }
+  }
+  function connect() {
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var ws = new WebSocket(proto + '//' + location.host + '/api/gatekeeper/ws');
+    ws.onmessage = function(e) {
+      try {
+        var msg = JSON.parse(e.data);
+        if (msg.type === 'verification_count') update(msg.count);
+      } catch(err) {}
+    };
+    ws.onclose = function() { setTimeout(connect, 2000); };
+  }
+  connect();
+})();` }} />
       </body>
     </html>
   );

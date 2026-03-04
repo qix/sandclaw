@@ -5,6 +5,7 @@ import { serve } from '@hono/node-server';
 import type { Knex } from 'knex';
 import type { GatekeeperPlugin, GatekeeperHooks, StatusColorValue, TabsService, RoutesService, WebSocketService, VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
 import type { ComponentType } from 'react';
+import { WebSocketServer, WebSocket } from 'ws';
 import { App } from './pages/App';
 import type { TabRenderData } from './pages/App';
 import type { VerificationHistoryPage } from './pages/VerificationsPage';
@@ -133,8 +134,35 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   }
   for (const fn of initFns) { await fn(); }
 
-  // 3. Register core API routes
-  registerCoreRoutes(app, db);
+  // 3. Core WebSocket for real-time verification count
+  const coreWss = new WebSocketServer({ noServer: true });
+  const coreClients = new Set<WebSocket>();
+  let lastBroadcastCount = -1;
+
+  async function broadcastVerificationCount() {
+    const [{ count }] = await db('verification_requests')
+      .where('status', 'pending')
+      .count('* as count');
+    const n = Number(count);
+    if (n === lastBroadcastCount) return;
+    lastBroadcastCount = n;
+    const msg = JSON.stringify({ type: 'verification_count', count: n });
+    for (const client of coreClients) {
+      if (client.readyState === WebSocket.OPEN) client.send(msg);
+    }
+  }
+
+  function notifyVerificationChange() {
+    broadcastVerificationCount();
+  }
+
+  // Poll every 2s to detect plugin-side inserts without requiring plugin changes
+  setInterval(() => {
+    if (coreClients.size > 0) broadcastVerificationCount();
+  }, 2000);
+
+  // 3b. Register core API routes
+  registerCoreRoutes(app, db, notifyVerificationChange);
 
   // 4. Mount plugin routes under /api/<pluginId>/
   for (const { pluginId, handler } of allRouteHandlers) {
@@ -144,7 +172,7 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   }
 
   // 5. Form-action routes for the Verifications page
-  registerVerificationFormRoutes(app, db);
+  registerVerificationFormRoutes(app, db, notifyVerificationChange);
 
   // 6. SSR — render the React shell on every GET
   app.get('/*', async (c) => {
@@ -243,18 +271,34 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   const server = serve({ fetch: app.fetch, port });
   logger.info({ port }, 'Gatekeeper listening');
 
-  // Attach WebSocket upgrade dispatcher
-  if (wsUpgradeHandlers.size > 0) {
-    (server as any).on('upgrade', (req: any, socket: any, head: Buffer) => {
-      const url = new URL(req.url!, `http://${req.headers.host}`);
-      const handler = wsUpgradeHandlers.get(url.pathname);
-      if (handler) {
-        handler(req, socket, head);
-      } else {
-        socket.destroy();
-      }
-    });
-  }
+  // Attach WebSocket upgrade dispatcher (always — core WS is always available)
+  (server as any).on('upgrade', (req: any, socket: any, head: Buffer) => {
+    const url = new URL(req.url!, `http://${req.headers.host}`);
+
+    // Core gatekeeper WebSocket for verification count
+    if (url.pathname === '/api/gatekeeper/ws') {
+      coreWss.handleUpgrade(req, socket, head, async (ws) => {
+        coreClients.add(ws);
+        // Query and send current count immediately on connect
+        const [{ count }] = await db('verification_requests')
+          .where('status', 'pending')
+          .count('* as count');
+        const n = Number(count);
+        lastBroadcastCount = n;
+        ws.send(JSON.stringify({ type: 'verification_count', count: n }));
+        ws.on('close', () => coreClients.delete(ws));
+      });
+      return;
+    }
+
+    // Plugin WebSocket handlers
+    const handler = wsUpgradeHandlers.get(url.pathname);
+    if (handler) {
+      handler(req, socket, head);
+    } else {
+      socket.destroy();
+    }
+  });
 
   // Fire start hooks (after server is accepting connections)
   for (const fn of startHooks) { await fn(); }
