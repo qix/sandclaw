@@ -72,9 +72,57 @@ On startup, `startGatekeeper`:
 2. Registers each plugin's `routes` on the Hono app
 3. Serves the React SPA, which renders each plugin's `component` in a sidebar tab
 
+### Creating a confidante plugin
+
+Plugins that need to execute work on the confidante implement `confidanteHandlers` and optionally `registerConfidante`:
+
+```typescript
+import type { ConfidantePluginContext } from '@sandclaw/confidante-plugin-api';
+
+export function createMyPlugin() {
+  return {
+    id: 'my-plugin',
+    confidanteHandlers: {
+      async 'my-plugin:do_work'(ctx: ConfidantePluginContext) {
+        const result = await ctx.docker.run('alpine:latest', ['echo', 'hello']);
+        // Post result back to gatekeeper...
+      },
+    },
+    registerConfidante(env) {
+      // Optional: register lifecycle hooks via DI
+    },
+  };
+}
+```
+
+A `ConfidantePlugin` can contribute:
+- **`confidanteHandlers`** — Handlers keyed by `jobType` that execute confidante jobs. Each handler receives a `ConfidantePluginContext` with access to a built-in `DockerService` for running work inside containers.
+- **`registerConfidante`** — Backstage-style DI hook for lifecycle events.
+
+### Starting the confidante with plugins
+
+The confidante exposes `startConfidante` which accepts a list of plugins:
+
+```typescript
+import { startConfidante } from '@sandclaw/confidante';
+import { createBrowserPlugin } from '@sandclaw/browser-plugin';
+
+startConfidante({
+  plugins: [createBrowserPlugin()],
+  config: { apiBaseUrl: 'http://localhost:3000' },
+});
+```
+
+On startup, `startConfidante`:
+1. Creates a Docker service for running containerised work
+2. Runs each plugin's `registerConfidante` (if present)
+3. Starts polling the gatekeeper's `confidante_queue` for approved jobs
+4. Dispatches jobs to matching `confidanteHandlers`
+5. Marks jobs complete on the gatekeeper
+
 ### Plugin lifecycle
 
-Plugins are pure data objects — `createGatekeeperPlugin` is a simple factory that validates and returns the options. All orchestration happens inside `startGatekeeper`.
+Plugins are pure data objects — `createGatekeeperPlugin` / `createConfidantePlugin` are simple factories that validate and return the options. All orchestration happens inside `startGatekeeper` / `startConfidante`.
 
 ## Built-in plugins
 

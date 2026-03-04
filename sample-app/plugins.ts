@@ -1,9 +1,10 @@
 /**
- * Central plugin list shared by gatekeeper and muteworker entry points.
+ * Central plugin list shared by gatekeeper, muteworker, and confidante entry points.
  */
 import path from 'path';
 import type { GatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
 import type { MuteworkerPlugin } from '@sandclaw/muteworker-plugin-api';
+import type { ConfidantePlugin } from '@sandclaw/confidante-plugin-api';
 import { buildWhatsappPlugin } from '@sandclaw/whatsapp-plugin';
 import { buildTelegramPlugin } from '@sandclaw/telegram-plugin';
 import { createObsidianPlugin } from '@sandclaw/obsidian-plugin';
@@ -14,7 +15,7 @@ import { createMemoryPlugin } from '@sandclaw/memory-plugin';
 import { createGoogleMapsPlugin } from '@sandclaw/google-maps-plugin';
 import { createWebSearchPlugin } from '@sandclaw/web-search-plugin';
 
-export type SandclawPlugin = GatekeeperPlugin & MuteworkerPlugin;
+export type SandclawPlugin = GatekeeperPlugin & MuteworkerPlugin & Partial<ConfidantePlugin>;
 
 export const plugins: SandclawPlugin[] = [
   buildWhatsappPlugin({

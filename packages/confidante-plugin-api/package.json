@@ -1,0 +1,13 @@
+{
+  "name": "@sandclaw/confidante-plugin-api",
+  "version": "0.1.0",
+  "description": "Sandclaw Confidante plugin API — contract for plugins targeting the Confidante",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "*"
+  }
+}

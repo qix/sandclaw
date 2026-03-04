@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "*",
-    "@sandclaw/muteworker-plugin-api": "*"
+    "@sandclaw/muteworker-plugin-api": "*",
+    "@sandclaw/confidante-plugin-api": "*"
   },
   "peerDependencies": {
     "react": "^18.0.0"
