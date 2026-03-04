@@ -96,6 +96,12 @@ export function ChatPanel() {
     return div.innerHTML;
   }
 
+  function linkify(escaped) {
+    return escaped.replace(/(?:https?:\\/\\/)[^\\s<&]+/g, function(url) {
+      return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" style="color:#3b82f6;text-decoration:underline;">' + url + '</a>';
+    });
+  }
+
   function renderMessage(msg) {
     var div = document.createElement('div');
     var isInbound = msg.direction === 'inbound';
@@ -105,7 +111,7 @@ export function ChatPanel() {
         : 'align-self:flex-start;background:#16a34a22;border:1px solid #16a34a44;color:inherit;');
     var label = isInbound ? 'You' : 'Agent';
     var time = msg.timestamp ? new Date(msg.timestamp * 1000).toLocaleTimeString() : '';
-    div.innerHTML = '<div style="font-size:0.75rem;opacity:0.6;margin-bottom:0.25rem;">' + escapeHtml(label) + (time ? ' · ' + escapeHtml(time) : '') + '</div>' + escapeHtml(msg.text);
+    div.innerHTML = '<div style="font-size:0.75rem;opacity:0.6;margin-bottom:0.25rem;">' + escapeHtml(label) + (time ? ' · ' + escapeHtml(time) : '') + '</div>' + linkify(escapeHtml(msg.text));
     return div;
   }
 
