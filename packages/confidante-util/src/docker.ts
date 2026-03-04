@@ -5,6 +5,49 @@ import { PiEventPrinter } from "./events.js";
 const DIM = "\x1b[2m";
 const RESET = "\x1b[0m";
 
+// ---------------------------------------------------------------------------
+// runDockerCommand — simple `docker run --rm` for non-pi commands
+// ---------------------------------------------------------------------------
+
+export interface RunDockerCommandOptions {
+  /** Docker image name. */
+  image: string;
+  /** Command + args to execute inside the container. */
+  command: string[];
+  /**
+   * Extra `docker run` flags inserted before the image name
+   * (e.g. ["-v", "/host:/container"]).
+   */
+  dockerArgs?: string[];
+}
+
+/**
+ * Run a one-shot `docker run --rm` command and return the exit code.
+ * Stderr output is forwarded (dimmed) to the host stderr.
+ */
+export function runDockerCommand(
+  options: RunDockerCommandOptions,
+): Promise<{ exitCode: number }> {
+  const { image, command, dockerArgs = [] } = options;
+
+  const child = spawn(
+    "docker",
+    ["run", "--rm", ...dockerArgs, image, ...command],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+
+  child.stdout.on("data", () => {});
+  child.stderr.on("data", (chunk: Buffer) => {
+    process.stderr.write(`${DIM}${chunk.toString()}${RESET}`);
+  });
+
+  return new Promise((resolve) => {
+    child.on("close", (code) => {
+      resolve({ exitCode: code ?? 1 });
+    });
+  });
+}
+
 export interface RunDockerPiOptions {
   /** Docker image name (e.g. "sandclaw-browser-plugin"). */
   image: string;

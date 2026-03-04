@@ -1,37 +1,19 @@
 #!/usr/bin/env npx tsx
 
 import cac from "cac";
-import { spawn, execSync } from "node:child_process";
-import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { runDockerPi } from "@sandclaw/confidante-util";
+import {
+  runDockerPi,
+  runDockerCommand,
+  prepareWorkDir,
+  detectAndCommitChanges,
+} from "@sandclaw/confidante-util";
 
 const DIM = "\x1b[2m";
 const RESET = "\x1b[0m";
 
 function muted(text: string) {
   process.stderr.write(`${DIM}${text}${RESET}\n`);
-}
-
-// --- Helper: run a command and return its exit code ---
-
-function runSpawn(
-  cmd: string,
-  args: string[],
-  stdio: "inherit" | "pipe" = "inherit",
-): Promise<number> {
-  return new Promise((resolve) => {
-    const child = spawn(cmd, args, {
-      stdio: stdio === "pipe" ? ["ignore", "pipe", "pipe"] : "inherit",
-    });
-    if (stdio === "pipe") {
-      child.stdout?.on("data", () => {});
-      child.stderr?.on("data", (chunk: Buffer) => {
-        process.stderr.write(`${DIM}${chunk.toString()}${RESET}`);
-      });
-    }
-    child.on("close", (code) => resolve(code ?? 1));
-  });
 }
 
 // --- CLI ---
@@ -75,61 +57,19 @@ const commitMessage = (parsed.options.commitMessage as string) || prompt;
 
 // --- Step 1: Prepare working directory ---
 
-if (existsSync(workDir)) {
-  // Verify the existing directory is clean
-  try {
-    const status = execSync("git status --porcelain", {
-      cwd: workDir,
-      encoding: "utf-8",
-    });
-    if (status.trim()) {
-      console.error(
-        `Error: working directory ${workDir} has uncommitted changes`,
-      );
-      process.exit(1);
-    }
-    muted(`Working directory ${workDir} exists and is clean`);
-  } catch (e) {
-    console.error(`Error: could not check git status of ${workDir}: ${e}`);
-    process.exit(1);
-  }
-} else {
-  muted(`Cloning ${repo} (branch: ${branch}) into ${workDir}...`);
-  const cloneCode = await runSpawn("git", [
-    "clone",
-    "--branch",
-    branch,
-    repo,
-    workDir,
-  ]);
-  if (cloneCode !== 0) {
-    console.error(`Error: git clone failed with code ${cloneCode}`);
-    process.exit(1);
-  }
-}
-
-// Record HEAD before
-const headBefore = execSync("git rev-parse HEAD", {
-  cwd: workDir,
-  encoding: "utf-8",
-}).trim();
-muted(`HEAD before: ${headBefore}`);
+await prepareWorkDir({ repo, workDir, branch });
 
 // --- Step 2: npm install in Docker ---
 
 muted("Running npm install in Docker container...");
-const npmInstallCode = await runSpawn("docker", [
-  "run",
-  "--rm",
-  "-v",
-  `${workDir}:/workspace`,
+const npmResult = await runDockerCommand({
   image,
-  "npm",
-  "install",
-]);
+  command: ["npm", "install"],
+  dockerArgs: ["-v", `${workDir}:/workspace`],
+});
 
-if (npmInstallCode !== 0) {
-  console.error(`Error: npm install failed with code ${npmInstallCode}`);
+if (npmResult.exitCode !== 0) {
+  console.error(`Error: npm install failed with code ${npmResult.exitCode}`);
   process.exit(1);
 }
 
@@ -161,26 +101,15 @@ muted(`pi exited with code: ${piExitCode}`);
 
 // --- Step 4: Check for changes and commit ---
 
-const status = execSync("git status --porcelain", {
-  cwd: workDir,
-  encoding: "utf-8",
+const { changed, headBefore, headAfter } = detectAndCommitChanges({
+  workDir,
+  commitMessage,
 });
 
-if (status.trim()) {
-  muted("Changes detected, committing...");
-  execSync("git add -A", { cwd: workDir });
-  execSync(`git commit -m ${JSON.stringify(commitMessage)}`, { cwd: workDir });
-  muted(`Committed changes with message: ${commitMessage}`);
-} else {
-  muted("No changes detected.");
-}
-
-const headAfter = execSync("git rev-parse HEAD", {
-  cwd: workDir,
-  encoding: "utf-8",
-}).trim();
-muted(`HEAD after: ${headAfter}`);
 muted(`Repo path: ${workDir}`);
+if (changed) {
+  muted(`Changes committed: ${headBefore.slice(0, 8)}..${headAfter.slice(0, 8)}`);
+}
 
 if (finalReply) {
   process.stdout.write(finalReply + "\n");
