@@ -57,7 +57,7 @@ function withToolCallLogging(tool: AgentTool, args: ToolArgs): AgentTool {
   return {
     ...tool,
     execute: async (toolCallId: string, params: unknown) => {
-      args.logger.info('tool.called', { jobId: args.job.id, tool: tool.name });
+      args.logger.info('tool.called', { jobId: args.job.id, tool: tool.name, params });
       return tool.execute(toolCallId, params);
     },
   };

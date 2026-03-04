@@ -37,14 +37,14 @@ export function ChatPanel() {
           </div>
           <form
             id="chat-form"
-            style={{ display: 'flex', gap: '0.5rem' }}
+            style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}
             onSubmit={(e: any) => e.preventDefault()}
           >
-            <input
+            <textarea
               id="chat-input"
-              type="text"
-              placeholder="Type a message..."
+              placeholder="Type a message... (Shift+Enter for new line)"
               autoComplete="off"
+              rows={1}
               style={{
                 flex: 1,
                 padding: '0.5rem 0.75rem',
@@ -54,6 +54,11 @@ export function ChatPanel() {
                 color: colors.text,
                 fontSize: '0.875rem',
                 outline: 'none',
+                resize: 'none',
+                overflow: 'hidden',
+                lineHeight: '1.4',
+                fontFamily: 'inherit',
+                maxHeight: '150px',
               }}
             />
             <button
@@ -67,6 +72,7 @@ export function ChatPanel() {
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 cursor: 'pointer',
+                whiteSpace: 'nowrap',
               }}
             >
               Send
@@ -153,12 +159,32 @@ export function ChatPanel() {
     };
   }
 
-  form.addEventListener('submit', function(e) {
-    e.preventDefault();
+  function autoResize() {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 150) + 'px';
+    input.style.overflow = input.scrollHeight > 150 ? 'auto' : 'hidden';
+  }
+
+  function sendMessage() {
     var text = input.value.trim();
     if (!text || !connected) return;
     ws.send(JSON.stringify({ type: 'message', text: text }));
     input.value = '';
+    autoResize();
+  }
+
+  input.addEventListener('input', autoResize);
+
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    sendMessage();
   });
 
   connect();
