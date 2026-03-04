@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-exec devcontainer exec ./node_modules/.bin/tsx ./packages/cm/bin/cm.js --save-logs=./logs/cm "$@"
+exec devcontainer exec ./node_modules/.bin/tsx ./packages/cm/bin/cm.js --save-logs=./logs/cm -- "$@"

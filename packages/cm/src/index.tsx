@@ -96,7 +96,9 @@ async function main(): Promise<void> {
   const parsed = cli.parse();
   const allowDirty = parsed.options['allowDirty'] as boolean | undefined;
   const saveLogs = parsed.options['saveLogs'] as string | undefined;
-  const extraArgs = parsed.args;
+  // Grab raw args after '--' so flags like -p/--print pass through to claude
+  const doubleDashIndex = process.argv.indexOf('--');
+  const extraArgs = doubleDashIndex !== -1 ? process.argv.slice(doubleDashIndex + 1) : parsed.args;
 
   if (parsed.options['help']) {
     process.exit(0);
