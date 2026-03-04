@@ -25,36 +25,26 @@ async function tryReadFile(filePath: string): Promise<string | null> {
   });
 }
 
-function wrapPrompt(tag: string, filename: string, content: string): string {
+function wrapMemory(filename: string, content: string): string {
   const name = filename.endsWith('.md') ? filename.slice(0, -3) : filename;
-  return `File: ${name}\n<${tag.toUpperCase()}>\n${content.trim()}\n</${tag.toUpperCase()}>`;
+  return `File: ${name}\n<MEMORY>\n${content.trim()}\n</MEMORY>`;
 }
 
 /**
- * Loads the agent's system prompt from `promptsDir` and memory files from
- * `memoryDir`.  Both directories are optional; missing files are skipped
- * gracefully.
+ * Loads all files from `memoryDir` and wraps them in `<MEMORY>` tags
+ * for inclusion in the system prompt.
  */
-export async function loadSystemPrompt(promptsDir: string, memoryDir: string): Promise<string> {
-  const coreFiles = ['IDENTITY.md', 'SYSTEM.md', 'SOUL.md', 'USER.md'];
-  const corePrompts = await Promise.all(
-    coreFiles.map(async (filename) => {
-      const content = await tryReadFile(path.join(promptsDir, filename));
-      if (!content) return null;
-      return wrapPrompt('prompts', filename, content);
-    }),
-  );
-
+export async function loadMemoryPrompt(memoryDir: string): Promise<string> {
   const memoryFilenames = await listFiles(memoryDir);
   const memoryPrompts = await Promise.all(
     memoryFilenames.map(async (filename) => {
       const content = await tryReadFile(path.join(memoryDir, filename));
       if (!content) return null;
-      return wrapPrompt('memory', filename, content);
+      return wrapMemory(filename, content);
     }),
   );
 
-  return [...corePrompts, ...memoryPrompts]
+  return memoryPrompts
     .filter((p): p is string => p !== null)
     .join('\n');
 }

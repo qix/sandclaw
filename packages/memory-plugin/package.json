@@ -1,0 +1,14 @@
+{
+  "name": "@sandclaw/memory-plugin",
+  "version": "0.1.0",
+  "description": "Sandclaw Memory plugin — agent memory file tools and system prompt hook",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper-plugin-api": "*",
+    "@sandclaw/muteworker-plugin-api": "*"
+  }
+}

@@ -13,10 +13,6 @@ export interface MuteworkerConfig {
   jobTimeoutMs: number;
   /** Max Pi agent steps per job. */
   maxSteps: number;
-  /** Brave Search API key. Empty string disables the tool. */
-  braveApiKey: string;
-  /** Max Brave search results returned per query. */
-  braveMaxResults: number;
   /** Human-facing URL included in verification prompts. */
   verificationUiUrl: string;
   /** Minimum log level to emit. */
@@ -31,8 +27,6 @@ export const DEFAULT_CONFIG: MuteworkerConfig = {
   longPollTimeoutMs: 25000,
   jobTimeoutMs: 120000,
   maxSteps: 8,
-  braveApiKey: '',
-  braveMaxResults: 5,
   verificationUiUrl: 'http://localhost:3000',
   logLevel: 'info',
 };

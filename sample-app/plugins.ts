@@ -1,6 +1,7 @@
 /**
  * Central plugin list shared by gatekeeper and muteworker entry points.
  */
+import path from 'path';
 import type { GatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
 import type { MuteworkerPlugin } from '@sandclaw/muteworker-plugin-api';
 import { buildWhatsappPlugin } from '@sandclaw/whatsapp-plugin';
@@ -8,6 +9,10 @@ import { buildTelegramPlugin } from '@sandclaw/telegram-plugin';
 import { createObsidianPlugin } from '@sandclaw/obsidian-plugin';
 import { createGmailPlugin } from '@sandclaw/gmail-plugin';
 import { createBrowserPlugin } from '@sandclaw/browser-plugin';
+import { createPromptsPlugin } from '@sandclaw/prompts-plugin';
+import { createMemoryPlugin } from '@sandclaw/memory-plugin';
+import { createGoogleMapsPlugin } from '@sandclaw/google-maps-plugin';
+import { createWebSearchPlugin } from '@sandclaw/web-search-plugin';
 
 export type SandclawPlugin = GatekeeperPlugin & MuteworkerPlugin;
 
@@ -33,4 +38,8 @@ export const plugins: SandclawPlugin[] = [
     userEmail: process.env.GMAIL_USER_EMAIL || '',
   }),
   createBrowserPlugin(),
+  createPromptsPlugin({ promptsDir: path.join(__dirname, 'prompts') }),
+  createMemoryPlugin({ memoryDir: path.join(__dirname, 'memory') }),
+  createGoogleMapsPlugin(),
+  createWebSearchPlugin({ braveApiKey: process.env.BRAVE_API_KEY || '' }),
 ];

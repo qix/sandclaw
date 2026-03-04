@@ -22,8 +22,7 @@ export interface JobArgs {
   job: MuteworkerQueueJob;
   plugins: MuteworkerPlugin[];
   toolFactories: Array<(ctx: MuteworkerPluginContext) => any[]>;
-  promptsDir: string;
-  memoryDir: string;
+  buildSystemPrompt: () => Promise<string>;
 }
 
 export async function executeMuteworkerJob(args: JobArgs): Promise<MuteworkerJobResult> {
@@ -53,8 +52,7 @@ export async function executeMuteworkerJob(args: JobArgs): Promise<MuteworkerJob
       logger: args.logger,
       job: args.job,
       toolFactories: args.toolFactories,
-      promptsDir: args.promptsDir,
-      memoryDir: args.memoryDir,
+      buildSystemPrompt: args.buildSystemPrompt,
       context: job.data,
     };
 

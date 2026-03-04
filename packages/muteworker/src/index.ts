@@ -1,5 +1,4 @@
 import type { MuteworkerPlugin, MuteworkerHooks, MuteworkerPluginContext, ToolsService } from '@sandclaw/muteworker-plugin-api';
-import path from 'path';
 import { MuteworkerApiClient } from './apiClient';
 import { DEFAULT_CONFIG, MuteworkerConfig } from './config';
 import { createLogger } from './logger';
@@ -12,16 +11,6 @@ export interface MuteworkerOptions {
   plugins?: MuteworkerPlugin[];
   /** Config overrides (merged with defaults). */
   config?: Partial<MuteworkerConfig>;
-  /**
-   * Absolute path to the directory containing the agent's prompt files
-   * (IDENTITY.md, SYSTEM.md, SOUL.md, USER.md, HEARTBEAT.md).
-   */
-  promptsDir: string;
-  /**
-   * Absolute path to the directory used for agent memory files.
-   * Created automatically if it does not exist.
-   */
-  memoryDir: string;
 }
 
 /**
@@ -32,23 +21,22 @@ export interface MuteworkerOptions {
  *
  * @example
  * ```ts
- * import path from 'path';
  * import { startMuteworker } from '@sandclaw/muteworker';
- * import { buildWhatsappMuteworkerPlugin } from '@sandclaw/whatsapp-plugin';
+ * import { createPromptsPlugin } from '@sandclaw/prompts-plugin';
+ * import { createMemoryPlugin } from '@sandclaw/memory-plugin';
  *
  * startMuteworker({
- *   plugins: [buildWhatsappMuteworkerPlugin({ operatorJids: ['99999999@s.whatsapp.net'] })],
+ *   plugins: [
+ *     createPromptsPlugin({ promptsDir: './prompts' }),
+ *     createMemoryPlugin({ memoryDir: './memory' }),
+ *   ],
  *   config: { apiBaseUrl: 'http://localhost:3000' },
- *   promptsDir: path.resolve('./prompts'),
- *   memoryDir:  path.resolve('./memory'),
  * });
  * ```
  */
 export async function startMuteworker(options: MuteworkerOptions): Promise<void> {
   const config: MuteworkerConfig = { ...DEFAULT_CONFIG, ...options.config };
   const plugins = options.plugins ?? [];
-  const promptsDir = path.resolve(options.promptsDir);
-  const memoryDir = path.resolve(options.memoryDir);
 
   const logger = createLogger(config.logLevel);
   const client = new MuteworkerApiClient(config, logger);
@@ -56,10 +44,12 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
   // Plugin lifecycle: create services, run registerMuteworker + init
   const startHooks: Array<() => Promise<void>> = [];
   const stopHooks: Array<() => Promise<void>> = [];
+  const buildSystemPromptHooks: Array<(prev: string) => string | Promise<string>> = [];
   const hooksService: MuteworkerHooks = {
     register(hooks) {
       if (hooks['muteworker:start']) startHooks.push(async () => hooks['muteworker:start']!());
       if (hooks['muteworker:stop']) stopHooks.push(async () => hooks['muteworker:stop']!());
+      if (hooks['muteworker:build-system-prompt']) buildSystemPromptHooks.push(hooks['muteworker:build-system-prompt']);
     },
   };
 
@@ -92,7 +82,16 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
   }
   for (const fn of initFns) { await fn(); }
 
-  const loop = new MuteworkerQueueLoop(client, config, logger, plugins, toolFactories, promptsDir, memoryDir);
+  // Build the system prompt pipeline
+  const buildSystemPrompt = async (): Promise<string> => {
+    let prompt = '';
+    for (const hook of buildSystemPromptHooks) {
+      prompt = await hook(prompt);
+    }
+    return prompt;
+  };
+
+  const loop = new MuteworkerQueueLoop(client, config, logger, plugins, toolFactories, buildSystemPrompt);
 
   const shutdown = async () => {
     logger.info('muteworker.shutdown.requested');
@@ -108,8 +107,6 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
     modelProvider: config.modelProvider,
     modelId: config.modelId,
     plugins: plugins.map((p) => p.id),
-    promptsDir,
-    memoryDir,
   });
 
   // Fire start hooks

@@ -1,8 +1,7 @@
-import { AgentTool } from '@mariozechner/pi-agent-core';
 import { TSchema } from '@mariozechner/pi-ai';
-import type { Artifact, ToolArgs } from './index';
+import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
 
-export function createGoogleMapsTool(artifacts: Artifact[], args: ToolArgs): AgentTool {
+export function createGoogleMapsTool(ctx: MuteworkerPluginContext) {
   return {
     name: 'google_maps',
     label: 'Google Maps Link',
@@ -25,8 +24,8 @@ export function createGoogleMapsTool(artifacts: Artifact[], args: ToolArgs): Age
       url.searchParams.set('query', location);
       const mapsUrl = url.toString();
 
-      args.logger.info('tool.google_maps.link', { jobId: args.job.id, location });
-      artifacts.push({ type: 'text', label: 'Google Maps', value: location });
+      ctx.logger.info('tool.google_maps.link', { jobId: ctx.job.id, location });
+      ctx.artifacts.push({ type: 'text', label: 'Google Maps', value: location });
 
       return {
         content: [{ type: 'text', text: mapsUrl }],

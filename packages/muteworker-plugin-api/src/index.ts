@@ -66,6 +66,7 @@ export interface MuteworkerHooks {
   register(hooks: {
     'muteworker:start'?: () => void | Promise<void>;
     'muteworker:stop'?: () => void | Promise<void>;
+    'muteworker:build-system-prompt'?: (prev: string) => string | Promise<string>;
   }): void;
 }
 

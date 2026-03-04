@@ -4,10 +4,6 @@ import type { MuteworkerApiClient } from '../apiClient';
 import type { MuteworkerConfig } from '../config';
 import type { Logger } from '../logger';
 import type { MuteworkerQueueJob } from '../types';
-import { createGoogleMapsTool } from './google_maps';
-import { createMemoryTools } from './memory';
-import { createPromptTools } from './prompts';
-import { createBraveWebSearchTool } from './web_search';
 
 export interface Artifact {
   type: 'text';
@@ -21,8 +17,7 @@ export interface ToolArgs {
   logger: Logger;
   job: MuteworkerQueueJob;
   toolFactories: Array<(ctx: MuteworkerPluginContext) => any[]>;
-  promptsDir: string;
-  memoryDir: string;
+  buildSystemPrompt: () => Promise<string>;
   /** The user prompt string for the current job (used for browser context). */
   context: string;
 }
@@ -30,17 +25,17 @@ export interface ToolArgs {
 export function getTools(artifacts: Artifact[], args: ToolArgs): AgentTool[] {
   const tools: AgentTool[] = [];
 
-  // Built-in tools
-  tools.push(createBraveWebSearchTool(artifacts, args));
-  tools.push(createGoogleMapsTool(artifacts, args));
-  tools.push(...createMemoryTools(artifacts, args.memoryDir));
-  tools.push(...createPromptTools(artifacts, args.promptsDir));
-
   // Plugin-contributed tools (via ToolsService)
   const ctx = toPluginContext(artifacts, args);
   for (const factory of args.toolFactories) {
     tools.push(...(factory(ctx) as AgentTool[]));
   }
+
+  args.logger.info('tools.assembled', {
+    jobId: args.job.id,
+    toolCount: tools.length,
+    toolNames: tools.map((t) => t.name),
+  });
 
   return tools.map((tool) => withToolCallLogging(tool, args));
 }

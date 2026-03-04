@@ -1,0 +1,14 @@
+{
+  "name": "@sandclaw/google-maps-plugin",
+  "version": "0.1.0",
+  "description": "Sandclaw Google Maps plugin — generate Google Maps links",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper-plugin-api": "*",
+    "@sandclaw/muteworker-plugin-api": "*"
+  }
+}

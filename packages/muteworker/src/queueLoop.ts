@@ -22,8 +22,7 @@ export class MuteworkerQueueLoop {
     private readonly logger: Logger,
     private readonly plugins: MuteworkerPlugin[],
     private readonly toolFactories: Array<(ctx: MuteworkerPluginContext) => any[]>,
-    private readonly promptsDir: string,
-    private readonly memoryDir: string,
+    private readonly buildSystemPrompt: () => Promise<string>,
   ) {}
 
   stop(): void {
@@ -57,8 +56,7 @@ export class MuteworkerQueueLoop {
           logger: this.logger,
           plugins: this.plugins,
           toolFactories: this.toolFactories,
-          promptsDir: this.promptsDir,
-          memoryDir: this.memoryDir,
+          buildSystemPrompt: this.buildSystemPrompt,
         });
 
         assertValidJobResult(result);

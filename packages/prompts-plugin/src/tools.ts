@@ -1,10 +1,9 @@
-import { AgentTool } from '@mariozechner/pi-agent-core';
 import { TSchema } from '@mariozechner/pi-ai';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Artifact } from './index';
+import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
 
-export function createPromptTools(artifacts: Artifact[], promptsDir: string): AgentTool[] {
+export function createPromptTools(ctx: MuteworkerPluginContext, promptsDir: string) {
   return [
     {
       name: 'list_prompt_files',
@@ -46,7 +45,7 @@ export function createPromptTools(artifacts: Artifact[], promptsDir: string): Ag
         const relativePath = validateRelativePath(String(params.path), promptsDir, 'prompts/');
         const absolutePath = path.join(promptsDir, relativePath);
         const contents = await readFile(absolutePath, 'utf8');
-        artifacts.push({ type: 'text', label: 'Prompt Read', value: relativePath });
+        ctx.artifacts.push({ type: 'text', label: 'Prompt Read', value: relativePath });
         return {
           content: [{ type: 'text', text: contents }],
           details: { path: relativePath, bytes: Buffer.byteLength(contents, 'utf8') },
@@ -84,7 +83,7 @@ export function createPromptTools(artifacts: Artifact[], promptsDir: string): Ag
           await writeFile(absolutePath, contents, 'utf8');
         }
 
-        artifacts.push({ type: 'text', label: 'Prompt Write', value: relativePath });
+        ctx.artifacts.push({ type: 'text', label: 'Prompt Write', value: relativePath });
         return {
           content: [
             {

@@ -1,10 +1,9 @@
-import { AgentTool } from '@mariozechner/pi-agent-core';
 import { TSchema } from '@mariozechner/pi-ai';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Artifact } from './index';
+import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
 
-export function createMemoryTools(artifacts: Artifact[], memoryDir: string): AgentTool[] {
+export function createMemoryTools(ctx: MuteworkerPluginContext, memoryDir: string) {
   return [
     {
       name: 'list_memory_files',
@@ -46,7 +45,7 @@ export function createMemoryTools(artifacts: Artifact[], memoryDir: string): Age
         const relativePath = validateRelativePath(String(params.path), memoryDir, 'memory/');
         const absolutePath = path.join(memoryDir, relativePath);
         const contents = await readFile(absolutePath, 'utf8');
-        artifacts.push({ type: 'text', label: 'Memory Read', value: relativePath });
+        ctx.artifacts.push({ type: 'text', label: 'Memory Read', value: relativePath });
         return {
           content: [{ type: 'text', text: contents }],
           details: { path: relativePath, bytes: Buffer.byteLength(contents, 'utf8') },
@@ -84,7 +83,7 @@ export function createMemoryTools(artifacts: Artifact[], memoryDir: string): Age
           await writeFile(absolutePath, contents, 'utf8');
         }
 
-        artifacts.push({ type: 'text', label: 'Memory Write', value: relativePath });
+        ctx.artifacts.push({ type: 'text', label: 'Memory Write', value: relativePath });
         return {
           content: [
             {

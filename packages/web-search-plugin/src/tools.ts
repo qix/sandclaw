@@ -1,6 +1,5 @@
-import { AgentTool } from '@mariozechner/pi-agent-core';
 import { TSchema } from '@mariozechner/pi-ai';
-import type { Artifact, ToolArgs } from './index';
+import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
 
 const BRAVE_SEARCH_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search';
 const BRAVE_MAX_RESULTS_LIMIT = 10;
@@ -22,7 +21,14 @@ interface BraveSearchResult {
   description: string;
 }
 
-export function createBraveWebSearchTool(artifacts: Artifact[], args: ToolArgs): AgentTool {
+export interface WebSearchConfig {
+  braveApiKey: string;
+  braveMaxResults?: number;
+}
+
+export function createBraveWebSearchTool(ctx: MuteworkerPluginContext, config: WebSearchConfig) {
+  const maxResults = config.braveMaxResults ?? 5;
+
   return {
     name: 'brave_web_search',
     label: 'Brave Web Search',
@@ -41,7 +47,7 @@ export function createBraveWebSearchTool(artifacts: Artifact[], args: ToolArgs):
       const query = String(params.query ?? '').trim();
       if (!query) throw new Error('Search query cannot be empty');
 
-      if (!args.config.braveApiKey) {
+      if (!config.braveApiKey) {
         return {
           content: [
             {
@@ -53,10 +59,10 @@ export function createBraveWebSearchTool(artifacts: Artifact[], args: ToolArgs):
         };
       }
 
-      const count = normalizeResultCount(params.count, args.config.braveMaxResults);
-      const results = await searchBraveWeb(query, count, args.config.braveApiKey);
+      const count = normalizeResultCount(params.count, maxResults);
+      const results = await searchBraveWeb(query, count, config.braveApiKey);
 
-      artifacts.push({ type: 'text', label: 'Brave Search', value: query });
+      ctx.artifacts.push({ type: 'text', label: 'Brave Search', value: query });
 
       if (results.length === 0) {
         return {
@@ -121,7 +127,7 @@ async function searchBraveWeb(
   return rawResults
     .map((result) => {
       const title = typeof result.title === 'string' ? result.title.trim() : '';
-      const url = typeof result.url === 'string' ? result.url.trim() : '';
+      const resultUrl = typeof result.url === 'string' ? result.url.trim() : '';
       let description = typeof result.description === 'string' ? result.description.trim() : '';
       if (!description && Array.isArray(result.extra_snippets)) {
         const firstSnippet = result.extra_snippets.find(
@@ -129,7 +135,7 @@ async function searchBraveWeb(
         );
         description = firstSnippet?.trim() ?? '';
       }
-      return { title, url, description };
+      return { title, url: resultUrl, description };
     })
     .filter((r) => r.title.length > 0 && r.url.length > 0);
 }

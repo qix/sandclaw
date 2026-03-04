@@ -1,11 +1,7 @@
 import { Agent } from '@mariozechner/pi-agent-core';
 import { getModel } from '@mariozechner/pi-ai';
-import type { MuteworkerConfig } from './config';
-import type { Logger } from './logger';
-import { loadSystemPrompt } from './promptLoader';
 import type { Artifact, ToolArgs } from './tools/index';
 import { getTools } from './tools/index';
-import type { MuteworkerQueueJob } from './types';
 
 export interface PiExecutionResult {
   reply: string | null;
@@ -17,11 +13,11 @@ export async function runWithPi(
   prompt: string,
   toolArgs: ToolArgs,
 ): Promise<PiExecutionResult | null> {
-  const { config, promptsDir, memoryDir } = toolArgs;
+  const { config } = toolArgs;
   // Cast required: config values are plain strings but getModel expects literal types.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const model = (getModel as any)(config.modelProvider, config.modelId);
-  const systemPrompt = await loadSystemPrompt(promptsDir, memoryDir);
+  const systemPrompt = await toolArgs.buildSystemPrompt();
   const artifacts: Artifact[] = [];
 
   const tools = getTools(artifacts, { ...toolArgs, context: prompt });
