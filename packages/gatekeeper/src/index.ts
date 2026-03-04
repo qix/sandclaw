@@ -105,8 +105,9 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   // 6. SSR — render the React shell on every GET and use ?plugin= to track
   //    the active tab.  ?page=verifications shows the core verifications page.
   app.get('/*', async (c) => {
-    const page = c.req.query('page');
-    const activePluginId = c.req.query('plugin') ?? plugins[0]?.id ?? '';
+    const explicitPlugin = c.req.query('plugin');
+    const page = c.req.query('page') ?? (explicitPlugin ? undefined : 'verifications');
+    const activePluginId = explicitPlugin ?? plugins[0]?.id ?? '';
 
     let verificationRequests: any[] | undefined;
     if (page === 'verifications') {
