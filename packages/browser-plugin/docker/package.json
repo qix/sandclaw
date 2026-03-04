@@ -1,0 +1,11 @@
+{
+  "name": "sandclaw-browser-docker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Docker environment for running pi with browser automation",
+  "dependencies": {
+    "@mariozechner/pi-coding-agent": "^0.55.4",
+    "pi-agent-browser": "^0.1.0",
+    "agent-browser": "^0.16.3"
+  }
+}
