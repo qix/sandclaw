@@ -2,6 +2,7 @@
   "name": "builder-plugin",
   "version": "0.1.0",
   "description": "Docker image and script for running pi-coding-agent in a network-isolated container",
+  "type": "module",
   "scripts": {
     "build-docker": "docker build -t builder-plugin docker/",
     "run": "tsx scripts/run-build.ts"
