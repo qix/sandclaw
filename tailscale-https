@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+tailscale funnel --bg --https 8443 http://localhost:8888/api/hook
+tailscale serve --bg --https=443 http://localhost:8888
+
