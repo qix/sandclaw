@@ -11,6 +11,37 @@ import {
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 
+function shellSplit(str: string): string[] {
+  const args: string[] = [];
+  let current = "";
+  let quote = "";
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (quote) {
+      if (ch === "\\" && quote === '"' && i + 1 < str.length) {
+        current += str[++i];
+      } else if (ch === quote) {
+        quote = "";
+      } else {
+        current += ch;
+      }
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === "\\" && i + 1 < str.length) {
+      current += str[++i];
+    } else if (/\s/.test(ch)) {
+      if (current) {
+        args.push(current);
+        current = "";
+      }
+    } else {
+      current += ch;
+    }
+  }
+  if (current) args.push(current);
+  return args;
+}
+
 const TOOL_DESCRIPTION = `Browser automation via agent-browser CLI.
 Workflow: open URL → snapshot -i (get @refs like @e1) → interact → re-snapshot after page changes.
 Commands:
@@ -91,7 +122,7 @@ export default function agentBrowserExtension(pi: ExtensionAPI) {
 
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       const commandStr = params.command.trim();
-      const parts = commandStr.split(/\s+/);
+      const parts = shellSplit(commandStr);
       const action = parts[0].toLowerCase();
 
       const result = await pi.exec("agent-browser", parts, {
