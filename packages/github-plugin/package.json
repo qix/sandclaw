@@ -1,0 +1,22 @@
+{
+  "name": "@sandclaw/github-plugin",
+  "version": "0.1.0",
+  "description": "Sandclaw GitHub plugin — PR creation and approval via gh CLI",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper-plugin-api": "*",
+    "@sandclaw/muteworker-plugin-api": "*",
+    "@sandclaw/ui": "*"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "typescript": "*"
+  }
+}

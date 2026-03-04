@@ -15,6 +15,7 @@ import { createMemoryPlugin } from '@sandclaw/memory-plugin';
 import { createGoogleMapsPlugin } from '@sandclaw/google-maps-plugin';
 import { createWebSearchPlugin } from '@sandclaw/web-search-plugin';
 import { buildChatPlugin } from '@sandclaw/chat-plugin';
+import { createGithubPlugin } from '@sandclaw/github-plugin';
 
 export type SandclawPlugin = GatekeeperPlugin & MuteworkerPlugin & Partial<ConfidantePlugin>;
 
@@ -45,4 +46,5 @@ export const plugins: SandclawPlugin[] = [
   createGoogleMapsPlugin(),
   createWebSearchPlugin({ braveApiKey: process.env.BRAVE_API_KEY || '' }),
   buildChatPlugin(),
+  createGithubPlugin(),
 ];
