@@ -89,7 +89,7 @@ export class MuteworkerQueueLoop {
         const backoffMs = nextBackoffMs(
           this.backoff,
           this.config.pollIntervalMs,
-          this.config.pollIntervalMs * 16,
+          10_000,
         );
         this.logger.warn('queue.loop.retrying', {
           attempts: this.backoff.attempts,
