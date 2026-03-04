@@ -10,7 +10,8 @@
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "*",
     "@sandclaw/muteworker-plugin-api": "*",
-    "@sandclaw/confidante-plugin-api": "*"
+    "@sandclaw/confidante-plugin-api": "*",
+    "cac": "^7.0.0"
   },
   "peerDependencies": {
     "react": "^18.0.0"
