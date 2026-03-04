@@ -4,7 +4,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
 interface ProxyOptions {
-  saveLogs?: boolean;
+  saveLogs?: string;
 }
 
 interface ProxyHandle {
@@ -89,7 +89,7 @@ export function startProxy(options: ProxyOptions = {}): Promise<ProxyHandle> {
   let logDir: string | null = null;
 
   if (options.saveLogs) {
-    logDir = 'cm-logs';
+    logDir = options.saveLogs;
     mkdirSync(logDir, { recursive: true });
   }
 

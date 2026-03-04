@@ -91,11 +91,11 @@ async function main(): Promise<void> {
   const cli = cac('cm');
   cli
     .option('--allow-dirty', 'Skip git clean check')
-    .option('--save-logs', 'Save /v1/messages request bodies to cm-logs/*.json');
+    .option('--save-logs <path>', 'Save /v1/messages request bodies to <path>/*.json');
   cli.help();
   const parsed = cli.parse();
   const allowDirty = parsed.options['allowDirty'] as boolean | undefined;
-  const saveLogs = parsed.options['saveLogs'] as boolean | undefined;
+  const saveLogs = parsed.options['saveLogs'] as string | undefined;
   const promptText = parsed.args.length > 0 ? parsed.args.join(' ') : null;
 
   if (parsed.options['help']) {
