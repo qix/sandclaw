@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import type { Knex } from 'knex';
-import type { GatekeeperPlugin, GatekeeperHooks, StatusColorValue, TabsService, RoutesService, VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
+import type { GatekeeperPlugin, GatekeeperHooks, StatusColorValue, TabsService, RoutesService, WebSocketService, VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
 import type { ComponentType } from 'react';
 import { App } from './pages/App';
 import type { TabRenderData } from './pages/App';
@@ -68,9 +68,18 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   // Collected verification renderers
   const renderers: Record<string, ComponentType<VerificationRendererProps>> = {};
 
+  // WebSocket upgrade handlers collected from plugins
+  const wsUpgradeHandlers = new Map<string, (req: any, socket: any, head: Buffer) => void>();
+  const wsService: WebSocketService = {
+    onUpgrade(path, handler) {
+      wsUpgradeHandlers.set(path, handler);
+    },
+  };
+
   const services = new Map<string, any>();
   services.set('core.db', db);
   services.set('core.hooks', hooksService);
+  services.set('core.ws', wsService);
 
   const initFns: Array<() => void | Promise<void>> = [];
   for (const plugin of plugins) {
@@ -231,8 +240,21 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
     return c.html(`<!DOCTYPE html>${html}`);
   });
 
-  serve({ fetch: app.fetch, port });
+  const server = serve({ fetch: app.fetch, port });
   logger.info({ port }, 'Gatekeeper listening');
+
+  // Attach WebSocket upgrade dispatcher
+  if (wsUpgradeHandlers.size > 0) {
+    (server as any).on('upgrade', (req: any, socket: any, head: Buffer) => {
+      const url = new URL(req.url!, `http://${req.headers.host}`);
+      const handler = wsUpgradeHandlers.get(url.pathname);
+      if (handler) {
+        handler(req, socket, head);
+      } else {
+        socket.destroy();
+      }
+    });
+  }
 
   // Fire start hooks (after server is accepting connections)
   for (const fn of startHooks) { await fn(); }

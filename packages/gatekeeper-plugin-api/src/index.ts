@@ -49,12 +49,17 @@ export interface RoutesService {
   registerRoutes(handler: (app: Hono) => void): void;
 }
 
+export interface WebSocketService {
+  onUpgrade(path: string, handler: (req: any, socket: any, head: Buffer) => void): void;
+}
+
 /** Core service refs available to all plugins. */
 export const gatekeeperDeps = {
   db: createServiceRef<Knex>({ id: 'core.db' }),
   hooks: createServiceRef<GatekeeperHooks>({ id: 'core.hooks' }),
   tabs: createServiceRef<TabsService>({ id: 'core.tabs' }),
   routes: createServiceRef<RoutesService>({ id: 'core.routes' }),
+  ws: createServiceRef<WebSocketService>({ id: 'core.ws' }),
 };
 
 type ResolveDeps<T extends Record<string, ServiceRef<any>>> = {

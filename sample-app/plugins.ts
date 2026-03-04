@@ -14,6 +14,7 @@ import { createPromptsPlugin } from '@sandclaw/prompts-plugin';
 import { createMemoryPlugin } from '@sandclaw/memory-plugin';
 import { createGoogleMapsPlugin } from '@sandclaw/google-maps-plugin';
 import { createWebSearchPlugin } from '@sandclaw/web-search-plugin';
+import { buildChatPlugin } from '@sandclaw/chat-plugin';
 
 export type SandclawPlugin = GatekeeperPlugin & MuteworkerPlugin & Partial<ConfidantePlugin>;
 
@@ -43,4 +44,5 @@ export const plugins: SandclawPlugin[] = [
   createMemoryPlugin({ memoryDir: path.join(__dirname, 'memory') }),
   createGoogleMapsPlugin(),
   createWebSearchPlugin({ braveApiKey: process.env.BRAVE_API_KEY || '' }),
+  buildChatPlugin(),
 ];
