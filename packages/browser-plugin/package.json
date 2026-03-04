@@ -11,6 +11,7 @@
     "@sandclaw/gatekeeper-plugin-api": "*",
     "@sandclaw/muteworker-plugin-api": "*",
     "@sandclaw/confidante-plugin-api": "*",
+    "@sandclaw/confidante-util": "*",
     "cac": "^7.0.0"
   },
   "peerDependencies": {
