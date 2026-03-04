@@ -1,0 +1,20 @@
+{
+  "name": "pi-agent-browser",
+  "version": "0.1.0",
+  "description": "Browser automation tool for pi — interactive browsing, screenshots with inline vision, and session cleanup via agent-browser CLI.",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "extensions"
+  ],
+  "pi": {
+    "extensions": [
+      "extensions/agent-browser.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@sinclair/typebox": "*"
+  }
+}
