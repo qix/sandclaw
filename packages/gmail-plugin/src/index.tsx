@@ -1,6 +1,6 @@
 import React from 'react';
 import type { MuteworkerPluginContext, RunAgentFn, MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
-import type { PluginEnvironment } from '@sandclaw/gatekeeper-plugin-api';
+import type { PluginEnvironment, VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -89,6 +89,56 @@ function GmailPanel() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Verification renderer
+// ---------------------------------------------------------------------------
+
+function GmailVerificationRenderer({ data }: VerificationRendererProps) {
+  const to = data?.to ?? '';
+  const from = data?.from ?? '';
+  const subject = data?.subject ?? '(no subject)';
+  const text = data?.text ?? '';
+
+  return (
+    <div>
+      <table style={{ fontSize: '0.85rem', marginBottom: '0.75rem', borderCollapse: 'collapse' }}>
+        <tbody>
+          <tr>
+            <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top' }}>From</td>
+            <td style={{ padding: '0.2rem 0', fontFamily: 'monospace' }}>{from}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top' }}>To</td>
+            <td style={{ padding: '0.2rem 0', fontFamily: 'monospace' }}>{to}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top' }}>Subject</td>
+            <td style={{ padding: '0.2rem 0', fontWeight: 600 }}>{subject}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div
+        style={{
+          background: '#fefce8',
+          border: '1px solid #fef08a',
+          borderRadius: '0.75rem',
+          padding: '1rem 1.25rem',
+          fontSize: '0.95rem',
+          lineHeight: 1.6,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+        }}
+      >
+        {text}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Builder
+// ---------------------------------------------------------------------------
+
 export function createGmailPlugin(config: GmailPluginConfig) {
   const pollIntervalMs = config.pollIntervalMs ?? 30000;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -98,6 +148,7 @@ export function createGmailPlugin(config: GmailPluginConfig) {
     id: 'gmail' as const,
     title: 'Gmail',
     component: GmailPanel,
+    verificationRenderer: GmailVerificationRenderer,
 
     registerGateway(_env: PluginEnvironment) {},
     registerMuteworker(_env: MuteworkerEnvironment) {},

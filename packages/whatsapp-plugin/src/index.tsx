@@ -1,6 +1,7 @@
 import React from 'react';
 import type { MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-plugin-api';
 import { gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
+import type { VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
 import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
 import makeWASocket, {
   BufferJSON,
@@ -502,6 +503,46 @@ async function migrations(knex: any): Promise<void> {
 // Gatekeeper plugin export
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Verification renderer
+// ---------------------------------------------------------------------------
+
+function WhatsAppVerificationRenderer({ data }: VerificationRendererProps) {
+  const jid = data?.jid ?? 'Unknown';
+  const text = data?.text ?? '';
+  // Extract the phone number from the JID (strip @s.whatsapp.net)
+  const phone = jid.replace(/@.*$/, '');
+
+  return (
+    <div>
+      <div style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>
+        <strong style={{ color: '#111827' }}>To:</strong>{' '}
+        <span style={{ fontFamily: 'monospace' }}>{phone}</span>
+        <span style={{ color: '#d1d5db', margin: '0 0.5rem' }}>|</span>
+        <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{jid}</span>
+      </div>
+      <div
+        style={{
+          background: '#dcfce7',
+          border: '1px solid #bbf7d0',
+          borderRadius: '0.75rem',
+          padding: '1rem 1.25rem',
+          fontSize: '0.95rem',
+          lineHeight: 1.6,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+        }}
+      >
+        {text}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Builder
+// ---------------------------------------------------------------------------
+
 export interface WhatsappGatekeeperPluginOptions {
   /** JIDs that are trusted operators. Incoming messages from non-operator JIDs are
    *  ignored; sends to operator JIDs are auto-approved without human verification. */
@@ -515,6 +556,7 @@ export function buildWhatsappPlugin(options: WhatsappGatekeeperPluginOptions = {
     id: 'whatsapp' as const,
     title: 'WhatsApp',
     component: WhatsAppPanel,
+    verificationRenderer: WhatsAppVerificationRenderer,
     routes: (app: any, db: any) => registerRoutes(app, db, operatorJids),
     migrations,
 

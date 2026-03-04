@@ -1,6 +1,7 @@
 import React, { createElement } from 'react';
-import type { GatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
+import type { GatekeeperPlugin, VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
 import { VerificationsPage, type VerificationRequest } from './VerificationsPage';
+import type { ComponentType } from 'react';
 
 interface AppProps {
   plugins: GatekeeperPlugin[];
@@ -23,6 +24,14 @@ interface AppProps {
  */
 export function App({ plugins, activePluginId, activePage, verificationRequests }: AppProps) {
   const active = activePage ? null : (plugins.find((p) => p.id === activePluginId) ?? plugins[0]);
+
+  // Build the renderers map from plugins that provide a verificationRenderer.
+  const renderers: Record<string, ComponentType<VerificationRendererProps>> = {};
+  for (const p of plugins) {
+    if (p.verificationRenderer) {
+      renderers[p.id] = p.verificationRenderer;
+    }
+  }
 
   return (
     <html lang="en">
@@ -70,7 +79,7 @@ export function App({ plugins, activePluginId, activePage, verificationRequests 
         </nav>
         <main>
           {activePage === 'verifications' ? (
-            <VerificationsPage requests={verificationRequests ?? []} />
+            <VerificationsPage requests={verificationRequests ?? []} renderers={renderers} />
           ) : active ? (
             createElement(active.component)
           ) : (

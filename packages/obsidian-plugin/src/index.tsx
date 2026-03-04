@@ -1,6 +1,6 @@
 import React from 'react';
 import type { MuteworkerPluginContext, MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
-import type { PluginEnvironment } from '@sandclaw/gatekeeper-plugin-api';
+import type { PluginEnvironment, VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
 import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -74,6 +74,116 @@ function ObsidianPanel() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Verification renderer — diff view
+// ---------------------------------------------------------------------------
+
+function ObsidianVerificationRenderer({ data }: VerificationRendererProps) {
+  const filePath = data?.path ?? 'unknown';
+  const mode = data?.mode ?? 'overwrite';
+  const diff = data?.diff as
+    | { lines?: Array<{ type: string; text: string }>; added?: number; removed?: number; unchanged?: number; truncated?: boolean }
+    | undefined;
+  const prevBytes = data?.previousBytes ?? 0;
+  const nextBytes = data?.nextBytes ?? 0;
+
+  const lineColors: Record<string, React.CSSProperties> = {
+    add: { background: '#dcfce7', color: '#166534' },
+    remove: { background: '#fee2e2', color: '#991b1b' },
+    context: { background: 'transparent', color: '#374151' },
+  };
+
+  const linePrefix: Record<string, string> = {
+    add: '+',
+    remove: '-',
+    context: ' ',
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '1rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+          <strong style={{ color: '#111827' }}>File:</strong>{' '}
+          <span style={{ fontFamily: 'monospace' }}>{filePath}</span>
+        </div>
+        <span
+          style={{
+            padding: '0.15rem 0.5rem',
+            borderRadius: '9999px',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            background: mode === 'append' ? '#fef3c7' : '#e0e7ff',
+            color: mode === 'append' ? '#92400e' : '#3730a3',
+          }}
+        >
+          {mode}
+        </span>
+        <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+          {prevBytes} → {nextBytes} bytes
+        </span>
+      </div>
+
+      {diff && diff.lines && diff.lines.length > 0 ? (
+        <>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', fontSize: '0.8rem' }}>
+            {diff.added != null && diff.added > 0 && (
+              <span style={{ color: '#166534', fontWeight: 600 }}>+{diff.added} added</span>
+            )}
+            {diff.removed != null && diff.removed > 0 && (
+              <span style={{ color: '#991b1b', fontWeight: 600 }}>-{diff.removed} removed</span>
+            )}
+            {diff.unchanged != null && (
+              <span style={{ color: '#9ca3af' }}>{diff.unchanged} unchanged</span>
+            )}
+          </div>
+          <div
+            style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: '0.5rem',
+              overflow: 'hidden',
+              fontFamily: 'monospace',
+              fontSize: '0.82rem',
+              lineHeight: 1.5,
+              maxHeight: '400px',
+              overflowY: 'auto',
+            }}
+          >
+            {diff.lines.map((line: any, i: number) => (
+              <div
+                key={i}
+                style={{
+                  padding: '0 0.75rem',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  ...(lineColors[line.type] ?? lineColors.context),
+                }}
+              >
+                <span style={{ display: 'inline-block', width: '1.2em', userSelect: 'none', opacity: 0.6 }}>
+                  {linePrefix[line.type] ?? ' '}
+                </span>
+                {line.text}
+              </div>
+            ))}
+          </div>
+          {diff.truncated && (
+            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#9ca3af', fontStyle: 'italic' }}>
+              Diff truncated — showing first lines only.
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ color: '#9ca3af', fontStyle: 'italic', fontSize: '0.85rem' }}>
+          No diff available (new file).
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Builder
+// ---------------------------------------------------------------------------
+
 export function createObsidianPlugin(config: ObsidianPluginConfig) {
   const vaultRoot = resolveVaultRoot(config.vaultRoot);
   const vaultIndex = new ObsidianVaultIndex(vaultRoot);
@@ -82,6 +192,7 @@ export function createObsidianPlugin(config: ObsidianPluginConfig) {
     id: 'obsidian' as const,
     title: 'Obsidian',
     component: ObsidianPanel,
+    verificationRenderer: ObsidianVerificationRenderer,
 
     registerGateway(_env: PluginEnvironment) {},
     registerMuteworker(_env: MuteworkerEnvironment) {},

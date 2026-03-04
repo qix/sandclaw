@@ -1,6 +1,7 @@
 import React from 'react';
 import type { MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-plugin-api';
 import { gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
+import type { VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
 import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
 import TelegramBot from 'node-telegram-bot-api';
 
@@ -506,6 +507,42 @@ async function migrations(knex: any): Promise<void> {
 // Gatekeeper plugin export
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Verification renderer
+// ---------------------------------------------------------------------------
+
+function TelegramVerificationRenderer({ data }: VerificationRendererProps) {
+  const chatId = data?.chatId ?? 'Unknown';
+  const text = data?.text ?? '';
+
+  return (
+    <div>
+      <div style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>
+        <strong style={{ color: '#111827' }}>Chat ID:</strong>{' '}
+        <span style={{ fontFamily: 'monospace' }}>{chatId}</span>
+      </div>
+      <div
+        style={{
+          background: '#dbeafe',
+          border: '1px solid #bfdbfe',
+          borderRadius: '0.75rem',
+          padding: '1rem 1.25rem',
+          fontSize: '0.95rem',
+          lineHeight: 1.6,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+        }}
+      >
+        {text}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Builder
+// ---------------------------------------------------------------------------
+
 export interface TelegramGatekeeperPluginOptions {
   /** Chat IDs that are trusted operators. Sends to operator chat IDs are
    *  auto-approved without human verification. */
@@ -519,6 +556,7 @@ export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions = {
     id: 'telegram' as const,
     title: 'Telegram',
     component: TelegramPanel,
+    verificationRenderer: TelegramVerificationRenderer,
     routes: (app: any, db: any) => registerRoutes(app, db, operatorChatIds),
     migrations,
 

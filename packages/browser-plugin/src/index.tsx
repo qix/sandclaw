@@ -1,6 +1,6 @@
 import React from 'react';
 import type { MuteworkerPluginContext, MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
-import type { PluginEnvironment } from '@sandclaw/gatekeeper-plugin-api';
+import type { PluginEnvironment, VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
 import { randomUUID } from 'node:crypto';
 
 // ---------------------------------------------------------------------------
@@ -42,11 +42,79 @@ function BrowserPanel() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Verification renderer
+// ---------------------------------------------------------------------------
+
+function BrowserVerificationRenderer({ data }: VerificationRendererProps) {
+  const prompt = data?.prompt ?? '';
+  const requestId = data?.requestId ?? '';
+  const responseJobType = data?.responseJobType ?? '';
+  const constraints = data?.constraints as { maxSteps?: number; timeoutMs?: number } | undefined;
+  const createdAt = data?.createdAt ?? '';
+
+  return (
+    <div>
+      <div style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>
+        <strong style={{ color: '#111827' }}>Research Prompt</strong>
+      </div>
+      <div
+        style={{
+          background: '#fff7ed',
+          border: '1px solid #fed7aa',
+          borderRadius: '0.75rem',
+          padding: '1rem 1.25rem',
+          fontSize: '0.95rem',
+          lineHeight: 1.6,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          marginBottom: '1rem',
+        }}
+      >
+        {prompt}
+      </div>
+      <table style={{ fontSize: '0.82rem', borderCollapse: 'collapse' }}>
+        <tbody>
+          <tr>
+            <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: '#6b7280', fontWeight: 600 }}>Request ID</td>
+            <td style={{ padding: '0.2rem 0', fontFamily: 'monospace', fontSize: '0.8rem' }}>{requestId}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: '#6b7280', fontWeight: 600 }}>Response Job Type</td>
+            <td style={{ padding: '0.2rem 0', fontFamily: 'monospace', fontSize: '0.8rem' }}>{responseJobType}</td>
+          </tr>
+          {constraints && (constraints.maxSteps != null || constraints.timeoutMs != null) && (
+            <tr>
+              <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: '#6b7280', fontWeight: 600 }}>Constraints</td>
+              <td style={{ padding: '0.2rem 0', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                {constraints.maxSteps != null && <>max {constraints.maxSteps} steps</>}
+                {constraints.maxSteps != null && constraints.timeoutMs != null && <>, </>}
+                {constraints.timeoutMs != null && <>{(constraints.timeoutMs / 1000).toFixed(0)}s timeout</>}
+              </td>
+            </tr>
+          )}
+          {createdAt && (
+            <tr>
+              <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: '#6b7280', fontWeight: 600 }}>Created</td>
+              <td style={{ padding: '0.2rem 0', fontSize: '0.8rem' }}>{createdAt}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Builder
+// ---------------------------------------------------------------------------
+
 export function createBrowserPlugin() {
   return {
     id: 'browser' as const,
     title: 'Browser',
     component: BrowserPanel,
+    verificationRenderer: BrowserVerificationRenderer,
 
     registerGateway(_env: PluginEnvironment) {},
     registerMuteworker(_env: MuteworkerEnvironment) {},

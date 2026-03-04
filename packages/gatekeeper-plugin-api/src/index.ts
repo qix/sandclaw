@@ -54,6 +54,14 @@ export interface PluginEnvironment {
 /**
  * A fully-resolved Gatekeeper plugin.  Returned by `createGatekeeperPlugin`.
  */
+/** Props passed to a plugin's verification renderer component. */
+export interface VerificationRendererProps {
+  /** The action string from the verification request (e.g. "send_message"). */
+  action: string;
+  /** The parsed JSON payload from the verification request's `data` column. */
+  data: any;
+}
+
 export interface GatekeeperPlugin {
   /** Unique identifier, e.g. `"whatsapp"`. */
   readonly id: string;
@@ -65,6 +73,12 @@ export interface GatekeeperPlugin {
    * so it can be instantiated multiple times.
    */
   readonly component: ComponentType;
+  /**
+   * Optional React component that renders a rich detail view for verification
+   * requests belonging to this plugin.  When provided, the Verifications page
+   * will use this component instead of displaying raw JSON.
+   */
+  readonly verificationRenderer?: ComponentType<VerificationRendererProps>;
   /**
    * Registers Hono route handlers for this plugin.  Called once during
    * `startGatekeeper` before the server begins accepting connections.
@@ -87,6 +101,8 @@ export interface CreateGatekeeperPluginOptions {
   title: string;
   /** React component for the plugin UI panel. */
   component: ComponentType;
+  /** Optional component that renders rich verification request detail views. */
+  verificationRenderer?: ComponentType<VerificationRendererProps>;
   /** Optional Hono route registration callback. */
   routes?: (app: Hono, db: Knex) => void;
   /** Optional DB migration callback. */
@@ -110,9 +126,9 @@ export interface CreateGatekeeperPluginOptions {
 export function createGatekeeperPlugin(
   options: CreateGatekeeperPluginOptions,
 ): GatekeeperPlugin {
-  const { id, title, component, routes, migrations, registerGateway } = options;
+  const { id, title, component, verificationRenderer, routes, migrations, registerGateway } = options;
   if (!id) throw new Error('GatekeeperPlugin: id is required');
   if (!title) throw new Error('GatekeeperPlugin: title is required');
   if (!component) throw new Error('GatekeeperPlugin: component is required');
-  return { id, title, component, routes, migrations, registerGateway };
+  return { id, title, component, verificationRenderer, routes, migrations, registerGateway };
 }
