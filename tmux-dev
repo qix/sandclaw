@@ -5,9 +5,9 @@ set -x
 BOT_NAME="${APP_NAME:-sample-app}"
 
 tmux new-session -d -s sandclaw-dev -c "$PWD/$APP_NAME" \; \
-  send-keys "tsx gatekeeper.ts" Enter \; \
+  send-keys "tsx watch gatekeeper.ts" Enter \; \
   split-window -v -c "$PWD/$APP_NAME" \; \
-  send-keys "tsx muteworker.ts" Enter \; \
+  send-keys "tsx watch muteworker.ts" Enter \; \
   set-option -g mouse on
 
 exec tmux attach-session -t sandclaw-dev
