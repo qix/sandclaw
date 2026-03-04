@@ -136,7 +136,8 @@ async function upsertSession(db: any, data: Record<string, any>) {
   }
 }
 
-async function connectWhatsApp(db: any) {
+async function connectWhatsApp(db: any, options: { operatorOnly: boolean, operatorJids: ReadonlySet<string> }) {
+  const {operatorOnly, operatorJids } = options;
   const logger = pino({ level: 'silent' });
   const { version } = await fetchLatestBaileysVersion();
   const { state, saveCreds } = await useDBAuthState(db);
@@ -176,7 +177,7 @@ async function connectWhatsApp(db: any) {
         console.log('[whatsapp] Logged out — auth state cleared. Restart to reconnect.');
       } else {
         console.log(`[whatsapp] Disconnected (status=${statusCode}). Reconnecting in 3s...`);
-        setTimeout(() => connectWhatsApp(db), 3000);
+        setTimeout(() => connectWhatsApp(db, options), 3000);
       }
     }
 
@@ -244,46 +245,50 @@ async function connectWhatsApp(db: any) {
         created_at: Date.now(),
       });
 
-      // Fetch recent history for context
-      const recentMessages = await db('conversation_message')
-        .where({ plugin: 'whatsapp', thread_id: jid })
-        .orderBy('timestamp', 'desc')
-        .limit(10);
+      if (!operatorOnly || (operatorJids.has(jid))) {
+        // Fetch recent history for context
+        const recentMessages = await db('conversation_message')
+          .where({ plugin: 'whatsapp', thread_id: jid })
+          .orderBy('timestamp', 'desc')
+          .limit(10);
 
-      const history = recentMessages
-        .reverse()
-        .filter((m: any) => m.message_id !== messageId)
-        .map((m: any) => ({
-          role: m.direction === 'inbound' ? ('user' as const) : ('assistant' as const),
-          text: m.text || '',
-          timestamp: m.timestamp,
-        }));
+        const history = recentMessages
+          .reverse()
+          .filter((m: any) => m.message_id !== messageId)
+          .map((m: any) => ({
+            role: m.direction === 'inbound' ? ('user' as const) : ('assistant' as const),
+            text: m.text || '',
+            timestamp: m.timestamp,
+          }));
 
-      // Build payload and enqueue
-      const payload: IncomingWhatsappPayload = {
-        messageId,
-        jid,
-        pushName,
-        timestamp,
-        text,
-        isGroup,
-        groupJid: isGroup ? jid : null,
-        replyToText:
-          msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.conversation ?? null,
-        history,
-      };
+        // Build payload and enqueue
+        const payload: IncomingWhatsappPayload = {
+          messageId,
+          jid,
+          pushName,
+          timestamp,
+          text,
+          isGroup,
+          groupJid: isGroup ? jid : null,
+          replyToText:
+            msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.conversation ?? null,
+          history,
+        };
 
-      const now = Date.now();
-      await db('safe_queue').insert({
-        job_type: 'whatsapp:incoming_message',
-        data: JSON.stringify(payload),
-        context: JSON.stringify({ channel: 'whatsapp', jid }),
-        status: 'pending',
-        created_at: now,
-        updated_at: now,
-      });
-
-      console.log(`[whatsapp] Queued incoming message from ${pushName ?? jid}`);
+        const now = Date.now();
+        await db('safe_queue').insert({
+          job_type: 'whatsapp:incoming_message',
+          data: JSON.stringify(payload),
+          context: JSON.stringify({ channel: 'whatsapp', jid }),
+          status: 'pending',
+          created_at: now,
+          updated_at: now,
+        });
+ 
+        console.log(`[whatsapp] Queued incoming message from ${pushName ?? jid}`);
+      } else {
+        console.log(`[whatsapp] Ignored incoming message from ${pushName ?? jid}`);
+      }
     }
   });
 }
@@ -547,10 +552,15 @@ export interface WhatsappGatekeeperPluginOptions {
   /** JIDs that are trusted operators. Incoming messages from non-operator JIDs are
    *  ignored; sends to operator JIDs are auto-approved without human verification. */
   operatorJids?: string[];
+
+  // Only process messages from the operator through the agent, and ignore messages from non-operators entirely.
+  // This is useful if you want to use the plugin just for its send tool and not have incoming messages trigger agent runs.
+  operatorOnly?: boolean;
 }
 
 export function buildWhatsappPlugin(options: WhatsappGatekeeperPluginOptions = {}) {
   const operatorJids: ReadonlySet<string> = new Set(options.operatorJids ?? []);
+  const operatorOnly = options.operatorOnly ?? false;
 
   return {
     id: 'whatsapp' as const,
@@ -565,7 +575,10 @@ export function buildWhatsappPlugin(options: WhatsappGatekeeperPluginOptions = {
         deps: { db: gatekeeperDeps.db, hooks: gatekeeperDeps.hooks },
         async init({ db, hooks }) {
           hooks.register({
-            'gatekeeper:start': () => connectWhatsApp(db),
+            'gatekeeper:start': () => connectWhatsApp(db, {
+              operatorOnly,
+              operatorJids,
+            }),
             'gatekeeper:stop': () => disconnectWhatsApp(),
           });
         },
