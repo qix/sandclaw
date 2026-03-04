@@ -36,9 +36,9 @@ export function ObsidianVerificationRenderer({ data }: VerificationRendererProps
   const nextBytes = data?.nextBytes ?? 0;
 
   const lineColors: Record<string, React.CSSProperties> = {
-    add: { background: '#dcfce7', color: '#166534' },
-    remove: { background: '#fee2e2', color: '#991b1b' },
-    context: { background: 'transparent', color: '#374151' },
+    add: { background: '#1a2e1a', color: '#4ade80' },
+    remove: { background: '#2e1a1a', color: '#f87171' },
+    context: { background: 'transparent', color: '#d1d5db' },
   };
 
   const linePrefix: Record<string, string> = {
@@ -50,8 +50,8 @@ export function ObsidianVerificationRenderer({ data }: VerificationRendererProps
   return (
     <div>
       <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '1rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-          <strong style={{ color: '#111827' }}>File:</strong>{' '}
+        <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
+          <strong style={{ color: '#e5e7eb' }}>File:</strong>{' '}
           <span style={{ fontFamily: 'monospace' }}>{filePath}</span>
         </div>
         <span
@@ -75,25 +75,26 @@ export function ObsidianVerificationRenderer({ data }: VerificationRendererProps
         <>
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', fontSize: '0.8rem' }}>
             {diff.added != null && diff.added > 0 && (
-              <span style={{ color: '#166534', fontWeight: 600 }}>+{diff.added} added</span>
+              <span style={{ color: '#4ade80', fontWeight: 600 }}>+{diff.added} added</span>
             )}
             {diff.removed != null && diff.removed > 0 && (
-              <span style={{ color: '#991b1b', fontWeight: 600 }}>-{diff.removed} removed</span>
+              <span style={{ color: '#f87171', fontWeight: 600 }}>-{diff.removed} removed</span>
             )}
             {diff.unchanged != null && (
-              <span style={{ color: '#9ca3af' }}>{diff.unchanged} unchanged</span>
+              <span style={{ color: '#6b7280' }}>{diff.unchanged} unchanged</span>
             )}
           </div>
           <div
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid #374151',
               borderRadius: '0.5rem',
               overflow: 'hidden',
-              fontFamily: 'monospace',
+              fontFamily: "'SF Mono', 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Menlo, Monaco, Consolas, monospace",
               fontSize: '0.82rem',
               lineHeight: 1.5,
               maxHeight: '400px',
               overflowY: 'auto',
+              background: '#111827',
             }}
           >
             {diff.lines.map((line: any, i: number) => (
