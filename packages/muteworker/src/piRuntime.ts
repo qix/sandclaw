@@ -33,7 +33,75 @@ export async function runWithPi(
   let toolCallCount = 0;
   let steered = false;
 
+  // ── Timeout-based progress check ───────────────────────────────────
+  const STEER_TIMEOUT_MS = 25_000;
+  const ABORT_TIMEOUT_MS = 30_000;
+  let lastProgressTime = Date.now();
+  let timeoutSteered = false;
+  let steerTimer: ReturnType<typeof setTimeout> | undefined;
+  let abortTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function clearTimeoutTimers() {
+    if (steerTimer !== undefined) clearTimeout(steerTimer);
+    if (abortTimer !== undefined) clearTimeout(abortTimer);
+    steerTimer = undefined;
+    abortTimer = undefined;
+  }
+
+  let abortError: Error | undefined;
+
+  function scheduleTimeoutTimers() {
+    clearTimeoutTimers();
+    const now = Date.now();
+    const elapsed = now - lastProgressTime;
+
+    if (!timeoutSteered) {
+      const steerDelay = Math.max(0, STEER_TIMEOUT_MS - elapsed);
+      steerTimer = setTimeout(() => {
+        timeoutSteered = true;
+        toolArgs.logger.warn('agent.timeout_steer', {
+          jobId: toolArgs.job.id,
+          elapsedMs: Date.now() - lastProgressTime,
+        });
+        agent.setTools([]);
+        agent.steer({
+          role: 'user',
+          content:
+            'You have been running for too long without making progress. ' +
+            'Do NOT call any tools. Write a concise message explaining what you ' +
+            'have accomplished so far and where you got stuck.',
+          timestamp: Date.now(),
+        });
+        // Schedule the hard abort
+        scheduleTimeoutTimers();
+      }, steerDelay);
+    }
+
+    const abortDelay = Math.max(0, ABORT_TIMEOUT_MS - elapsed);
+    abortTimer = setTimeout(() => {
+      toolArgs.logger.error('agent.timeout_abort', {
+        jobId: toolArgs.job.id,
+        elapsedMs: Date.now() - lastProgressTime,
+      });
+      abortError = new Error(
+        `Agent timed out: no progress for ${ABORT_TIMEOUT_MS / 1000}s`,
+      );
+      agent.abort();
+    }, abortDelay);
+  }
+
   const unsubscribe = agent.subscribe((event) => {
+    if (
+      event.type === 'tool_execution_end' ||
+      event.type === 'turn_end' ||
+      event.type === 'message_end'
+    ) {
+      lastProgressTime = Date.now();
+      if (!timeoutSteered) {
+        scheduleTimeoutTimers();
+      }
+    }
+
     if (event.type !== 'tool_execution_end') return;
     toolCallCount++;
 
@@ -58,11 +126,16 @@ export async function runWithPi(
     }
   });
 
+  scheduleTimeoutTimers();
+
   try {
     await agent.prompt(prompt);
   } finally {
+    clearTimeoutTimers();
     unsubscribe();
   }
+
+  if (abortError) throw abortError;
 
   const reply = extractAssistantText(agent.state.messages).trim() || null;
 
