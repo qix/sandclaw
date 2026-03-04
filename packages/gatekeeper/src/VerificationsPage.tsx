@@ -121,9 +121,6 @@ export function VerificationsPage({ requests, renderers }: VerificationsPageProp
       <div style={styles.container}>
         <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Verifications</h2>
         <p style={{ color: '#6b7280' }}>No pending verification requests.</p>
-        <script
-          dangerouslySetInnerHTML={{ __html: 'setTimeout(function(){location.reload()},5000)' }}
-        />
       </div>
     );
   }
@@ -176,9 +173,6 @@ export function VerificationsPage({ requests, renderers }: VerificationsPageProp
           </div>
         );
       })}
-      <script
-        dangerouslySetInnerHTML={{ __html: 'setTimeout(function(){location.reload()},5000)' }}
-      />
     </div>
   );
 }

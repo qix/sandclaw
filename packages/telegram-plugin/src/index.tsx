@@ -315,11 +315,6 @@ function TelegramPanel() {
       break;
   }
 
-  const needsRefresh =
-    tgState.connectionStatus !== 'connected' &&
-    tgState.connectionStatus !== 'disconnected' &&
-    tgState.connectionStatus !== 'waiting_for_token';
-
   return (
     <div style={{ padding: '1.5rem' }}>
       <h2 style={{ marginTop: 0 }}>Telegram</h2>
@@ -331,11 +326,6 @@ function TelegramPanel() {
         <h3>Connection</h3>
         {statusBlock}
       </section>
-      {needsRefresh && (
-        <script
-          dangerouslySetInnerHTML={{ __html: 'setTimeout(function(){location.reload()},3000)' }}
-        />
-      )}
     </div>
   );
 }

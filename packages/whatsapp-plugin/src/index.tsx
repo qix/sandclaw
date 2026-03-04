@@ -356,7 +356,6 @@ function WhatsAppPanel() {
       break;
   }
 
-  const needsRefresh = waState.connectionStatus !== 'connected';
 
   return (
     <div style={{ padding: '1.5rem' }}>
@@ -370,11 +369,6 @@ function WhatsAppPanel() {
         <h3>Connection</h3>
         {statusBlock}
       </section>
-      {needsRefresh && (
-        <script
-          dangerouslySetInnerHTML={{ __html: 'setTimeout(function(){location.reload()},3000)' }}
-        />
-      )}
     </div>
   );
 }
