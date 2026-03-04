@@ -18,6 +18,7 @@ export const plugins: SandclawPlugin[] = [
     ],
   }),
   buildTelegramPlugin({
+    botToken: process.env.TELEGRAM_BOT_TOKEN,
     operatorChatIds: [
       // Add trusted operator chat IDs here, e.g. '123456789'
     ],

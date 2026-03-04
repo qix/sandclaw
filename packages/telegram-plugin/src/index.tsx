@@ -547,6 +547,8 @@ export interface TelegramGatekeeperPluginOptions {
   /** Chat IDs that are trusted operators. Sends to operator chat IDs are
    *  auto-approved without human verification. */
   operatorChatIds?: string[];
+  /** Bot token to connect with on startup, bypassing the UI setup flow. */
+  botToken?: string;
 }
 
 export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions = {}) {
@@ -571,6 +573,9 @@ export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions = {
                 if (session?.bot_token) {
                   console.log('[telegram] Found existing session, auto-reconnecting...');
                   await connectTelegram(db, session.bot_token);
+                } else if (options.botToken) {
+                  console.log('[telegram] Connecting with configured bot token...');
+                  await connectTelegram(db, options.botToken);
                 }
               } catch (err: any) {
                 console.error('[telegram] Auto-reconnect failed:', err.message);
