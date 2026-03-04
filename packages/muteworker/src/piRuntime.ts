@@ -3,6 +3,8 @@ import { getModel } from '@mariozechner/pi-ai';
 import type { Artifact, ToolArgs } from './tools/index';
 import { getTools } from './tools/index';
 
+const DEFAULT_MAX_TOOL_CALLS = 32;
+
 export interface PiExecutionResult {
   reply: string | null;
   artifacts: Artifact[];
@@ -26,7 +28,42 @@ export async function runWithPi(
     initialState: { systemPrompt, model, tools },
   });
 
-  await agent.prompt(prompt);
+  // ── Main-loop progress check ──────────────────────────────────────
+  const maxToolCalls = config.maxToolCalls ?? DEFAULT_MAX_TOOL_CALLS;
+  let toolCallCount = 0;
+  let steered = false;
+
+  const unsubscribe = agent.subscribe((event) => {
+    if (event.type !== 'tool_execution_end') return;
+    toolCallCount++;
+
+    if (toolCallCount >= maxToolCalls && !steered) {
+      steered = true;
+      toolArgs.logger.warn('agent.progress_check', {
+        jobId: toolArgs.job.id,
+        toolCallCount,
+        maxToolCalls,
+      });
+      agent.steer({
+        role: 'user',
+        content:
+          `You have made ${toolCallCount} tool calls so far. ` +
+          'Step back and evaluate: are you making visible progress toward completing the task? ' +
+          'If you are NOT making progress — for example you are stuck in a loop, retrying the ' +
+          'same action, or unable to find what you need — then STOP calling tools immediately. ' +
+          'Instead, write a concise message explaining what you tried, why it did not work, and ' +
+          'what the user should do next.',
+        timestamp: Date.now(),
+      });
+    }
+  });
+
+  try {
+    await agent.prompt(prompt);
+  } finally {
+    unsubscribe();
+  }
+
   const reply = extractAssistantText(agent.state.messages).trim() || null;
 
   if (!reply && artifacts.length === 0) return null;
@@ -34,7 +71,7 @@ export async function runWithPi(
   return {
     reply,
     artifacts,
-    steps: artifacts.length > 0 ? artifacts.length + 1 : 1,
+    steps: toolCallCount,
   };
 }
 

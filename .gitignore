@@ -11,6 +11,7 @@ node_modules/
 dist/
 
 # Previous iteration and local testing
+example-src/
 prev-source/
 daveus-app/
 logs/

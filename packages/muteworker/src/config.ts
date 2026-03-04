@@ -13,10 +13,18 @@ export interface MuteworkerConfig {
   jobTimeoutMs: number;
   /** Max Pi agent steps per job. */
   maxSteps: number;
+  /**
+   * After this many tool calls, steer the agent to evaluate whether it is
+   * making visible progress.  If it isn't, it is told to stop using tools
+   * and write a final message explaining what went wrong.  Default: 32.
+   */
+  maxToolCalls?: number;
   /** Human-facing URL included in verification prompts. */
   verificationUiUrl: string;
   /** Minimum log level to emit. */
   logLevel: 'debug' | 'info' | 'warn' | 'error';
+  /** Tool-loop detection settings. */
+  loopDetection?: import('./tool-loop-detection').LoopDetectionConfig;
 }
 
 export const DEFAULT_CONFIG: MuteworkerConfig = {
