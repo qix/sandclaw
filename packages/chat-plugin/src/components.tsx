@@ -68,7 +68,7 @@ export function ChatPanel() {
                 borderRadius: '0.375rem',
                 border: 'none',
                 background: colors.accent,
-                color: '#fff',
+                color: 'oklch(1 0 0)',
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 cursor: 'pointer',
@@ -98,7 +98,7 @@ export function ChatPanel() {
 
   function linkify(escaped) {
     return escaped.replace(/(?:https?:\\/\\/)[^\\s<&]+/g, function(url) {
-      return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" style="color:#3b82f6;text-decoration:underline;">' + url + '</a>';
+      return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" style="color:${colors.accentHover};text-decoration:underline;">' + url + '</a>';
     });
   }
 
@@ -107,8 +107,8 @@ export function ChatPanel() {
     var isInbound = msg.direction === 'inbound';
     div.style.cssText = 'padding:0.5rem 0.75rem;border-radius:0.5rem;max-width:80%;word-wrap:break-word;white-space:pre-wrap;font-size:0.875rem;' +
       (isInbound
-        ? 'align-self:flex-end;background:#3b82f622;border:1px solid #3b82f644;color:inherit;'
-        : 'align-self:flex-start;background:#16a34a22;border:1px solid #16a34a44;color:inherit;');
+        ? 'align-self:flex-end;background:${colors.accentTint};border:1px solid ${colors.accentTintBorder};color:inherit;'
+        : 'align-self:flex-start;background:${colors.successTint};border:1px solid ${colors.successTintBorder};color:inherit;');
     var label = isInbound ? 'You' : 'Agent';
     var time = msg.timestamp ? new Date(msg.timestamp * 1000).toLocaleTimeString() : '';
     div.innerHTML = '<div style="font-size:0.75rem;opacity:0.6;margin-bottom:0.25rem;">' + escapeHtml(label) + (time ? ' · ' + escapeHtml(time) : '') + '</div>' + linkify(escapeHtml(msg.text));
@@ -138,7 +138,7 @@ export function ChatPanel() {
             });
           } else {
             var p = document.createElement('p');
-            p.style.cssText = 'color:#888;font-size:0.875rem;text-align:center;margin:auto 0;';
+            p.style.cssText = 'color:${colors.muted};font-size:0.875rem;text-align:center;margin:auto 0;';
             p.textContent = 'No messages yet. Start a conversation!';
             messagesEl.appendChild(p);
           }
@@ -211,7 +211,7 @@ export function ChatVerificationRenderer({ data }: VerificationRendererProps) {
       </div>
       <div
         className="sc-message-bubble"
-        style={{ background: '#16a34a22', border: '1px solid #16a34a44', color: colors.text }}
+        style={{ background: colors.successTint, border: `1px solid ${colors.successTintBorder}`, color: colors.text }}
       >
         {text}
       </div>

@@ -93,7 +93,7 @@ export function WhatsAppVerificationRenderer({ data }: VerificationRendererProps
       </div>
       <div
         className="sc-message-bubble"
-        style={{ background: '#16a34a22', border: `1px solid #16a34a44`, color: colors.text }}
+        style={{ background: colors.successTint, border: `1px solid ${colors.successTintBorder}`, color: colors.text }}
       >
         {text}
       </div>

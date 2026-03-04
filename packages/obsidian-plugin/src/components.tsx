@@ -1,11 +1,12 @@
 import React from 'react';
 import type { VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
+import { colors } from '@sandclaw/ui';
 
 export function ObsidianPanel() {
   return (
     <div style={{ padding: '1.5rem' }}>
       <h2 style={{ marginTop: 0 }}>Obsidian</h2>
-      <p style={{ color: '#6b7280' }}>
+      <p style={{ color: colors.muted }}>
         Provides read and write access to an Obsidian vault on the host
         filesystem. Reading is safe (no verification needed). Writing requires
         human approval with a line-by-line diff preview.
@@ -36,9 +37,9 @@ export function ObsidianVerificationRenderer({ data }: VerificationRendererProps
   const nextBytes = data?.nextBytes ?? 0;
 
   const lineColors: Record<string, React.CSSProperties> = {
-    add: { background: '#1a2e1a', color: '#4ade80' },
-    remove: { background: '#2e1a1a', color: '#f87171' },
-    context: { background: 'transparent', color: '#d1d5db' },
+    add: { background: colors.diffAddBg, color: colors.diffAddFg },
+    remove: { background: colors.diffRemoveBg, color: colors.diffRemoveFg },
+    context: { background: 'transparent', color: colors.diffContextFg },
   };
 
   const linePrefix: Record<string, string> = {
@@ -50,8 +51,8 @@ export function ObsidianVerificationRenderer({ data }: VerificationRendererProps
   return (
     <div>
       <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '1rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
-          <strong style={{ color: '#e5e7eb' }}>File:</strong>{' '}
+        <div style={{ fontSize: '0.85rem', color: colors.muted }}>
+          <strong style={{ color: colors.text }}>File:</strong>{' '}
           <span style={{ fontFamily: 'monospace' }}>{filePath}</span>
         </div>
         <span
@@ -60,13 +61,13 @@ export function ObsidianVerificationRenderer({ data }: VerificationRendererProps
             borderRadius: '9999px',
             fontSize: '0.75rem',
             fontWeight: 600,
-            background: mode === 'append' ? '#fef3c7' : '#e0e7ff',
-            color: mode === 'append' ? '#92400e' : '#3730a3',
+            background: mode === 'append' ? colors.badgeAmberBg : colors.badgeIndigoBg,
+            color: mode === 'append' ? colors.badgeAmberFg : colors.badgeIndigoFg,
           }}
         >
           {mode}
         </span>
-        <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+        <span style={{ fontSize: '0.8rem', color: colors.muted }}>
           {prevBytes} → {nextBytes} bytes
         </span>
       </div>
@@ -75,18 +76,18 @@ export function ObsidianVerificationRenderer({ data }: VerificationRendererProps
         <>
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', fontSize: '0.8rem' }}>
             {diff.added != null && diff.added > 0 && (
-              <span style={{ color: '#4ade80', fontWeight: 600 }}>+{diff.added} added</span>
+              <span style={{ color: colors.diffAddFg, fontWeight: 600 }}>+{diff.added} added</span>
             )}
             {diff.removed != null && diff.removed > 0 && (
-              <span style={{ color: '#f87171', fontWeight: 600 }}>-{diff.removed} removed</span>
+              <span style={{ color: colors.diffRemoveFg, fontWeight: 600 }}>-{diff.removed} removed</span>
             )}
             {diff.unchanged != null && (
-              <span style={{ color: '#6b7280' }}>{diff.unchanged} unchanged</span>
+              <span style={{ color: colors.muted }}>{diff.unchanged} unchanged</span>
             )}
           </div>
           <div
             style={{
-              border: '1px solid #374151',
+              border: `1px solid ${colors.diffBorder}`,
               borderRadius: '0.5rem',
               overflow: 'hidden',
               fontFamily: "'SF Mono', 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Menlo, Monaco, Consolas, monospace",
@@ -94,7 +95,7 @@ export function ObsidianVerificationRenderer({ data }: VerificationRendererProps
               lineHeight: 1.5,
               maxHeight: '400px',
               overflowY: 'auto',
-              background: '#111827',
+              background: colors.diffBg,
             }}
           >
             {diff.lines.map((line: any, i: number) => (
@@ -115,13 +116,13 @@ export function ObsidianVerificationRenderer({ data }: VerificationRendererProps
             ))}
           </div>
           {diff.truncated && (
-            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#9ca3af', fontStyle: 'italic' }}>
+            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: colors.muted, fontStyle: 'italic' }}>
               Diff truncated — showing first lines only.
             </div>
           )}
         </>
       ) : (
-        <div style={{ color: '#9ca3af', fontStyle: 'italic', fontSize: '0.85rem' }}>
+        <div style={{ color: colors.muted, fontStyle: 'italic', fontSize: '0.85rem' }}>
           No diff available (new file).
         </div>
       )}

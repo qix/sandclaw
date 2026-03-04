@@ -1,11 +1,12 @@
 import React from 'react';
 import type { VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
+import { colors } from '@sandclaw/ui';
 
 export function GmailPanel() {
   return (
     <div style={{ padding: '1.5rem' }}>
       <h2 style={{ marginTop: 0 }}>Gmail</h2>
-      <p style={{ color: '#6b7280' }}>
+      <p style={{ color: colors.muted }}>
         Connects to Gmail via the Google Gmail API with OAuth2. Incoming emails
         are queued for the muteworker; outbound emails require human approval
         before dispatch.
@@ -33,32 +34,33 @@ export function GmailVerificationRenderer({ data }: VerificationRendererProps) {
 
   return (
     <div>
-      <table style={{ fontSize: '0.85rem', marginBottom: '0.75rem', borderCollapse: 'collapse' }}>
+      <table style={{ fontSize: '0.85rem', marginBottom: '0.75rem', borderCollapse: 'collapse', color: colors.text }}>
         <tbody>
           <tr>
-            <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top' }}>From</td>
+            <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: colors.muted, fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top' }}>From</td>
             <td style={{ padding: '0.2rem 0', fontFamily: 'monospace' }}>{from}</td>
           </tr>
           <tr>
-            <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top' }}>To</td>
+            <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: colors.muted, fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top' }}>To</td>
             <td style={{ padding: '0.2rem 0', fontFamily: 'monospace' }}>{to}</td>
           </tr>
           <tr>
-            <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top' }}>Subject</td>
+            <td style={{ padding: '0.2rem 0.75rem 0.2rem 0', color: colors.muted, fontWeight: 600, whiteSpace: 'nowrap', verticalAlign: 'top' }}>Subject</td>
             <td style={{ padding: '0.2rem 0', fontWeight: 600 }}>{subject}</td>
           </tr>
         </tbody>
       </table>
       <div
         style={{
-          background: '#fefce8',
-          border: '1px solid #fef08a',
+          background: colors.warningTint,
+          border: `1px solid ${colors.warningTintBorder}`,
           borderRadius: '0.75rem',
           padding: '1rem 1.25rem',
           fontSize: '0.95rem',
           lineHeight: 1.6,
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
+          color: colors.text,
         }}
       >
         {text}

@@ -116,7 +116,7 @@ export function TelegramVerificationRenderer({ data }: VerificationRendererProps
       </div>
       <div
         className="sc-message-bubble"
-        style={{ background: '#2563eb22', border: '1px solid #2563eb44', color: colors.text }}
+        style={{ background: colors.accentTint, border: `1px solid ${colors.accentTintBorder}`, color: colors.text }}
       >
         {text}
       </div>

@@ -1,17 +1,40 @@
-/** Dark theme color tokens. */
+/** Dark theme color tokens (OKLCH). */
 export const colors = {
-  bg: '#0f1117',
-  surface: '#1a1d27',
-  surfaceHover: '#22253a',
-  border: '#2e3348',
-  text: '#e4e6f0',
-  muted: '#8b8fa3',
-  accent: '#6366f1',
-  accentHover: '#818cf8',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  dangerHover: '#f87171',
+  bg: 'oklch(0.13 0.01 270)',
+  surface: 'oklch(0.18 0.015 270)',
+  surfaceHover: 'oklch(0.22 0.025 270)',
+  border: 'oklch(0.28 0.03 265)',
+  text: 'oklch(0.92 0.015 275)',
+  muted: 'oklch(0.65 0.025 270)',
+  accent: 'oklch(0.54 0.24 265)',
+  accentHover: 'oklch(0.65 0.19 265)',
+  success: 'oklch(0.72 0.19 152)',
+  warning: 'oklch(0.78 0.17 70)',
+  danger: 'oklch(0.63 0.23 27)',
+  dangerHover: 'oklch(0.70 0.18 22)',
+
+  /* Tinted backgrounds for message bubbles */
+  accentTint: 'oklch(0.54 0.24 265 / 0.13)',
+  accentTintBorder: 'oklch(0.54 0.24 265 / 0.27)',
+  successTint: 'oklch(0.60 0.17 152 / 0.13)',
+  successTintBorder: 'oklch(0.60 0.17 152 / 0.27)',
+  warningTint: 'oklch(0.78 0.17 70 / 0.15)',
+  warningTintBorder: 'oklch(0.78 0.17 70 / 0.30)',
+
+  /* Diff */
+  diffAddBg: 'oklch(0.22 0.05 152)',
+  diffAddFg: 'oklch(0.78 0.18 152)',
+  diffRemoveBg: 'oklch(0.22 0.05 27)',
+  diffRemoveFg: 'oklch(0.70 0.18 22)',
+  diffContextFg: 'oklch(0.85 0.01 270)',
+  diffBorder: 'oklch(0.32 0.02 260)',
+  diffBg: 'oklch(0.15 0.015 270)',
+
+  /* Mode badges */
+  badgeAmberBg: 'oklch(0.30 0.08 70)',
+  badgeAmberFg: 'oklch(0.78 0.14 70)',
+  badgeIndigoBg: 'oklch(0.30 0.08 265)',
+  badgeIndigoFg: 'oklch(0.70 0.15 265)',
 } as const;
 
 /**
@@ -134,11 +157,11 @@ main.sc-main {
   font-family: inherit;
   transition: background 0.15s;
 }
-.sc-btn-primary { background: ${colors.accent}; color: #fff; }
+.sc-btn-primary { background: ${colors.accent}; color: oklch(1 0 0); }
 .sc-btn-primary:hover { background: ${colors.accentHover}; }
-.sc-btn-success { background: ${colors.success}; color: #fff; }
-.sc-btn-success:hover { background: #16a34a; }
-.sc-btn-danger { background: ${colors.danger}; color: #fff; }
+.sc-btn-success { background: ${colors.success}; color: oklch(1 0 0); }
+.sc-btn-success:hover { background: oklch(0.60 0.17 152); }
+.sc-btn-danger { background: ${colors.danger}; color: oklch(1 0 0); }
 .sc-btn-danger:hover { background: ${colors.dangerHover}; }
 
 /* --- Status dot --- */
@@ -302,7 +325,7 @@ main.sc-main {
 }
 .sc-dropdown-trigger:focus-visible {
   border-color: ${colors.accent};
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 0 2px oklch(0.54 0.24 265 / 0.25);
 }
 .sc-dropdown-chevron {
   flex-shrink: 0;
@@ -324,7 +347,7 @@ main.sc-main {
   border: 1px solid ${colors.border};
   border-radius: 0.5rem;
   padding: 0.25rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 6px -1px oklch(0 0 0 / 0.3), 0 2px 4px -2px oklch(0 0 0 / 0.2);
   animation: sc-dropdown-in 0.15s ease-out;
 }
 .sc-dropdown.open .sc-dropdown-content {
@@ -403,7 +426,7 @@ main.sc-main {
 }
 .sc-pagination-link.active {
   background: ${colors.accent};
-  color: #fff;
+  color: oklch(1 0 0);
   pointer-events: none;
 }
 .sc-pagination-gap {

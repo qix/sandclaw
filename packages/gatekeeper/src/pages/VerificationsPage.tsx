@@ -26,11 +26,11 @@ interface VerificationsPageProps {
 }
 
 const pluginColors: Record<string, { bg: string; fg: string }> = {
-  whatsapp: { bg: '#16a34a', fg: '#fff' },
-  telegram: { bg: '#2563eb', fg: '#fff' },
-  obsidian: { bg: '#7c3aed', fg: '#fff' },
-  gmail: { bg: '#d97706', fg: '#fff' },
-  browser: { bg: '#ea580c', fg: '#fff' },
+  whatsapp: { bg: 'oklch(0.60 0.17 152)', fg: 'oklch(1 0 0)' },
+  telegram: { bg: 'oklch(0.55 0.21 260)', fg: 'oklch(1 0 0)' },
+  obsidian: { bg: 'oklch(0.47 0.23 290)', fg: 'oklch(1 0 0)' },
+  gmail: { bg: 'oklch(0.68 0.17 60)', fg: 'oklch(1 0 0)' },
+  browser: { bg: 'oklch(0.60 0.20 40)', fg: 'oklch(1 0 0)' },
 };
 
 function DefaultRenderer({ data }: VerificationRendererProps) {
@@ -52,7 +52,7 @@ function VerificationCard({
   }
 
   const Renderer = renderers[r.plugin] ?? DefaultRenderer;
-  const badgeColors = pluginColors[r.plugin] ?? { bg: colors.accent, fg: '#fff' };
+  const badgeColors = pluginColors[r.plugin] ?? { bg: colors.accent, fg: 'oklch(1 0 0)' };
   const createdDate = new Date(r.createdAt).toLocaleString();
   const isResolved = r.status === 'approved' || r.status === 'rejected';
   const isRejected = r.status === 'rejected';
