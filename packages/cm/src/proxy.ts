@@ -1,5 +1,11 @@
 import http from 'node:http';
 import https from 'node:https';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+
+interface ProxyOptions {
+  saveLogs?: boolean;
+}
 
 interface ProxyHandle {
   port: number;
@@ -77,9 +83,15 @@ function extractUserPrompts(body: unknown): string[] {
   return texts;
 }
 
-export function startProxy(): Promise<ProxyHandle> {
+export function startProxy(options: ProxyOptions = {}): Promise<ProxyHandle> {
   const prompts: string[] = [];
   const seenPrompts = new Set<string>();
+  let logDir: string | null = null;
+
+  if (options.saveLogs) {
+    logDir = 'cm-logs';
+    mkdirSync(logDir, { recursive: true });
+  }
 
   const HOP_BY_HOP = new Set([
     'connection',
@@ -108,6 +120,12 @@ export function startProxy(): Promise<ProxyHandle> {
       if (clientReq.method === 'POST' && clientReq.url?.startsWith('/v1/messages')) {
         try {
           const parsed = JSON.parse(bodyBuf.toString('utf8'));
+
+          if (logDir) {
+            const logFile = `${logDir}/${randomUUID()}.json`;
+            writeFileSync(logFile, JSON.stringify(parsed, null, 2));
+          }
+
           const texts = extractUserPrompts(parsed);
           for (const text of texts) {
             if (text.trim() && !seenPrompts.has(text)) {

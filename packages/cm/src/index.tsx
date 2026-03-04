@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, Box, Text, useInput, useApp } from 'ink';
 import chalk from 'chalk';
+import cac from 'cac';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { startProxy } from './proxy.js';
 
@@ -87,9 +88,19 @@ function CommitPrompt({ onCommit, onSkip }: CommitPromptProps) {
 // --- Main ---
 
 async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  const allowDirty = args.includes('--allow-dirty');
-  const promptText = args.filter((a) => a !== '--allow-dirty').join(' ').trim() || null;
+  const cli = cac('cm');
+  cli
+    .option('--allow-dirty', 'Skip git clean check')
+    .option('--save-logs', 'Save /v1/messages request bodies to cm-logs/*.json');
+  cli.help();
+  const parsed = cli.parse();
+  const allowDirty = parsed.options['allowDirty'] as boolean | undefined;
+  const saveLogs = parsed.options['saveLogs'] as boolean | undefined;
+  const promptText = parsed.args.length > 0 ? parsed.args.join(' ') : null;
+
+  if (parsed.options['help']) {
+    process.exit(0);
+  }
 
   if (!allowDirty) {
     checkGitClean();
@@ -101,7 +112,7 @@ async function main(): Promise<void> {
   }).trim();
 
   // Start the proxy to intercept API calls and collect conversation prompts
-  const proxy = await startProxy();
+  const proxy = await startProxy({ saveLogs });
   console.log('\n' + chalk.cyan('◆') + ' Proxy started on port ' + proxy.port);
 
   const baseUrl = `http://127.0.0.1:${proxy.port}`;

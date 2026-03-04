@@ -13,3 +13,4 @@ dist/
 # Previous iteration and local testing
 prev-source/
 daveus-app/
+logs/
