@@ -11,6 +11,7 @@
   "dependencies": {
     "@hono/node-server": "*",
     "@sandclaw/gatekeeper-plugin-api": "*",
+    "@sandclaw/ui": "*",
     "better-sqlite3": "^11.0.0",
     "hono": "*",
     "knex": "^3.0.0",

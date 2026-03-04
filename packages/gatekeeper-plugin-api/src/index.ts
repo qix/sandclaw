@@ -51,9 +51,12 @@ export interface PluginEnvironment {
 // Plugin interfaces
 // ---------------------------------------------------------------------------
 
-/**
- * A fully-resolved Gatekeeper plugin.  Returned by `createGatekeeperPlugin`.
- */
+/** Metadata returned by a plugin to influence how its sidebar tab is rendered. */
+export interface TabMeta {
+  /** Colored dot shown next to the plugin name in the sidebar. */
+  statusColor?: 'green' | 'yellow' | 'red' | 'gray';
+}
+
 /** Props passed to a plugin's verification renderer component. */
 export interface VerificationRendererProps {
   /** The action string from the verification request (e.g. "send_message"). */
@@ -90,6 +93,8 @@ export interface GatekeeperPlugin {
    * `startGatekeeper` before routes are registered.
    */
   readonly migrations?: (knex: Knex) => Promise<void>;
+  /** Returns metadata for rendering the sidebar tab (e.g. a status dot). */
+  readonly getTabMeta?: () => TabMeta;
   /** Backstage-style registration hook for declaring deps and gatekeeper lifecycle hooks. */
   readonly registerGateway: (env: PluginEnvironment) => void;
 }
@@ -107,6 +112,8 @@ export interface CreateGatekeeperPluginOptions {
   routes?: (app: Hono, db: Knex) => void;
   /** Optional DB migration callback. */
   migrations?: (knex: Knex) => Promise<void>;
+  /** Optional: returns metadata for the sidebar tab (e.g. status dot color). */
+  getTabMeta?: () => TabMeta;
   /** Backstage-style registration hook for declaring deps and gatekeeper lifecycle hooks. */
   registerGateway: (env: PluginEnvironment) => void;
 }
@@ -126,9 +133,9 @@ export interface CreateGatekeeperPluginOptions {
 export function createGatekeeperPlugin(
   options: CreateGatekeeperPluginOptions,
 ): GatekeeperPlugin {
-  const { id, title, component, verificationRenderer, routes, migrations, registerGateway } = options;
+  const { id, title, component, verificationRenderer, routes, migrations, getTabMeta, registerGateway } = options;
   if (!id) throw new Error('GatekeeperPlugin: id is required');
   if (!title) throw new Error('GatekeeperPlugin: title is required');
   if (!component) throw new Error('GatekeeperPlugin: component is required');
-  return { id, title, component, verificationRenderer, routes, migrations, registerGateway };
+  return { id, title, component, verificationRenderer, routes, migrations, getTabMeta, registerGateway };
 }

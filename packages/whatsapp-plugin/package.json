@@ -10,6 +10,7 @@
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "*",
     "@sandclaw/muteworker-plugin-api": "*",
+    "@sandclaw/ui": "*",
     "@whiskeysockets/baileys": "^6.7.16",
     "qrcode": "^1.5.4",
     "pino": "^9.6.0"

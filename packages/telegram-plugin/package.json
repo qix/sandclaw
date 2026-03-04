@@ -10,6 +10,7 @@
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "*",
     "@sandclaw/muteworker-plugin-api": "*",
+    "@sandclaw/ui": "*",
     "node-telegram-bot-api": "^0.66.0"
   },
   "peerDependencies": {

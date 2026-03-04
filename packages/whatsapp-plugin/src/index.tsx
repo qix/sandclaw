@@ -3,6 +3,8 @@ import type { MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-p
 import { gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
 import type { VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
 import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
+import { Card, CardHeader, CardBody, Button, Badge, PageHeader, StatusDot, ConversationList, colors } from '@sandclaw/ui';
+import type { ConversationSummary } from '@sandclaw/ui';
 import makeWASocket, {
   BufferJSON,
   DisconnectReason,
@@ -25,6 +27,7 @@ interface WhatsAppState {
   connectionStatus: ConnectionStatus;
   qrDataUrl: string | null;
   phoneNumber: string | null;
+  recentConversations: ConversationSummary[];
 }
 
 const STATE_KEY = '__sandclaw_whatsapp_state__';
@@ -36,6 +39,7 @@ if (!_g[STATE_KEY]) {
     connectionStatus: 'disconnected' as ConnectionStatus,
     qrDataUrl: null,
     phoneNumber: null,
+    recentConversations: [],
   };
 }
 
@@ -134,6 +138,31 @@ async function upsertSession(db: any, data: Record<string, any>) {
   } else {
     await db('whatsapp_sessions').insert(data);
   }
+}
+
+async function loadRecentConversations(db: any): Promise<void> {
+  const rows = await db('conversation_message')
+    .where('plugin', 'whatsapp')
+    .whereNotNull('thread_id')
+    .select('thread_id', 'from', 'text', 'timestamp', 'direction')
+    .orderBy('timestamp', 'desc')
+    .limit(200);
+
+  const seen = new Map<string, ConversationSummary>();
+  for (const row of rows) {
+    if (seen.has(row.thread_id)) continue;
+    const displayName = row.direction === 'inbound'
+      ? (row.from?.replace(/@.*$/, '') || row.thread_id)
+      : (row.thread_id.replace(/@.*$/, ''));
+    seen.set(row.thread_id, {
+      threadId: row.thread_id,
+      displayName,
+      lastMessage: row.text || '',
+      lastTimestamp: row.timestamp,
+      direction: row.direction,
+    });
+  }
+  waState.recentConversations = Array.from(seen.values());
 }
 
 async function connectWhatsApp(db: any, options: { operatorOnly: boolean, operatorJids: ReadonlySet<string> }) {
@@ -289,6 +318,9 @@ async function connectWhatsApp(db: any, options: { operatorOnly: boolean, operat
       } else {
         console.log(`[whatsapp] Ignored incoming message from ${pushName ?? jid}`);
       }
+
+      // Refresh conversation list after storing the message
+      loadRecentConversations(db).catch(() => {});
     }
   });
 }
@@ -313,25 +345,25 @@ function WhatsAppPanel() {
   switch (waState.connectionStatus) {
     case 'disconnected':
       statusBlock = (
-        <p style={{ color: '#ef4444' }}>
-          <strong>Status:</strong> Disconnected
+        <p style={{ color: colors.danger }}>
+          <StatusDot color="red" /> <strong>Status:</strong> Disconnected
         </p>
       );
       break;
     case 'qr_pending':
       statusBlock = (
         <div>
-          <p style={{ color: '#f59e0b' }}>
-            <strong>Status:</strong> Waiting for QR scan
+          <p style={{ color: colors.warning }}>
+            <StatusDot color="yellow" /> <strong>Status:</strong> Waiting for QR scan
           </p>
           {waState.qrDataUrl && (
-            <div>
+            <div style={{ marginTop: '0.75rem' }}>
               <img
                 src={waState.qrDataUrl}
                 alt="WhatsApp QR Code"
-                style={{ width: 264, height: 264, imageRendering: 'pixelated' }}
+                style={{ width: 264, height: 264, imageRendering: 'pixelated', borderRadius: '0.5rem' }}
               />
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+              <p style={{ color: colors.muted, fontSize: '0.875rem', marginTop: '0.5rem' }}>
                 Open WhatsApp on your phone &rarr; Linked Devices &rarr; Link a Device &rarr; Scan
                 this code
               </p>
@@ -342,15 +374,15 @@ function WhatsAppPanel() {
       break;
     case 'connecting':
       statusBlock = (
-        <p style={{ color: '#f59e0b' }}>
-          <strong>Status:</strong> Connecting&hellip;
+        <p style={{ color: colors.warning }}>
+          <StatusDot color="yellow" /> <strong>Status:</strong> Connecting&hellip;
         </p>
       );
       break;
     case 'connected':
       statusBlock = (
-        <p style={{ color: '#22c55e' }}>
-          <strong>Status:</strong> Connected as {waState.phoneNumber ?? 'unknown'}
+        <p style={{ color: colors.success }}>
+          <StatusDot color="green" /> <strong>Status:</strong> Connected as {waState.phoneNumber ?? 'unknown'}
         </p>
       );
       break;
@@ -358,17 +390,26 @@ function WhatsAppPanel() {
 
 
   return (
-    <div style={{ padding: '1.5rem' }}>
-      <h2 style={{ marginTop: 0 }}>WhatsApp</h2>
-      <p style={{ color: '#6b7280' }}>
-        Connects to WhatsApp via the Baileys multi-device library. Incoming messages are queued for
-        the muteworker; outbound messages require human approval unless the recipient is on the
-        auto-approve list.
-      </p>
-      <section>
-        <h3>Connection</h3>
-        {statusBlock}
-      </section>
+    <div className="sc-section">
+      <PageHeader
+        title="WhatsApp"
+        subtitle="Connects to WhatsApp via Baileys. Incoming messages are queued for the muteworker; outbound messages require human approval."
+      />
+      <Card>
+        <CardHeader>
+          <span style={{ fontWeight: 600, color: colors.text }}>Connection</span>
+        </CardHeader>
+        <CardBody>{statusBlock}</CardBody>
+      </Card>
+      <Card>
+        <CardHeader>
+          <span style={{ fontWeight: 600, color: colors.text }}>Recent Conversations</span>
+          <Badge bg={colors.border} fg={colors.muted}>{waState.recentConversations.length}</Badge>
+        </CardHeader>
+        <CardBody>
+          <ConversationList conversations={waState.recentConversations} />
+        </CardBody>
+      </Card>
     </div>
   );
 }
@@ -399,6 +440,8 @@ async function deliverMessage(db: any, jid: string, text: string) {
     text,
     created_at: Date.now(),
   });
+
+  loadRecentConversations(db).catch(() => {});
 }
 
 function registerRoutes(app: any, db: any, operatorJids: ReadonlySet<string>) {
@@ -509,28 +552,19 @@ async function migrations(knex: any): Promise<void> {
 function WhatsAppVerificationRenderer({ data }: VerificationRendererProps) {
   const jid = data?.jid ?? 'Unknown';
   const text = data?.text ?? '';
-  // Extract the phone number from the JID (strip @s.whatsapp.net)
   const phone = jid.replace(/@.*$/, '');
 
   return (
     <div>
-      <div style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>
-        <strong style={{ color: '#111827' }}>To:</strong>{' '}
-        <span style={{ fontFamily: 'monospace' }}>{phone}</span>
-        <span style={{ color: '#d1d5db', margin: '0 0.5rem' }}>|</span>
-        <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{jid}</span>
+      <div style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: colors.muted }}>
+        <strong style={{ color: colors.text }}>To:</strong>{' '}
+        <span className="sc-mono">{phone}</span>
+        <span style={{ color: colors.border, margin: '0 0.5rem' }}>|</span>
+        <span style={{ fontSize: '0.8rem', color: colors.muted }}>{jid}</span>
       </div>
       <div
-        style={{
-          background: '#dcfce7',
-          border: '1px solid #bbf7d0',
-          borderRadius: '0.75rem',
-          padding: '1rem 1.25rem',
-          fontSize: '0.95rem',
-          lineHeight: 1.6,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-        }}
+        className="sc-message-bubble"
+        style={{ background: '#16a34a22', border: `1px solid #16a34a44`, color: colors.text }}
       >
         {text}
       </div>
@@ -563,16 +597,28 @@ export function buildWhatsappPlugin(options: WhatsappGatekeeperPluginOptions = {
     verificationRenderer: WhatsAppVerificationRenderer,
     routes: (app: any, db: any) => registerRoutes(app, db, operatorJids),
     migrations,
+    getTabMeta() {
+      switch (waState.connectionStatus) {
+        case 'connected': return { statusColor: 'green' as const };
+        case 'connecting':
+        case 'qr_pending': return { statusColor: 'yellow' as const };
+        case 'disconnected':
+        default: return { statusColor: 'red' as const };
+      }
+    },
 
     registerGateway(env: import('@sandclaw/gatekeeper-plugin-api').PluginEnvironment) {
       env.registerInit({
         deps: { db: gatekeeperDeps.db, hooks: gatekeeperDeps.hooks },
         async init({ db, hooks }) {
           hooks.register({
-            'gatekeeper:start': () => connectWhatsApp(db, {
-              operatorOnly,
-              operatorJids,
-            }),
+            'gatekeeper:start': async () => {
+              await loadRecentConversations(db);
+              await connectWhatsApp(db, {
+                operatorOnly,
+                operatorJids,
+              });
+            },
             'gatekeeper:stop': () => disconnectWhatsApp(),
           });
         },

@@ -4,6 +4,8 @@ import { gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
 import type { VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
 import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
 import TelegramBot from 'node-telegram-bot-api';
+import { Card, CardHeader, CardBody, Button, Badge, PageHeader, StatusDot, Input, ConversationList, colors } from '@sandclaw/ui';
+import type { ConversationSummary } from '@sandclaw/ui';
 
 // ---------------------------------------------------------------------------
 // Module-level state (shared between SSR component and route handlers)
@@ -17,6 +19,7 @@ interface TelegramState {
   connectionStatus: ConnectionStatus;
   botUsername: string | null;
   botToken: string | null;
+  recentConversations: ConversationSummary[];
 }
 
 const STATE_KEY = '__sandclaw_telegram_state__';
@@ -28,6 +31,7 @@ if (!_g[STATE_KEY]) {
     connectionStatus: 'disconnected' as ConnectionStatus,
     botUsername: null,
     botToken: null,
+    recentConversations: [],
   };
 }
 
@@ -62,6 +66,28 @@ async function upsertSession(db: any, data: Record<string, any>) {
   }
 }
 
+async function loadRecentConversations(db: any): Promise<void> {
+  const rows = await db('conversation_message')
+    .where('plugin', 'telegram')
+    .whereNotNull('thread_id')
+    .select('thread_id', 'from', 'text', 'timestamp', 'direction')
+    .orderBy('timestamp', 'desc')
+    .limit(200);
+
+  const seen = new Map<string, ConversationSummary>();
+  for (const row of rows) {
+    if (seen.has(row.thread_id)) continue;
+    seen.set(row.thread_id, {
+      threadId: row.thread_id,
+      displayName: row.from || row.thread_id,
+      lastMessage: row.text || '',
+      lastTimestamp: row.timestamp,
+      direction: row.direction,
+    });
+  }
+  tgState.recentConversations = Array.from(seen.values());
+}
+
 /** Send a message via the bot and record it in conversation_message. Throws if bot is not connected. */
 async function deliverMessage(db: any, chatId: string, text: string) {
   if (!tgState.bot) throw new Error('Telegram bot not connected');
@@ -80,6 +106,8 @@ async function deliverMessage(db: any, chatId: string, text: string) {
     text,
     created_at: Date.now(),
   });
+
+  loadRecentConversations(db).catch(() => {});
 }
 
 // ---------------------------------------------------------------------------
@@ -185,6 +213,9 @@ async function connectTelegram(db: any, token: string) {
 
     const displayName = [firstName, lastName].filter(Boolean).join(' ') || username || chatId;
     console.log(`[telegram] Queued incoming message from ${displayName}`);
+
+    // Refresh conversation list
+    loadRecentConversations(db).catch(() => {});
   });
 
   // Handle polling errors gracefully
@@ -218,97 +249,68 @@ function TelegramPanel() {
     case 'waiting_for_token':
       statusBlock = (
         <div>
-          <p style={{ color: '#ef4444' }}>
-            <strong>Status:</strong> Disconnected
+          <p style={{ color: colors.danger }}>
+            <StatusDot color="red" /> <strong>Status:</strong> Disconnected
           </p>
           <div
             style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
               borderRadius: 8,
               padding: '1rem',
+              marginTop: '0.75rem',
               marginBottom: '1rem',
             }}
           >
-            <h4 style={{ marginTop: 0 }}>Setup Instructions</h4>
-            <ol style={{ paddingLeft: '1.25rem' }}>
-              <li>Open Telegram and search for <strong>@BotFather</strong></li>
+            <h4 style={{ marginTop: 0, color: colors.text }}>Setup Instructions</h4>
+            <ol style={{ paddingLeft: '1.25rem', color: colors.muted }}>
+              <li>Open Telegram and search for <strong style={{ color: colors.text }}>@BotFather</strong></li>
               <li>
-                Send <code>/newbot</code> and follow the prompts to choose a name and username
+                Send <code style={{ color: colors.accent }}>/newbot</code> and follow the prompts
               </li>
               <li>
-                BotFather will reply with a <strong>bot token</strong> (looks like{' '}
-                <code>123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11</code>)
+                BotFather will reply with a <strong style={{ color: colors.text }}>bot token</strong> (looks like{' '}
+                <code style={{ color: colors.accent }}>123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11</code>)
               </li>
               <li>Paste the token into the form below</li>
             </ol>
           </div>
           <form method="POST" action="/api/telegram/connect">
-            <label>
+            <label style={{ color: colors.text }}>
               <strong>Bot Token:</strong>
               <br />
-              <input
+              <Input
                 type="text"
                 name="token"
                 placeholder="123456:ABC-DEF..."
-                style={{
-                  width: '100%',
-                  maxWidth: 480,
-                  padding: '0.5rem',
-                  marginTop: '0.25rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 4,
-                  fontFamily: 'monospace',
-                }}
+                style={{ marginTop: '0.25rem' }}
               />
             </label>
             <br />
-            <button
-              type="submit"
-              style={{
-                marginTop: '0.5rem',
-                padding: '0.5rem 1.25rem',
-                background: '#2563eb',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer',
-              }}
-            >
+            <Button type="submit" variant="primary" style={{ marginTop: '0.5rem' }}>
               Connect
-            </button>
+            </Button>
           </form>
         </div>
       );
       break;
     case 'connecting':
       statusBlock = (
-        <p style={{ color: '#f59e0b' }}>
-          <strong>Status:</strong> Connecting&hellip;
+        <p style={{ color: colors.warning }}>
+          <StatusDot color="yellow" /> <strong>Status:</strong> Connecting&hellip;
         </p>
       );
       break;
     case 'connected':
       statusBlock = (
         <div>
-          <p style={{ color: '#22c55e' }}>
-            <strong>Status:</strong> Connected as @{tgState.botUsername ?? 'unknown'}
+          <p style={{ color: colors.success }}>
+            <StatusDot color="green" /> <strong>Status:</strong> Connected as @{tgState.botUsername ?? 'unknown'}
           </p>
           <form method="POST" action="/api/telegram/disconnect">
-            <button
-              type="submit"
-              style={{
-                marginTop: '0.5rem',
-                padding: '0.5rem 1.25rem',
-                background: '#ef4444',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer',
-              }}
-            >
+            <Button type="submit" variant="danger" style={{ marginTop: '0.5rem' }}>
               Disconnect
-            </button>
+            </Button>
           </form>
         </div>
       );
@@ -316,16 +318,26 @@ function TelegramPanel() {
   }
 
   return (
-    <div style={{ padding: '1.5rem' }}>
-      <h2 style={{ marginTop: 0 }}>Telegram</h2>
-      <p style={{ color: '#6b7280' }}>
-        Connects to Telegram via the Bot API. Incoming messages are queued for the muteworker;
-        outbound messages require human approval unless the recipient is on the auto-approve list.
-      </p>
-      <section>
-        <h3>Connection</h3>
-        {statusBlock}
-      </section>
+    <div className="sc-section">
+      <PageHeader
+        title="Telegram"
+        subtitle="Connects to Telegram via the Bot API. Incoming messages are queued for the muteworker; outbound messages require human approval."
+      />
+      <Card>
+        <CardHeader>
+          <span style={{ fontWeight: 600, color: colors.text }}>Connection</span>
+        </CardHeader>
+        <CardBody>{statusBlock}</CardBody>
+      </Card>
+      <Card>
+        <CardHeader>
+          <span style={{ fontWeight: 600, color: colors.text }}>Recent Conversations</span>
+          <Badge bg={colors.border} fg={colors.muted}>{tgState.recentConversations.length}</Badge>
+        </CardHeader>
+        <CardBody>
+          <ConversationList conversations={tgState.recentConversations} />
+        </CardBody>
+      </Card>
     </div>
   );
 }
@@ -507,21 +519,13 @@ function TelegramVerificationRenderer({ data }: VerificationRendererProps) {
 
   return (
     <div>
-      <div style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>
-        <strong style={{ color: '#111827' }}>Chat ID:</strong>{' '}
-        <span style={{ fontFamily: 'monospace' }}>{chatId}</span>
+      <div style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: colors.muted }}>
+        <strong style={{ color: colors.text }}>Chat ID:</strong>{' '}
+        <span className="sc-mono">{chatId}</span>
       </div>
       <div
-        style={{
-          background: '#dbeafe',
-          border: '1px solid #bfdbfe',
-          borderRadius: '0.75rem',
-          padding: '1rem 1.25rem',
-          fontSize: '0.95rem',
-          lineHeight: 1.6,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-        }}
+        className="sc-message-bubble"
+        style={{ background: '#2563eb22', border: '1px solid #2563eb44', color: colors.text }}
       >
         {text}
       </div>
@@ -551,6 +555,15 @@ export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions = {
     verificationRenderer: TelegramVerificationRenderer,
     routes: (app: any, db: any) => registerRoutes(app, db, operatorChatIds),
     migrations,
+    getTabMeta() {
+      switch (tgState.connectionStatus) {
+        case 'connected': return { statusColor: 'green' as const };
+        case 'connecting': return { statusColor: 'yellow' as const };
+        case 'disconnected':
+        case 'waiting_for_token':
+        default: return { statusColor: 'red' as const };
+      }
+    },
 
     registerGateway(env: import('@sandclaw/gatekeeper-plugin-api').PluginEnvironment) {
       env.registerInit({
@@ -558,6 +571,7 @@ export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions = {
         async init({ db, hooks }) {
           hooks.register({
             async 'gatekeeper:start'() {
+              await loadRecentConversations(db);
               try {
                 const session = await db('telegram_sessions').where('status', 'connected').first();
                 if (session?.bot_token) {
