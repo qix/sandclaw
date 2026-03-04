@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 
 import cac from "cac";
-import { runPi } from "@sandclaw/confidante-util";
+import { runDockerPi } from "@sandclaw/confidante-util";
 
 const cli = cac("run-browser");
 cli.option("--image <name>", "Docker image to use", {
@@ -18,7 +18,7 @@ if (!prompt) {
   process.exit(1);
 }
 
-const { finalReply, exitCode } = await runPi({
+const { finalReply, exitCode } = await runDockerPi({
   image: parsed.options.image as string,
   prompt,
   extension: "node_modules/pi-agent-browser",

@@ -7,6 +7,7 @@
     "run": "tsx scripts/run-build.ts"
   },
   "dependencies": {
+    "@sandclaw/confidante-util": "*",
     "cac": "^7.0.0"
   }
 }
