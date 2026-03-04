@@ -35,4 +35,4 @@ RUN npm ci
 # Install Chromium via agent-browser (includes system deps)
 RUN npx agent-browser install --with-deps
 
-ENTRYPOINT ["npx", "pi"]
+# ENTRYPOINT ["npx", "pi"]
