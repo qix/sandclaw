@@ -29,10 +29,32 @@ export interface GatekeeperHooks {
   }): void;
 }
 
+// ---------------------------------------------------------------------------
+// Service interfaces for DI
+// ---------------------------------------------------------------------------
+
+export type StatusColorValue = 'green' | 'yellow' | 'red' | 'gray';
+
+export interface TabRegistration {
+  tabName: string;
+  component: ComponentType;
+  statusColor?: () => StatusColorValue | undefined;
+}
+
+export interface TabsService {
+  registerTab(registration: TabRegistration): void;
+}
+
+export interface RoutesService {
+  registerRoutes(handler: (app: Hono) => void): void;
+}
+
 /** Core service refs available to all plugins. */
 export const gatekeeperDeps = {
   db: createServiceRef<Knex>({ id: 'core.db' }),
   hooks: createServiceRef<GatekeeperHooks>({ id: 'core.hooks' }),
+  tabs: createServiceRef<TabsService>({ id: 'core.tabs' }),
+  routes: createServiceRef<RoutesService>({ id: 'core.routes' }),
 };
 
 type ResolveDeps<T extends Record<string, ServiceRef<any>>> = {
@@ -51,12 +73,6 @@ export interface PluginEnvironment {
 // Plugin interfaces
 // ---------------------------------------------------------------------------
 
-/** Metadata returned by a plugin to influence how its sidebar tab is rendered. */
-export interface TabMeta {
-  /** Colored dot shown next to the plugin name in the sidebar. */
-  statusColor?: 'green' | 'yellow' | 'red' | 'gray';
-}
-
 /** Props passed to a plugin's verification renderer component. */
 export interface VerificationRendererProps {
   /** The action string from the verification request (e.g. "send_message"). */
@@ -68,14 +84,6 @@ export interface VerificationRendererProps {
 export interface GatekeeperPlugin {
   /** Unique identifier, e.g. `"whatsapp"`. */
   readonly id: string;
-  /** Human-readable label shown in the sidebar. */
-  readonly title: string;
-  /**
-   * React component rendered in the gatekeeper UI when this plugin's tab is
-   * active.  Must be a component type (function or class), not a JSX element,
-   * so it can be instantiated multiple times.
-   */
-  readonly component: ComponentType;
   /**
    * Optional React component that renders a rich detail view for verification
    * requests belonging to this plugin.  When provided, the Verifications page
@@ -83,18 +91,10 @@ export interface GatekeeperPlugin {
    */
   readonly verificationRenderer?: ComponentType<VerificationRendererProps>;
   /**
-   * Registers Hono route handlers for this plugin.  Called once during
-   * `startGatekeeper` before the server begins accepting connections.
-   * The `db` parameter is the shared Knex instance for database access.
-   */
-  readonly routes?: (app: Hono, db: Knex) => void;
-  /**
    * Runs any database migrations needed by this plugin.  Called once during
    * `startGatekeeper` before routes are registered.
    */
   readonly migrations?: (knex: Knex) => Promise<void>;
-  /** Returns metadata for rendering the sidebar tab (e.g. a status dot). */
-  readonly getTabMeta?: () => TabMeta;
   /** Backstage-style registration hook for declaring deps and gatekeeper lifecycle hooks. */
   readonly registerGateway: (env: PluginEnvironment) => void;
 }
@@ -102,18 +102,10 @@ export interface GatekeeperPlugin {
 export interface CreateGatekeeperPluginOptions {
   /** Unique identifier, e.g. `"whatsapp"`. */
   id: string;
-  /** Human-readable label shown in the sidebar. */
-  title: string;
-  /** React component for the plugin UI panel. */
-  component: ComponentType;
   /** Optional component that renders rich verification request detail views. */
   verificationRenderer?: ComponentType<VerificationRendererProps>;
-  /** Optional Hono route registration callback. */
-  routes?: (app: Hono, db: Knex) => void;
   /** Optional DB migration callback. */
   migrations?: (knex: Knex) => Promise<void>;
-  /** Optional: returns metadata for the sidebar tab (e.g. status dot color). */
-  getTabMeta?: () => TabMeta;
   /** Backstage-style registration hook for declaring deps and gatekeeper lifecycle hooks. */
   registerGateway: (env: PluginEnvironment) => void;
 }
@@ -125,17 +117,14 @@ export interface CreateGatekeeperPluginOptions {
  * ```ts
  * export const whatsappPlugin = createGatekeeperPlugin({
  *   id: 'whatsapp',
- *   title: 'WhatsApp',
- *   component: WhatsAppPanel,
+ *   registerGateway(env) { ... },
  * });
  * ```
  */
 export function createGatekeeperPlugin(
   options: CreateGatekeeperPluginOptions,
 ): GatekeeperPlugin {
-  const { id, title, component, verificationRenderer, routes, migrations, getTabMeta, registerGateway } = options;
+  const { id, verificationRenderer, migrations, registerGateway } = options;
   if (!id) throw new Error('GatekeeperPlugin: id is required');
-  if (!title) throw new Error('GatekeeperPlugin: title is required');
-  if (!component) throw new Error('GatekeeperPlugin: component is required');
-  return { id, title, component, verificationRenderer, routes, migrations, getTabMeta, registerGateway };
+  return { id, verificationRenderer, migrations, registerGateway };
 }

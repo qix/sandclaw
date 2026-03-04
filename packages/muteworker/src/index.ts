@@ -1,4 +1,4 @@
-import type { MuteworkerPlugin, MuteworkerHooks } from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPlugin, MuteworkerHooks, MuteworkerPluginContext, ToolsService } from '@sandclaw/muteworker-plugin-api';
 import path from 'path';
 import { MuteworkerApiClient } from './apiClient';
 import { DEFAULT_CONFIG, MuteworkerConfig } from './config';
@@ -52,7 +52,6 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
 
   const logger = createLogger(config.logLevel);
   const client = new MuteworkerApiClient(config, logger);
-  const loop = new MuteworkerQueueLoop(client, config, logger, plugins, promptsDir, memoryDir);
 
   // Plugin lifecycle: create services, run registerMuteworker + init
   const startHooks: Array<() => Promise<void>> = [];
@@ -64,8 +63,17 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
     },
   };
 
+  // Collected tool factories from plugins
+  const toolFactories: Array<(ctx: MuteworkerPluginContext) => any[]> = [];
+  const toolsService: ToolsService = {
+    registerTools(factory) {
+      toolFactories.push(factory);
+    },
+  };
+
   const services = new Map<string, any>();
   services.set('core.hooks', hooksService);
+  services.set('core.tools', toolsService);
 
   const initFns: Array<() => void | Promise<void>> = [];
   for (const plugin of plugins) {
@@ -83,6 +91,8 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
     });
   }
   for (const fn of initFns) { await fn(); }
+
+  const loop = new MuteworkerQueueLoop(client, config, logger, plugins, toolFactories, promptsDir, memoryDir);
 
   const shutdown = async () => {
     logger.info('muteworker.shutdown.requested');

@@ -69,9 +69,18 @@ export interface MuteworkerHooks {
   }): void;
 }
 
+// ---------------------------------------------------------------------------
+// Service interfaces for DI
+// ---------------------------------------------------------------------------
+
+export interface ToolsService {
+  registerTools(factory: (ctx: MuteworkerPluginContext) => any[]): void;
+}
+
 /** Core service refs available to all muteworker plugins. */
 export const muteworkerDeps = {
   hooks: createServiceRef<MuteworkerHooks>({ id: 'core.hooks' }),
+  tools: createServiceRef<ToolsService>({ id: 'core.tools' }),
 };
 
 type ResolveDeps<T extends Record<string, ServiceRef<any>>> = {
@@ -93,19 +102,13 @@ export interface MuteworkerEnvironment {
 /**
  * A muteworker plugin.  Plugins can contribute:
  *
- * - **tools** — `AgentTool[]` added to every job's agent tool set.
+ * - **tools** — registered via `ToolsService` in `registerMuteworker`.
  * - **jobHandlers** — handlers keyed by `jobType` that take over job
  *   execution for specific job types.  The handler receives a `runAgent`
  *   function it can call to execute the Pi agent.
  */
 export interface MuteworkerPlugin {
   readonly id: string;
-  /**
-   * Returns agent tools to add to every job's tool set.
-   * The return type is `any[]` to avoid forcing a dependency on
-   * `@mariozechner/pi-agent-core` at the plugin definition layer.
-   */
-  readonly tools?: (ctx: MuteworkerPluginContext) => any[];
   /**
    * Job type handlers.  Key is the `jobType` string
    * (e.g. `"whatsapp:incoming_message"`).

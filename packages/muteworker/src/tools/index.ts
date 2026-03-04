@@ -1,5 +1,5 @@
 import { AgentTool } from '@mariozechner/pi-agent-core';
-import type { MuteworkerPlugin, MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
 import type { MuteworkerApiClient } from '../apiClient';
 import type { MuteworkerConfig } from '../config';
 import type { Logger } from '../logger';
@@ -20,7 +20,7 @@ export interface ToolArgs {
   config: MuteworkerConfig;
   logger: Logger;
   job: MuteworkerQueueJob;
-  plugins: MuteworkerPlugin[];
+  toolFactories: Array<(ctx: MuteworkerPluginContext) => any[]>;
   promptsDir: string;
   memoryDir: string;
   /** The user prompt string for the current job (used for browser context). */
@@ -36,12 +36,10 @@ export function getTools(artifacts: Artifact[], args: ToolArgs): AgentTool[] {
   tools.push(...createMemoryTools(artifacts, args.memoryDir));
   tools.push(...createPromptTools(artifacts, args.promptsDir));
 
-  // Plugin-contributed tools
+  // Plugin-contributed tools (via ToolsService)
   const ctx = toPluginContext(artifacts, args);
-  for (const plugin of args.plugins) {
-    if (plugin.tools) {
-      tools.push(...(plugin.tools(ctx) as AgentTool[]));
-    }
+  for (const factory of args.toolFactories) {
+    tools.push(...(factory(ctx) as AgentTool[]));
   }
 
   return tools.map((tool) => withToolCallLogging(tool, args));

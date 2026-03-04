@@ -1,4 +1,4 @@
-import type { MuteworkerPlugin } from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPlugin, MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
 import { ApiError, MuteworkerApiClient } from './apiClient';
 import type { MuteworkerConfig } from './config';
 import { executeMuteworkerJob } from './jobExecutor';
@@ -21,6 +21,7 @@ export class MuteworkerQueueLoop {
     private readonly config: MuteworkerConfig,
     private readonly logger: Logger,
     private readonly plugins: MuteworkerPlugin[],
+    private readonly toolFactories: Array<(ctx: MuteworkerPluginContext) => any[]>,
     private readonly promptsDir: string,
     private readonly memoryDir: string,
   ) {}
@@ -55,6 +56,7 @@ export class MuteworkerQueueLoop {
           config: this.config,
           logger: this.logger,
           plugins: this.plugins,
+          toolFactories: this.toolFactories,
           promptsDir: this.promptsDir,
           memoryDir: this.memoryDir,
         });

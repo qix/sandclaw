@@ -1,36 +1,37 @@
 import React, { createElement } from 'react';
-import type { GatekeeperPlugin, VerificationRendererProps, TabMeta } from '@sandclaw/gatekeeper-plugin-api';
+import type { StatusColorValue, VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
 import { getGlobalStyles } from '@sandclaw/ui';
 import { StatusDot } from '@sandclaw/ui';
 import { Badge } from '@sandclaw/ui';
 import { VerificationsPage, type VerificationRequest } from './VerificationsPage';
 import type { ComponentType } from 'react';
 
+export interface TabRenderData {
+  tabKey: string;
+  pluginId: string;
+  tabName: string;
+  component: ComponentType;
+  statusColor?: StatusColorValue;
+}
+
 interface AppProps {
-  plugins: GatekeeperPlugin[];
-  activePluginId: string;
+  tabs: TabRenderData[];
+  activeTabKey: string;
   activePage?: string;
   verificationRequests?: VerificationRequest[];
   pendingVerificationCount: number;
-  pluginTabMeta: Record<string, TabMeta>;
+  renderers: Record<string, ComponentType<VerificationRendererProps>>;
 }
 
 export function App({
-  plugins,
-  activePluginId,
+  tabs,
+  activeTabKey,
   activePage,
   verificationRequests,
   pendingVerificationCount,
-  pluginTabMeta,
+  renderers,
 }: AppProps) {
-  const active = activePage ? null : (plugins.find((p) => p.id === activePluginId) ?? plugins[0]);
-
-  const renderers: Record<string, ComponentType<VerificationRendererProps>> = {};
-  for (const p of plugins) {
-    if (p.verificationRenderer) {
-      renderers[p.id] = p.verificationRenderer;
-    }
-  }
+  const activeTab = activePage ? null : (tabs.find((t) => t.tabKey === activeTabKey) ?? tabs[0]);
 
   return (
     <html lang="en">
@@ -58,19 +59,16 @@ export function App({
             )}
           </a>
           <div className="sc-nav-divider" />
-          {plugins.map((p) => {
-            const meta = pluginTabMeta[p.id];
-            return (
-              <a
-                key={p.id}
-                href={`?plugin=${p.id}`}
-                className={`sc-nav-link ${p.id === active?.id ? 'active' : ''}`}
-              >
-                {meta?.statusColor && <StatusDot color={meta.statusColor} />}
-                {p.title}
-              </a>
-            );
-          })}
+          {tabs.map((t) => (
+            <a
+              key={t.tabKey}
+              href={`?tab=${t.tabKey}`}
+              className={`sc-nav-link ${t.tabKey === activeTab?.tabKey ? 'active' : ''}`}
+            >
+              {t.statusColor && <StatusDot color={t.statusColor} />}
+              {t.tabName}
+            </a>
+          ))}
         </nav>
 
         {/* Mobile top nav */}
@@ -83,7 +81,7 @@ export function App({
               <span>
                 {activePage === 'verifications'
                   ? 'Verifications'
-                  : active?.title ?? 'Select page'}
+                  : activeTab?.tabName ?? 'Select page'}
               </span>
               <svg className="sc-dropdown-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -104,19 +102,18 @@ export function App({
                 )}
               </a>
               <div className="sc-dropdown-separator" />
-              {plugins.map((p) => {
-                const isActive = p.id === active?.id;
-                const meta = pluginTabMeta[p.id];
+              {tabs.map((t) => {
+                const isActive = t.tabKey === activeTab?.tabKey;
                 return (
                   <a
-                    key={p.id}
-                    href={`?plugin=${p.id}`}
+                    key={t.tabKey}
+                    href={`?tab=${t.tabKey}`}
                     className={`sc-dropdown-item ${isActive ? 'active' : ''}`}
                     role="menuitem"
                   >
                     <span className="sc-dropdown-check">{isActive ? '\u2713' : ''}</span>
-                    {meta?.statusColor && <StatusDot color={meta.statusColor} />}
-                    {p.title}
+                    {t.statusColor && <StatusDot color={t.statusColor} />}
+                    {t.tabName}
                   </a>
                 );
               })}
@@ -142,8 +139,8 @@ export function App({
         <main className="sc-main">
           {activePage === 'verifications' ? (
             <VerificationsPage requests={verificationRequests ?? []} renderers={renderers} />
-          ) : active ? (
-            createElement(active.component)
+          ) : activeTab ? (
+            createElement(activeTab.component)
           ) : (
             <NoPlugins />
           )}

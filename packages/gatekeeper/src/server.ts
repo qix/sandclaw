@@ -3,11 +3,22 @@ import { renderToString } from 'react-dom/server';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import type { Knex } from 'knex';
-import type { GatekeeperPlugin, GatekeeperHooks, TabMeta } from '@sandclaw/gatekeeper-plugin-api';
+import type { GatekeeperPlugin, GatekeeperHooks, StatusColorValue, TabsService, RoutesService, VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
+import type { ComponentType } from 'react';
 import { App } from './pages/App';
+import type { TabRenderData } from './pages/App';
 import { createDb, runCoreMigrations } from './db';
 import { logger } from './logger';
 import { registerCoreRoutes, registerVerificationFormRoutes } from './routes';
+
+/** Internal registration with the statusColor getter preserved for per-request evaluation. */
+interface TabRegistrationInternal {
+  tabKey: string;
+  pluginId: string;
+  tabName: string;
+  component: ComponentType;
+  statusColorFn?: () => StatusColorValue | undefined;
+}
 
 export interface GatekeeperOptions {
   /** Plugins to load into the gatekeeper. */
@@ -49,6 +60,13 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
     },
   };
 
+  // Collected tab registrations and route handlers from all plugins
+  const tabRegistrations: TabRegistrationInternal[] = [];
+  const allRouteHandlers: Array<{ pluginId: string; handler: (app: Hono) => void }> = [];
+
+  // Collected verification renderers
+  const renderers: Record<string, ComponentType<VerificationRendererProps>> = {};
+
   const services = new Map<string, any>();
   services.set('core.db', db);
   services.set('core.hooks', hooksService);
@@ -58,11 +76,46 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
     if (!plugin.registerGateway) {
       throw new Error(`Plugin "${plugin.id}" is missing required registerGateway method`);
     }
+
+    // Collect verification renderers
+    if (plugin.verificationRenderer) {
+      renderers[plugin.id] = plugin.verificationRenderer;
+    }
+
+    // Create per-plugin TabsService
+    const pluginId = plugin.id;
+    let tabCount = 0;
+    const tabsService: TabsService = {
+      registerTab(registration) {
+        const tabKey = tabCount === 0 ? pluginId : `${pluginId}:${registration.tabName.toLowerCase().replace(/\s+/g, '-')}`;
+        tabCount++;
+        tabRegistrations.push({
+          tabKey,
+          pluginId,
+          tabName: registration.tabName,
+          component: registration.component,
+          statusColorFn: registration.statusColor,
+        });
+      },
+    };
+
+    // Create per-plugin RoutesService
+    const routesService: RoutesService = {
+      registerRoutes(handler) {
+        allRouteHandlers.push({ pluginId, handler });
+      },
+    };
+
+    // Clone services map with per-plugin services
+    const pluginServices = new Map(services);
+    pluginServices.set('core.tabs', tabsService);
+    pluginServices.set('core.routes', routesService);
+
     plugin.registerGateway({
       registerInit({ deps, init }) {
         const resolved: Record<string, any> = {};
         for (const [key, ref] of Object.entries(deps)) {
-          resolved[key] = services.get(ref.id);
+          resolved[key] = pluginServices.get(ref.id);
         }
         initFns.push(() => init(resolved as any));
       },
@@ -73,13 +126,11 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   // 3. Register core API routes
   registerCoreRoutes(app, db);
 
-  // 4. Register plugin API routes under /api/<plugin-id>/
-  for (const plugin of plugins) {
-    if (plugin.routes) {
-      const sub = new Hono();
-      plugin.routes(sub, db);
-      app.route(`/api/${plugin.id}`, sub);
-    }
+  // 4. Mount plugin routes under /api/<pluginId>/
+  for (const { pluginId, handler } of allRouteHandlers) {
+    const sub = new Hono();
+    handler(sub);
+    app.route(`/api/${pluginId}`, sub);
   }
 
   // 5. Form-action routes for the Verifications page
@@ -87,22 +138,33 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
 
   // 6. SSR — render the React shell on every GET
   app.get('/*', async (c) => {
-    const explicitPlugin = c.req.query('plugin');
-    const page = c.req.query('page') ?? (explicitPlugin ? undefined : 'verifications');
-    const activePluginId = explicitPlugin ?? plugins[0]?.id ?? '';
+    const tabParam = c.req.query('tab');
+    const pluginParam = c.req.query('plugin');
+    const page = c.req.query('page') ?? (tabParam || pluginParam ? undefined : 'verifications');
+
+    // Resolve active tab: ?tab= takes priority, ?plugin= as fallback (backward compat)
+    let activeTabKey = tabParam ?? '';
+    if (!activeTabKey && pluginParam) {
+      const pluginTab = tabRegistrations.find((t) => t.pluginId === pluginParam);
+      activeTabKey = pluginTab?.tabKey ?? '';
+    }
+    if (!activeTabKey && !page) {
+      activeTabKey = tabRegistrations[0]?.tabKey ?? '';
+    }
 
     // Always fetch pending count for the sidebar badge
     const [{ count: pendingVerificationCount }] = await db('verification_requests')
       .where('status', 'pending')
       .count('* as count');
 
-    // Collect tab meta from each plugin
-    const pluginTabMeta: Record<string, TabMeta> = {};
-    for (const plugin of plugins) {
-      if (plugin.getTabMeta) {
-        pluginTabMeta[plugin.id] = plugin.getTabMeta();
-      }
-    }
+    // Evaluate statusColor getters per-request for dynamic status
+    const tabs: TabRenderData[] = tabRegistrations.map((reg) => ({
+      tabKey: reg.tabKey,
+      pluginId: reg.pluginId,
+      tabName: reg.tabName,
+      component: reg.component,
+      statusColor: reg.statusColorFn?.(),
+    }));
 
     let verificationRequests: any[] | undefined;
     if (page === 'verifications') {
@@ -121,12 +183,12 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
 
     const html = renderToString(
       createElement(App, {
-        plugins,
-        activePluginId,
+        tabs,
+        activeTabKey,
         activePage: page,
         verificationRequests,
         pendingVerificationCount: Number(pendingVerificationCount),
-        pluginTabMeta,
+        renderers,
       }),
     );
     return c.html(`<!DOCTYPE html>${html}`);
