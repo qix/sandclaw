@@ -96,7 +96,7 @@ async function main(): Promise<void> {
   const parsed = cli.parse();
   const allowDirty = parsed.options['allowDirty'] as boolean | undefined;
   const saveLogs = parsed.options['saveLogs'] as string | undefined;
-  const promptText = parsed.args.length > 0 ? parsed.args.join(' ') : null;
+  const extraArgs = parsed.args;
 
   if (parsed.options['help']) {
     process.exit(0);
@@ -125,7 +125,7 @@ async function main(): Promise<void> {
     `ANTHROPIC_BASE_URL=${baseUrl}`,
     'claude',
     '--dangerously-skip-permissions',
-    ...(promptText ? [promptText] : []),
+    ...extraArgs,
   ];
   const result = await new Promise<{ status: number | null }>((resolve) => {
     const child = spawn('env', claudeArgs, { stdio: 'inherit' });
@@ -196,7 +196,7 @@ async function main(): Promise<void> {
       const commitMessage =
         proxy.prompts.length > 0
           ? proxy.prompts.join('\n\n')
-          : promptText || 'Claude prompt not found';
+          : 'Claude prompt not found';
 
       execFileSync('git', ['commit', '-m', commitMessage], {
         stdio: 'inherit',
