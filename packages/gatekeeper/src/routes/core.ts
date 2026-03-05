@@ -184,6 +184,24 @@ export function registerCoreRoutes(app: Hono, db: Knex, onVerificationChange?: (
     return c.body(null, 204);
   });
 
+  // GET /api/confidante-queue/:id — fetch a specific confidante job by ID
+  app.get('/api/confidante-queue/:id', async (c) => {
+    const id = parseInt(c.req.param('id'), 10);
+    if (!id || isNaN(id)) return c.json({ error: 'Invalid id' }, 400);
+
+    const job = await db('confidante_queue').where('id', id).first();
+    if (!job) return c.json({ error: 'Job not found' }, 404);
+
+    return c.json({
+      job: {
+        id: job.id,
+        jobType: job.job_type,
+        data: job.data,
+        status: job.status,
+      },
+    });
+  });
+
   // POST /api/confidante-queue/complete — mark a confidante job as complete
   app.post('/api/confidante-queue/complete', async (c) => {
     const body = await c.req.json<{ id: number; result?: string }>();

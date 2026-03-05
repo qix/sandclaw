@@ -36,6 +36,19 @@ export class ConfidanteApiClient {
     return body.job ?? null;
   }
 
+  async getJob(jobId: number): Promise<ConfidanteQueueJob | null> {
+    const response = await this.request(
+      `/api/confidante-queue/${encodeURIComponent(String(jobId))}`,
+      { method: 'GET' },
+    );
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw await this.createError('Failed to fetch confidante job', response);
+    }
+    const body = (await response.json()) as ConfidanteQueueNextResponse;
+    return body.job ?? null;
+  }
+
   async markComplete(jobId: number, result?: string): Promise<void> {
     const response = await this.request('/api/confidante-queue/complete', {
       method: 'POST',
