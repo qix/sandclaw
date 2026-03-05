@@ -55,7 +55,17 @@ export async function prepareWorkDir(
     if (status.trim()) {
       throw new Error(`Working directory ${workDir} has uncommitted changes`);
     }
-    muted(`Working directory ${workDir} exists and is clean`);
+    muted(`Working directory ${workDir} exists and is clean, pulling latest...`);
+    const pullCode = await runSpawn("git", [
+      "-C",
+      workDir,
+      "pull",
+      "origin",
+      branch,
+    ]);
+    if (pullCode !== 0) {
+      throw new Error(`git pull origin ${branch} failed with code ${pullCode}`);
+    }
   } else {
     muted(`Cloning ${repo} (branch: ${branch}) into ${workDir}...`);
     const cloneCode = await runSpawn("git", [
