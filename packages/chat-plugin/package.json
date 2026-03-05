@@ -2,10 +2,14 @@
   "name": "@sandclaw/chat-plugin",
   "version": "0.1.0",
   "description": "Sandclaw Chat plugin — direct browser chat with the AI agent",
-  "main": "src/index.tsx",
-  "types": "src/index.tsx",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "*",

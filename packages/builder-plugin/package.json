@@ -1,12 +1,15 @@
 {
   "name": "@sandclaw/builder-plugin",
   "version": "0.1.0",
-  "type": "module",
   "description": "Sandclaw Builder plugin — Docker-based code builds via Confidante with human approval",
-  "main": "src/index.tsx",
-  "types": "src/index.tsx",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "build-docker": "docker build -t builder-plugin docker/",
     "run": "tsx scripts/run-build.ts"
   },

@@ -7,7 +7,8 @@
     "sample-app"
   ],
   "scripts": {
-    "start": "tsx sample-app/gatekeeper.ts"
+    "start": "tsx sample-app/gatekeeper.ts",
+    "build": "node scripts/build.mjs"
   },
   "devDependencies": {
     "@devcontainers/cli": "^0.83.3",

@@ -2,10 +2,14 @@
   "name": "@sandclaw/whatsapp-plugin",
   "version": "0.1.0",
   "description": "Sandclaw WhatsApp plugin — connects to WhatsApp via Baileys",
-  "main": "src/index.tsx",
-  "types": "src/index.tsx",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "*",

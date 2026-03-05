@@ -1,6 +1,7 @@
 {
   "name": "cm",
   "version": "0.1.0",
+  "private": true,
   "description": "Spawn claude with a prompt and handle git logic around it",
   "type": "module",
   "bin": {
