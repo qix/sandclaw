@@ -1,18 +1,22 @@
-import { gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
-import type { PluginEnvironment } from '@sandclaw/gatekeeper-plugin-api';
-import { muteworkerDeps } from '@sandclaw/muteworker-plugin-api';
-import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
-import { tgState } from './state';
-import { connectTelegram, disconnectTelegram, loadRecentConversations } from './connection';
-import { TelegramPanel, TelegramVerificationRenderer } from './components';
-import { registerRoutes } from './routes';
-import { migrations } from './migrations';
-import { createSendTelegramTool } from './tools';
-import { createTelegramJobHandlers } from './jobHandlers';
+import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
+import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
+import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
+import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
+import { tgState } from "./state";
+import {
+  connectTelegram,
+  disconnectTelegram,
+  loadRecentConversations,
+} from "./connection";
+import { TelegramPanel, TelegramVerificationRenderer } from "./components";
+import { registerRoutes } from "./routes";
+import { migrations } from "./migrations";
+import { createSendTelegramTool } from "./tools";
+import { createTelegramJobHandlers } from "./jobHandlers";
 
-export type { TelegramState, ConnectionStatus } from './state';
-export { TelegramPanel, TelegramVerificationRenderer } from './components';
-export { createSendTelegramTool } from './tools';
+export type { TelegramState, ConnectionStatus } from "./state";
+export { TelegramPanel, TelegramVerificationRenderer } from "./components";
+export { createSendTelegramTool } from "./tools";
 
 export interface TelegramGatekeeperPluginOptions {
   /** Chat IDs that are trusted operators. Sends to operator chat IDs are
@@ -22,11 +26,15 @@ export interface TelegramGatekeeperPluginOptions {
   botToken?: string;
 }
 
-export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions = {}) {
-  const operatorChatIds: ReadonlySet<string> = new Set(options.operatorChatIds ?? []);
+export function buildTelegramPlugin(
+  options: TelegramGatekeeperPluginOptions = {},
+) {
+  const operatorChatIds: ReadonlySet<string> = new Set(
+    options.operatorChatIds ?? [],
+  );
 
   return {
-    id: 'telegram' as const,
+    id: "telegram" as const,
     verificationRenderer: TelegramVerificationRenderer,
     migrations,
 
@@ -34,41 +42,57 @@ export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions = {
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({
-        deps: { db: gatekeeperDeps.db, hooks: gatekeeperDeps.hooks, tabs: gatekeeperDeps.tabs, routes: gatekeeperDeps.routes },
+        deps: {
+          db: gatekeeperDeps.db,
+          hooks: gatekeeperDeps.hooks,
+          tabs: gatekeeperDeps.tabs,
+          routes: gatekeeperDeps.routes,
+        },
         async init({ db, hooks, tabs, routes }) {
           tabs.registerTab({
-            tabName: 'Telegram',
+            tabName: "Telegram",
             component: TelegramPanel,
             statusColor: () => {
               switch (tgState.connectionStatus) {
-                case 'connected': return 'green' as const;
-                case 'connecting': return 'yellow' as const;
-                case 'disconnected':
-                case 'waiting_for_token':
-                default: return 'red' as const;
+                case "connected":
+                  return "green" as const;
+                case "connecting":
+                  return "yellow" as const;
+                case "disconnected":
+                case "waiting_for_token":
+                default:
+                  return "red" as const;
               }
             },
           });
 
-          routes.registerRoutes((app) => registerRoutes(app, db, operatorChatIds));
+          routes.registerRoutes((app) =>
+            registerRoutes(app, db, operatorChatIds),
+          );
 
           hooks.register({
-            async 'gatekeeper:start'() {
+            async "gatekeeper:start"() {
               await loadRecentConversations(db);
               try {
-                const session = await db('telegram_sessions').where('status', 'connected').first();
+                const session = await db("telegram_sessions")
+                  .where("status", "connected")
+                  .first();
                 if (session?.bot_token) {
-                  console.log('[telegram] Found existing session, auto-reconnecting...');
+                  console.log(
+                    "[telegram] Found existing session, auto-reconnecting...",
+                  );
                   await connectTelegram(db, session.bot_token);
                 } else if (options.botToken) {
-                  console.log('[telegram] Connecting with configured bot token...');
+                  console.log(
+                    "[telegram] Connecting with configured bot token...",
+                  );
                   await connectTelegram(db, options.botToken);
                 }
               } catch (err: any) {
-                console.error('[telegram] Auto-reconnect failed:', err.message);
+                console.error("[telegram] Auto-reconnect failed:", err.message);
               }
             },
-            'gatekeeper:stop': () => disconnectTelegram(db),
+            "gatekeeper:stop": () => disconnectTelegram(db),
           });
         },
       });

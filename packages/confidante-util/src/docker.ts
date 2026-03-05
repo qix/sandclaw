@@ -85,7 +85,9 @@ export interface RunDockerPiResult {
  * Spawn a Docker container running `pi` in JSON mode, stream and pretty-print
  * events to stderr, and resolve with the final assistant reply.
  */
-export function runDockerPi(options: RunDockerPiOptions): Promise<RunDockerPiResult> {
+export function runDockerPi(
+  options: RunDockerPiOptions,
+): Promise<RunDockerPiResult> {
   const {
     image,
     prompt,
@@ -114,14 +116,7 @@ export function runDockerPi(options: RunDockerPiOptions): Promise<RunDockerPiRes
 
   const child = spawn(
     "docker",
-    [
-      "run",
-      "--rm",
-      ...envFlags,
-      ...dockerArgs,
-      image,
-      ...containerCommand,
-    ],
+    ["run", "--rm", ...envFlags, ...dockerArgs, image, ...containerCommand],
     { stdio: ["ignore", "pipe", "pipe"] },
   );
 

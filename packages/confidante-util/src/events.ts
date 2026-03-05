@@ -93,9 +93,7 @@ export class PiEventPrinter {
           case "toolcall_end": {
             const tc = ame.toolCall;
             if (tc) {
-              muted(
-                `[tool-call] ${tc.name}(${JSON.stringify(tc.arguments)})`,
-              );
+              muted(`[tool-call] ${tc.name}(${JSON.stringify(tc.arguments)})`);
             }
             break;
           }
@@ -105,9 +103,7 @@ export class PiEventPrinter {
 
       case "tool_execution_start":
         this.ensureNewline();
-        muted(
-          `[executing] ${event.toolName}(${JSON.stringify(event.args)})`,
-        );
+        muted(`[executing] ${event.toolName}(${JSON.stringify(event.args)})`);
         break;
 
       case "tool_execution_end": {
@@ -128,9 +124,7 @@ export class PiEventPrinter {
             (c: { type: string; text?: string }) => c.type === "text" && c.text,
           );
           if (texts.length > 0) {
-            const text = texts
-              .map((c: { text: string }) => c.text)
-              .join("\n");
+            const text = texts.map((c: { text: string }) => c.text).join("\n");
             // Only treat as final reply when the model stopped naturally
             // (not when it stopped to make a tool call)
             if (this.currentStopReason === "stop") {

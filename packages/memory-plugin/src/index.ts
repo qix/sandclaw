@@ -1,10 +1,10 @@
-import { muteworkerDeps } from '@sandclaw/muteworker-plugin-api';
-import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
-import { createMemoryTools } from './tools';
-import { loadMemoryPrompt } from './promptLoader';
+import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
+import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
+import { createMemoryTools } from "./tools";
+import { loadMemoryPrompt } from "./promptLoader";
 
-export { createMemoryTools } from './tools';
-export { loadMemoryPrompt } from './promptLoader';
+export { createMemoryTools } from "./tools";
+export { loadMemoryPrompt } from "./promptLoader";
 
 export interface MemoryPluginConfig {
   memoryDir: string;
@@ -12,7 +12,7 @@ export interface MemoryPluginConfig {
 
 export function createMemoryPlugin(config: MemoryPluginConfig) {
   return {
-    id: 'memory' as const,
+    id: "memory" as const,
 
     registerGateway() {},
 
@@ -20,10 +20,12 @@ export function createMemoryPlugin(config: MemoryPluginConfig) {
       env.registerInit({
         deps: { hooks: muteworkerDeps.hooks, tools: muteworkerDeps.tools },
         init({ hooks, tools }) {
-          tools.registerTools((ctx) => createMemoryTools(ctx, config.memoryDir));
+          tools.registerTools((ctx) =>
+            createMemoryTools(ctx, config.memoryDir),
+          );
 
           hooks.register({
-            'muteworker:build-system-prompt': async (prev) => {
+            "muteworker:build-system-prompt": async (prev) => {
               const memorySection = await loadMemoryPrompt(config.memoryDir);
               return memorySection ? `${prev}\n${memorySection}` : prev;
             },

@@ -1,11 +1,13 @@
-import { readdir, readFile } from 'node:fs/promises';
-import path from 'node:path';
+import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
 
 async function listFiles(basePath: string): Promise<string[]> {
-  const entries = await readdir(basePath, { withFileTypes: true }).catch((error) => {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
-    throw error;
-  });
+  const entries = await readdir(basePath, { withFileTypes: true }).catch(
+    (error) => {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+      throw error;
+    },
+  );
   const files = await Promise.all(
     entries.map(async (entry) => {
       if (entry.isDirectory()) {
@@ -19,14 +21,14 @@ async function listFiles(basePath: string): Promise<string[]> {
 }
 
 async function tryReadFile(filePath: string): Promise<string | null> {
-  return readFile(filePath, 'utf8').catch((error) => {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+  return readFile(filePath, "utf8").catch((error) => {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
   });
 }
 
 function wrapMemory(filename: string, content: string): string {
-  const name = filename.endsWith('.md') ? filename.slice(0, -3) : filename;
+  const name = filename.endsWith(".md") ? filename.slice(0, -3) : filename;
   return `File: ${name}\n<MEMORY>\n${content.trim()}\n</MEMORY>`;
 }
 
@@ -44,7 +46,5 @@ export async function loadMemoryPrompt(memoryDir: string): Promise<string> {
     }),
   );
 
-  return memoryPrompts
-    .filter((p): p is string => p !== null)
-    .join('\n');
+  return memoryPrompts.filter((p): p is string => p !== null).join("\n");
 }

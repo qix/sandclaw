@@ -1,7 +1,7 @@
-import { Agent } from '@mariozechner/pi-agent-core';
-import { getModel } from '@mariozechner/pi-ai';
-import type { Artifact, ToolArgs } from './tools/index';
-import { getTools } from './tools/index';
+import { Agent } from "@mariozechner/pi-agent-core";
+import { getModel } from "@mariozechner/pi-ai";
+import type { Artifact, ToolArgs } from "./tools/index";
+import { getTools } from "./tools/index";
 
 const DEFAULT_MAX_TOOL_CALLS = 32;
 
@@ -59,17 +59,17 @@ export async function runWithPi(
       const steerDelay = Math.max(0, STEER_TIMEOUT_MS - elapsed);
       steerTimer = setTimeout(() => {
         timeoutSteered = true;
-        toolArgs.logger.warn('agent.timeout_steer', {
+        toolArgs.logger.warn("agent.timeout_steer", {
           jobId: toolArgs.job.id,
           elapsedMs: Date.now() - lastProgressTime,
         });
         agent.setTools([]);
         agent.steer({
-          role: 'user',
+          role: "user",
           content:
-            'You have been running for too long without making progress. ' +
-            'Do NOT call any tools. Write a concise message explaining what you ' +
-            'have accomplished so far and where you got stuck.',
+            "You have been running for too long without making progress. " +
+            "Do NOT call any tools. Write a concise message explaining what you " +
+            "have accomplished so far and where you got stuck.",
           timestamp: Date.now(),
         });
         // Schedule the hard abort
@@ -79,7 +79,7 @@ export async function runWithPi(
 
     const abortDelay = Math.max(0, ABORT_TIMEOUT_MS - elapsed);
     abortTimer = setTimeout(() => {
-      toolArgs.logger.error('agent.timeout_abort', {
+      toolArgs.logger.error("agent.timeout_abort", {
         jobId: toolArgs.job.id,
         elapsedMs: Date.now() - lastProgressTime,
       });
@@ -92,9 +92,9 @@ export async function runWithPi(
 
   const unsubscribe = agent.subscribe((event) => {
     if (
-      event.type === 'tool_execution_end' ||
-      event.type === 'turn_end' ||
-      event.type === 'message_end'
+      event.type === "tool_execution_end" ||
+      event.type === "turn_end" ||
+      event.type === "message_end"
     ) {
       lastProgressTime = Date.now();
       if (!timeoutSteered) {
@@ -102,25 +102,25 @@ export async function runWithPi(
       }
     }
 
-    if (event.type !== 'tool_execution_end') return;
+    if (event.type !== "tool_execution_end") return;
     toolCallCount++;
 
     if (toolCallCount >= maxToolCalls && !steered) {
       steered = true;
-      toolArgs.logger.warn('agent.progress_check', {
+      toolArgs.logger.warn("agent.progress_check", {
         jobId: toolArgs.job.id,
         toolCallCount,
         maxToolCalls,
       });
       agent.steer({
-        role: 'user',
+        role: "user",
         content:
           `You have made ${toolCallCount} tool calls so far. ` +
-          'Step back and evaluate: are you making visible progress toward completing the task? ' +
-          'If you are NOT making progress — for example you are stuck in a loop, retrying the ' +
-          'same action, or unable to find what you need — then STOP calling tools immediately. ' +
-          'Instead, write a concise message explaining what you tried, why it did not work, and ' +
-          'what the user should do next.',
+          "Step back and evaluate: are you making visible progress toward completing the task? " +
+          "If you are NOT making progress — for example you are stuck in a loop, retrying the " +
+          "same action, or unable to find what you need — then STOP calling tools immediately. " +
+          "Instead, write a concise message explaining what you tried, why it did not work, and " +
+          "what the user should do next.",
         timestamp: Date.now(),
       });
     }
@@ -150,22 +150,22 @@ export async function runWithPi(
 
 function extractAssistantText(messages: unknown[]): string {
   for (const message of [...messages].reverse()) {
-    if (!message || typeof message !== 'object') continue;
+    if (!message || typeof message !== "object") continue;
     const record = message as Record<string, unknown>;
-    if (record.role !== 'assistant') continue;
-    if (typeof record.content === 'string') return record.content;
+    if (record.role !== "assistant") continue;
+    if (typeof record.content === "string") return record.content;
     if (Array.isArray(record.content)) {
       const textParts = record.content
         .map((part) => {
-          if (part && typeof part === 'object' && 'text' in part) {
+          if (part && typeof part === "object" && "text" in part) {
             const text = (part as { text?: unknown }).text;
-            return typeof text === 'string' ? text : '';
+            return typeof text === "string" ? text : "";
           }
-          return '';
+          return "";
         })
         .filter(Boolean);
-      if (textParts.length > 0) return textParts.join('\n').trim();
+      if (textParts.length > 0) return textParts.join("\n").trim();
     }
   }
-  return '';
+  return "";
 }

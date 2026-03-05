@@ -1,16 +1,16 @@
-import { gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
-import type { PluginEnvironment } from '@sandclaw/gatekeeper-plugin-api';
-import { muteworkerDeps } from '@sandclaw/muteworker-plugin-api';
-import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
-import type { ConfidanteEnvironment } from '@sandclaw/confidante-plugin-api';
-import { BuilderPanel, BuilderVerificationRenderer } from './components';
-import { registerRoutes, type BuilderPluginConfig } from './routes';
-import { createRequestBuildTool } from './tools';
-import { builderJobHandlers } from './jobHandlers';
-import { createBuilderConfidanteHandlers } from './confidanteHandlers';
+import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
+import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
+import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
+import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
+import type { ConfidanteEnvironment } from "@sandclaw/confidante-plugin-api";
+import { BuilderPanel, BuilderVerificationRenderer } from "./components";
+import { registerRoutes, type BuilderPluginConfig } from "./routes";
+import { createRequestBuildTool } from "./tools";
+import { builderJobHandlers } from "./jobHandlers";
+import { createBuilderConfidanteHandlers } from "./confidanteHandlers";
 
-export { BuilderPanel, BuilderVerificationRenderer } from './components';
-export { createRequestBuildTool } from './tools';
+export { BuilderPanel, BuilderVerificationRenderer } from "./components";
+export { createRequestBuildTool } from "./tools";
 
 export interface BuilderPluginOptions {
   /** Git repo URL to clone/build against. */
@@ -32,18 +32,24 @@ export function createBuilderPlugin(options: BuilderPluginOptions) {
   };
 
   return {
-    id: 'builder' as const,
+    id: "builder" as const,
     verificationRenderer: BuilderVerificationRenderer,
 
     jobHandlers: builderJobHandlers,
-    confidanteHandlers: createBuilderConfidanteHandlers({ workDir: config.workDir }),
+    confidanteHandlers: createBuilderConfidanteHandlers({
+      workDir: config.workDir,
+    }),
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({
-        deps: { db: gatekeeperDeps.db, tabs: gatekeeperDeps.tabs, routes: gatekeeperDeps.routes },
+        deps: {
+          db: gatekeeperDeps.db,
+          tabs: gatekeeperDeps.tabs,
+          routes: gatekeeperDeps.routes,
+        },
         init({ db, tabs, routes }) {
           tabs.registerTab({
-            tabName: 'Builder',
+            tabName: "Builder",
             component: BuilderPanel,
           });
 

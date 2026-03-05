@@ -72,15 +72,23 @@ export default function agentBrowserExtension(pi: ExtensionAPI) {
     label: "Browser",
     description: TOOL_DESCRIPTION,
     parameters: Type.Object({
-      command: Type.String({ description: "agent-browser command (without 'agent-browser' prefix)" }),
+      command: Type.String({
+        description: "agent-browser command (without 'agent-browser' prefix)",
+      }),
     }),
 
     renderCall(args: { command: string }, theme: any) {
-      const text = theme.fg("toolTitle", theme.bold("browser ")) + theme.fg("accent", args.command);
+      const text =
+        theme.fg("toolTitle", theme.bold("browser ")) +
+        theme.fg("accent", args.command);
       return new Text(text, 0, 0);
     },
 
-    renderResult(result: any, { expanded, isPartial }: { expanded: boolean; isPartial: boolean }, theme: any) {
+    renderResult(
+      result: any,
+      { expanded, isPartial }: { expanded: boolean; isPartial: boolean },
+      theme: any,
+    ) {
       if (isPartial) {
         return new Text(theme.fg("warning", "Running..."), 0, 0);
       }
@@ -96,7 +104,14 @@ export default function agentBrowserExtension(pi: ExtensionAPI) {
       const content = result.content?.[0]?.text || "";
 
       if (action === "screenshot") {
-        return new Text(theme.fg("success", `Screenshot saved: ${details.screenshotPath || "unknown"}`), 0, 0);
+        return new Text(
+          theme.fg(
+            "success",
+            `Screenshot saved: ${details.screenshotPath || "unknown"}`,
+          ),
+          0,
+          0,
+        );
       }
 
       if (action === "snapshot") {
@@ -133,8 +148,18 @@ export default function agentBrowserExtension(pi: ExtensionAPI) {
       if (result.code !== 0) {
         const errorOutput = (result.stderr || result.stdout).trim();
         return {
-          content: [{ type: "text", text: errorOutput || `Command failed with exit code ${result.code}` }],
-          details: { error: errorOutput, exitCode: result.code, command: commandStr },
+          content: [
+            {
+              type: "text",
+              text:
+                errorOutput || `Command failed with exit code ${result.code}`,
+            },
+          ],
+          details: {
+            error: errorOutput,
+            exitCode: result.code,
+            command: commandStr,
+          },
           isError: true,
         };
       }
@@ -149,9 +174,12 @@ export default function agentBrowserExtension(pi: ExtensionAPI) {
             const imageData = readFileSync(screenshotPath);
             const base64 = imageData.toString("base64");
             const ext = extname(screenshotPath).toLowerCase();
-            const mimeType = ext === ".jpg" || ext === ".jpeg" ? "image/jpeg"
-              : ext === ".webp" ? "image/webp"
-              : "image/png";
+            const mimeType =
+              ext === ".jpg" || ext === ".jpeg"
+                ? "image/jpeg"
+                : ext === ".webp"
+                  ? "image/webp"
+                  : "image/png";
             return {
               content: [
                 { type: "text", text: `Screenshot saved: ${screenshotPath}` },
@@ -161,8 +189,18 @@ export default function agentBrowserExtension(pi: ExtensionAPI) {
             };
           } catch (err: any) {
             return {
-              content: [{ type: "text", text: `Screenshot saved to ${screenshotPath} but could not read file: ${err.message}` }],
-              details: { command: commandStr, action, screenshotPath, readError: err.message },
+              content: [
+                {
+                  type: "text",
+                  text: `Screenshot saved to ${screenshotPath} but could not read file: ${err.message}`,
+                },
+              ],
+              details: {
+                command: commandStr,
+                action,
+                screenshotPath,
+                readError: err.message,
+              },
             };
           }
         }
@@ -184,7 +222,11 @@ export default function agentBrowserExtension(pi: ExtensionAPI) {
 
       return {
         content: [{ type: "text", text: resultText || "(no output)" }],
-        details: { command: commandStr, action, truncated: truncation.truncated },
+        details: {
+          command: commandStr,
+          action,
+          truncated: truncation.truncated,
+        },
       };
     },
   });

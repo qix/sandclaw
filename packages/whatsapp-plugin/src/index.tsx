@@ -1,18 +1,22 @@
-import { gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
-import type { PluginEnvironment } from '@sandclaw/gatekeeper-plugin-api';
-import { muteworkerDeps } from '@sandclaw/muteworker-plugin-api';
-import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
-import { waState } from './state';
-import { connectWhatsApp, disconnectWhatsApp, loadRecentConversations } from './connection';
-import { WhatsAppPanel, WhatsAppVerificationRenderer } from './components';
-import { registerRoutes } from './routes';
-import { migrations } from './migrations';
-import { createSendWhatsappTool } from './tools';
-import { createWhatsappJobHandlers } from './jobHandlers';
+import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
+import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
+import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
+import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
+import { waState } from "./state";
+import {
+  connectWhatsApp,
+  disconnectWhatsApp,
+  loadRecentConversations,
+} from "./connection";
+import { WhatsAppPanel, WhatsAppVerificationRenderer } from "./components";
+import { registerRoutes } from "./routes";
+import { migrations } from "./migrations";
+import { createSendWhatsappTool } from "./tools";
+import { createWhatsappJobHandlers } from "./jobHandlers";
 
-export type { WhatsAppState, ConnectionStatus } from './state';
-export { WhatsAppPanel, WhatsAppVerificationRenderer } from './components';
-export { createSendWhatsappTool } from './tools';
+export type { WhatsAppState, ConnectionStatus } from "./state";
+export { WhatsAppPanel, WhatsAppVerificationRenderer } from "./components";
+export { createSendWhatsappTool } from "./tools";
 
 export interface WhatsappGatekeeperPluginOptions {
   /** JIDs that are trusted operators. Incoming messages from non-operator JIDs are
@@ -24,12 +28,14 @@ export interface WhatsappGatekeeperPluginOptions {
   operatorOnly?: boolean;
 }
 
-export function buildWhatsappPlugin(options: WhatsappGatekeeperPluginOptions = {}) {
+export function buildWhatsappPlugin(
+  options: WhatsappGatekeeperPluginOptions = {},
+) {
   const operatorJids: ReadonlySet<string> = new Set(options.operatorJids ?? []);
   const operatorOnly = options.operatorOnly ?? false;
 
   return {
-    id: 'whatsapp' as const,
+    id: "whatsapp" as const,
     verificationRenderer: WhatsAppVerificationRenderer,
     migrations,
 
@@ -37,18 +43,26 @@ export function buildWhatsappPlugin(options: WhatsappGatekeeperPluginOptions = {
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({
-        deps: { db: gatekeeperDeps.db, hooks: gatekeeperDeps.hooks, tabs: gatekeeperDeps.tabs, routes: gatekeeperDeps.routes },
+        deps: {
+          db: gatekeeperDeps.db,
+          hooks: gatekeeperDeps.hooks,
+          tabs: gatekeeperDeps.tabs,
+          routes: gatekeeperDeps.routes,
+        },
         async init({ db, hooks, tabs, routes }) {
           tabs.registerTab({
-            tabName: 'WhatsApp',
+            tabName: "WhatsApp",
             component: WhatsAppPanel,
             statusColor: () => {
               switch (waState.connectionStatus) {
-                case 'connected': return 'green' as const;
-                case 'connecting':
-                case 'qr_pending': return 'yellow' as const;
-                case 'disconnected':
-                default: return 'red' as const;
+                case "connected":
+                  return "green" as const;
+                case "connecting":
+                case "qr_pending":
+                  return "yellow" as const;
+                case "disconnected":
+                default:
+                  return "red" as const;
               }
             },
           });
@@ -56,14 +70,14 @@ export function buildWhatsappPlugin(options: WhatsappGatekeeperPluginOptions = {
           routes.registerRoutes((app) => registerRoutes(app, db, operatorJids));
 
           hooks.register({
-            'gatekeeper:start': async () => {
+            "gatekeeper:start": async () => {
               await loadRecentConversations(db);
               await connectWhatsApp(db, {
                 operatorOnly,
                 operatorJids,
               });
             },
-            'gatekeeper:stop': () => disconnectWhatsApp(),
+            "gatekeeper:stop": () => disconnectWhatsApp(),
           });
         },
       });

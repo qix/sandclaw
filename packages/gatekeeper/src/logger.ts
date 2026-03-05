@@ -1,8 +1,8 @@
-import pino from 'pino';
+import pino from "pino";
 
 export const logger = pino({
-  name: 'gatekeeper',
+  name: "gatekeeper",
   transport: {
-    target: 'pino-pretty',
+    target: "pino-pretty",
   },
 });

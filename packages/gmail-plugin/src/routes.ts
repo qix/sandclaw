@@ -1,12 +1,20 @@
-import { createGmailClient, sendEmail, type GmailPluginConfig } from './gmailClient';
+import {
+  createGmailClient,
+  sendEmail,
+  type GmailPluginConfig,
+} from "./gmailClient";
 
 export function registerRoutes(app: any, db: any, config: GmailPluginConfig) {
   // POST /send — create a verification request for an email send
-  app.post('/send', async (c: any) => {
-    const body = await (c.req.json() as { to?: string; subject?: string; text?: string });
-    if (!body.to) return c.json({ error: 'to is required' }, 400);
-    if (!body.subject) return c.json({ error: 'subject is required' }, 400);
-    if (!body.text) return c.json({ error: 'text is required' }, 400);
+  app.post("/send", async (c: any) => {
+    const body = await (c.req.json() as {
+      to?: string;
+      subject?: string;
+      text?: string;
+    });
+    if (!body.to) return c.json({ error: "to is required" }, 400);
+    if (!body.subject) return c.json({ error: "subject is required" }, 400);
+    if (!body.text) return c.json({ error: "text is required" }, 400);
 
     const now = Date.now();
     const verificationData = {
@@ -16,29 +24,33 @@ export function registerRoutes(app: any, db: any, config: GmailPluginConfig) {
       from: config.userEmail,
     };
 
-    const [id] = await db('verification_requests').insert({
-      plugin: 'gmail',
-      action: 'send_email',
+    const [id] = await db("verification_requests").insert({
+      plugin: "gmail",
+      action: "send_email",
       data: JSON.stringify(verificationData),
-      status: 'pending',
+      status: "pending",
       created_at: now,
       updated_at: now,
     });
 
     return c.json({
       verificationRequestId: id,
-      verificationStatus: 'pending',
+      verificationStatus: "pending",
     });
   });
 
   // POST /approve/:id — approve and send an email
-  app.post('/approve/:id', async (c: any) => {
-    const id = parseInt(c.req.param('id'), 10);
-    if (!id || isNaN(id)) return c.json({ error: 'Invalid id' }, 400);
+  app.post("/approve/:id", async (c: any) => {
+    const id = parseInt(c.req.param("id"), 10);
+    if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
 
-    const request = await db('verification_requests').where('id', id).first();
-    if (!request || request.status !== 'pending' || request.plugin !== 'gmail') {
-      return c.json({ error: 'Not found or already resolved' }, 404);
+    const request = await db("verification_requests").where("id", id).first();
+    if (
+      !request ||
+      request.status !== "pending" ||
+      request.plugin !== "gmail"
+    ) {
+      return c.json({ error: "Not found or already resolved" }, 404);
     }
 
     const data = JSON.parse(request.data);
@@ -46,34 +58,37 @@ export function registerRoutes(app: any, db: any, config: GmailPluginConfig) {
     try {
       const result = await sendEmail(config, data.to, data.subject, data.text);
 
-      await db('verification_requests')
-        .where('id', id)
-        .update({ status: 'approved', updated_at: Date.now() });
+      await db("verification_requests")
+        .where("id", id)
+        .update({ status: "approved", updated_at: Date.now() });
 
       // Store sent message in conversation history
       const now = Date.now();
-      await db('conversation_message').insert({
+      await db("conversation_message").insert({
         conversation_id: 0, // Resolved later
-        plugin: 'gmail',
+        plugin: "gmail",
         channel: data.to,
         message_id: result.messageId,
         from: config.userEmail,
         to: data.to,
         timestamp: Math.floor(now / 1000),
-        direction: 'sent',
+        direction: "sent",
         text: data.text,
         created_at: now,
       });
 
       return c.json({ success: true, messageId: result.messageId });
     } catch (e) {
-      return c.json({ error: `Failed to send email: ${(e as Error).message}` }, 500);
+      return c.json(
+        { error: `Failed to send email: ${(e as Error).message}` },
+        500,
+      );
     }
   });
 
   // POST /receive — webhook/manual trigger to queue an incoming email as a job
-  app.post('/receive', async (c: any) => {
-    const body = await c.req.json() as {
+  app.post("/receive", async (c: any) => {
+    const body = (await c.req.json()) as {
       messageId: string;
       from: string;
       to: string;
@@ -83,53 +98,53 @@ export function registerRoutes(app: any, db: any, config: GmailPluginConfig) {
     };
 
     if (!body.messageId || !body.from) {
-      return c.json({ error: 'messageId and from are required' }, 400);
+      return c.json({ error: "messageId and from are required" }, 400);
     }
 
     const now = Date.now();
 
     // Store incoming message
-    await db('conversation_message').insert({
+    await db("conversation_message").insert({
       conversation_id: 0,
-      plugin: 'gmail',
+      plugin: "gmail",
       channel: body.from,
       message_id: body.messageId,
       thread_id: body.threadId ?? null,
       from: body.from,
       to: body.to ?? config.userEmail,
       timestamp: Math.floor(now / 1000),
-      direction: 'received',
-      text: body.text ?? '',
+      direction: "received",
+      text: body.text ?? "",
       created_at: now,
     });
 
     // Load conversation history for context
-    const history = await db('conversation_message')
-      .where('plugin', 'gmail')
-      .where('channel', body.from)
-      .orderBy('timestamp', 'asc')
+    const history = await db("conversation_message")
+      .where("plugin", "gmail")
+      .where("channel", body.from)
+      .orderBy("timestamp", "asc")
       .limit(20);
 
     const historyEntries = history.map((h: any) => ({
-      role: h.direction === 'sent' ? 'assistant' as const : 'user' as const,
-      text: h.text ?? '',
+      role: h.direction === "sent" ? ("assistant" as const) : ("user" as const),
+      text: h.text ?? "",
       timestamp: h.timestamp,
     }));
 
     // Queue as a muteworker job
-    const [jobId] = await db('safe_queue').insert({
-      job_type: 'gmail:incoming_email',
+    const [jobId] = await db("safe_queue").insert({
+      job_type: "gmail:incoming_email",
       data: JSON.stringify({
         messageId: body.messageId,
         from: body.from,
         to: body.to ?? config.userEmail,
-        subject: body.subject ?? '',
-        text: body.text ?? '',
+        subject: body.subject ?? "",
+        text: body.text ?? "",
         threadId: body.threadId ?? null,
         history: historyEntries,
       }),
-      context: JSON.stringify({ channel: 'gmail', from: body.from }),
-      status: 'pending',
+      context: JSON.stringify({ channel: "gmail", from: body.from }),
+      status: "pending",
       created_at: now,
       updated_at: now,
     });
@@ -156,7 +171,7 @@ async function startEmailPolling(
     try {
       const gmail = await createGmailClient(config);
       const response = await gmail.users.messages.list({
-        userId: 'me',
+        userId: "me",
         q: `is:unread after:${Math.floor(lastChecked / 1000)}`,
         maxResults: 10,
       });
@@ -166,55 +181,64 @@ async function startEmailPolling(
         if (!msg.id) continue;
 
         const detail = await gmail.users.messages.get({
-          userId: 'me',
+          userId: "me",
           id: msg.id,
-          format: 'full',
+          format: "full",
         });
 
         const headers = detail.data.payload?.headers ?? [];
-        const from = headers.find((h: any) => h.name?.toLowerCase() === 'from')?.value ?? '';
-        const to = headers.find((h: any) => h.name?.toLowerCase() === 'to')?.value ?? '';
-        const subject = headers.find((h: any) => h.name?.toLowerCase() === 'subject')?.value ?? '';
+        const from =
+          headers.find((h: any) => h.name?.toLowerCase() === "from")?.value ??
+          "";
+        const to =
+          headers.find((h: any) => h.name?.toLowerCase() === "to")?.value ?? "";
+        const subject =
+          headers.find((h: any) => h.name?.toLowerCase() === "subject")
+            ?.value ?? "";
 
         // Extract plain text body
-        let text = '';
+        let text = "";
         const parts = detail.data.payload?.parts ?? [];
-        const textPart = parts.find((p: any) => p.mimeType === 'text/plain');
+        const textPart = parts.find((p: any) => p.mimeType === "text/plain");
         if (textPart?.body?.data) {
-          text = Buffer.from(textPart.body.data, 'base64url').toString('utf8');
+          text = Buffer.from(textPart.body.data, "base64url").toString("utf8");
         } else if (detail.data.payload?.body?.data) {
-          text = Buffer.from(detail.data.payload.body.data, 'base64url').toString('utf8');
+          text = Buffer.from(
+            detail.data.payload.body.data,
+            "base64url",
+          ).toString("utf8");
         }
 
         const now = Date.now();
-        await db('conversation_message').insert({
+        await db("conversation_message").insert({
           conversation_id: 0,
-          plugin: 'gmail',
+          plugin: "gmail",
           channel: from,
           message_id: msg.id,
           thread_id: detail.data.threadId ?? null,
           from,
           to,
           timestamp: Math.floor(now / 1000),
-          direction: 'received',
+          direction: "received",
           text,
           created_at: now,
         });
 
-        const history = await db('conversation_message')
-          .where('plugin', 'gmail')
-          .where('channel', from)
-          .orderBy('timestamp', 'asc')
+        const history = await db("conversation_message")
+          .where("plugin", "gmail")
+          .where("channel", from)
+          .orderBy("timestamp", "asc")
           .limit(20);
 
         const historyEntries = history.map((h: any) => ({
-          role: h.direction === 'sent' ? 'assistant' as const : 'user' as const,
-          text: h.text ?? '',
+          role:
+            h.direction === "sent" ? ("assistant" as const) : ("user" as const),
+          text: h.text ?? "",
           timestamp: h.timestamp,
         }));
 
-        await db('safe_queue').insert({
-          job_type: 'gmail:incoming_email',
+        await db("safe_queue").insert({
+          job_type: "gmail:incoming_email",
           data: JSON.stringify({
             messageId: msg.id,
             from,
@@ -224,17 +248,17 @@ async function startEmailPolling(
             threadId: detail.data.threadId ?? null,
             history: historyEntries,
           }),
-          context: JSON.stringify({ channel: 'gmail', from }),
-          status: 'pending',
+          context: JSON.stringify({ channel: "gmail", from }),
+          status: "pending",
           created_at: now,
           updated_at: now,
         });
 
         // Mark as read
         await gmail.users.messages.modify({
-          userId: 'me',
+          userId: "me",
           id: msg.id,
-          requestBody: { removeLabelIds: ['UNREAD'] },
+          requestBody: { removeLabelIds: ["UNREAD"] },
         });
       }
 

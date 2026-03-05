@@ -108,7 +108,9 @@ const { changed, headBefore, headAfter } = detectAndCommitChanges({
 
 muted(`Repo path: ${workDir}`);
 if (changed) {
-  muted(`Changes committed: ${headBefore.slice(0, 8)}..${headAfter.slice(0, 8)}`);
+  muted(
+    `Changes committed: ${headBefore.slice(0, 8)}..${headAfter.slice(0, 8)}`,
+  );
 }
 
 if (finalReply) {

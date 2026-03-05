@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import type { ComponentType } from "react";
 
 // Lazy-import types to avoid pulling in heavy runtime dependencies at the
 // definition layer.  Concrete types are used by the gatekeeper at runtime.
@@ -24,8 +24,8 @@ export function createServiceRef<T>(config: { id: string }): ServiceRef<T> {
 /** Hooks that plugins can register to react to gatekeeper lifecycle events. */
 export interface GatekeeperHooks {
   register(hooks: {
-    'gatekeeper:start'?: () => void | Promise<void>;
-    'gatekeeper:stop'?: () => void | Promise<void>;
+    "gatekeeper:start"?: () => void | Promise<void>;
+    "gatekeeper:stop"?: () => void | Promise<void>;
   }): void;
 }
 
@@ -33,7 +33,7 @@ export interface GatekeeperHooks {
 // Service interfaces for DI
 // ---------------------------------------------------------------------------
 
-export type StatusColorValue = 'green' | 'yellow' | 'red' | 'gray';
+export type StatusColorValue = "green" | "yellow" | "red" | "gray";
 
 export interface TabRegistration {
   tabName: string;
@@ -50,16 +50,19 @@ export interface RoutesService {
 }
 
 export interface WebSocketService {
-  onUpgrade(path: string, handler: (req: any, socket: any, head: Buffer) => void): void;
+  onUpgrade(
+    path: string,
+    handler: (req: any, socket: any, head: Buffer) => void,
+  ): void;
 }
 
 /** Core service refs available to all plugins. */
 export const gatekeeperDeps = {
-  db: createServiceRef<Knex>({ id: 'core.db' }),
-  hooks: createServiceRef<GatekeeperHooks>({ id: 'core.hooks' }),
-  tabs: createServiceRef<TabsService>({ id: 'core.tabs' }),
-  routes: createServiceRef<RoutesService>({ id: 'core.routes' }),
-  ws: createServiceRef<WebSocketService>({ id: 'core.ws' }),
+  db: createServiceRef<Knex>({ id: "core.db" }),
+  hooks: createServiceRef<GatekeeperHooks>({ id: "core.hooks" }),
+  tabs: createServiceRef<TabsService>({ id: "core.tabs" }),
+  routes: createServiceRef<RoutesService>({ id: "core.routes" }),
+  ws: createServiceRef<WebSocketService>({ id: "core.ws" }),
 };
 
 type ResolveDeps<T extends Record<string, ServiceRef<any>>> = {
@@ -130,6 +133,6 @@ export function createGatekeeperPlugin(
   options: CreateGatekeeperPluginOptions,
 ): GatekeeperPlugin {
   const { id, verificationRenderer, migrations, registerGateway } = options;
-  if (!id) throw new Error('GatekeeperPlugin: id is required');
+  if (!id) throw new Error("GatekeeperPlugin: id is required");
   return { id, verificationRenderer, migrations, registerGateway };
 }

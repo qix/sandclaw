@@ -1,32 +1,28 @@
-import {
-  BufferJSON,
-  initAuthCreds,
-  proto,
-} from '@whiskeysockets/baileys';
+import { BufferJSON, initAuthCreds, proto } from "@whiskeysockets/baileys";
 
 export async function useDBAuthState(db: any) {
   const writeData = async (id: string, data: any) => {
     const serialized = JSON.stringify(data, BufferJSON.replacer);
-    await db('whatsapp_auth_state')
+    await db("whatsapp_auth_state")
       .insert({ id, data: serialized })
-      .onConflict('id')
+      .onConflict("id")
       .merge();
   };
 
   const readData = async (id: string) => {
-    const row = await db('whatsapp_auth_state').where('id', id).first();
+    const row = await db("whatsapp_auth_state").where("id", id).first();
     if (!row) return null;
     return JSON.parse(row.data, BufferJSON.reviver);
   };
 
   const removeData = async (id: string) => {
-    await db('whatsapp_auth_state').where('id', id).del();
+    await db("whatsapp_auth_state").where("id", id).del();
   };
 
-  const credsData = await readData('creds');
+  const credsData = await readData("creds");
   const creds = credsData || initAuthCreds();
   if (!credsData) {
-    await writeData('creds', creds);
+    await writeData("creds", creds);
   }
 
   return {
@@ -38,8 +34,9 @@ export async function useDBAuthState(db: any) {
           for (const id of ids) {
             const value = await readData(`${type}-${id}`);
             if (value) {
-              if (type === 'app-state-sync-key') {
-                result[id] = proto.Message.AppStateSyncKeyData.fromObject(value);
+              if (type === "app-state-sync-key") {
+                result[id] =
+                  proto.Message.AppStateSyncKeyData.fromObject(value);
               } else {
                 result[id] = value;
               }
@@ -48,7 +45,10 @@ export async function useDBAuthState(db: any) {
           return result;
         },
         set: async (data: any) => {
-          for (const [type, entries] of Object.entries(data) as [string, Record<string, any>][]) {
+          for (const [type, entries] of Object.entries(data) as [
+            string,
+            Record<string, any>,
+          ][]) {
             for (const [id, value] of Object.entries(entries)) {
               if (value) {
                 await writeData(`${type}-${id}`, value);
@@ -61,7 +61,7 @@ export async function useDBAuthState(db: any) {
       },
     },
     saveCreds: async () => {
-      await writeData('creds', creds);
+      await writeData("creds", creds);
     },
   };
 }

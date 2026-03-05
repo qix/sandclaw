@@ -7,7 +7,7 @@ export interface MuteworkerPluginLogger {
 }
 
 export interface MuteworkerPluginArtifact {
-  type: 'text';
+  type: "text";
   label: string;
   value: string;
 }
@@ -64,9 +64,11 @@ export function createServiceRef<T>(config: { id: string }): ServiceRef<T> {
 /** Hooks that plugins can register to react to muteworker lifecycle events. */
 export interface MuteworkerHooks {
   register(hooks: {
-    'muteworker:start'?: () => void | Promise<void>;
-    'muteworker:stop'?: () => void | Promise<void>;
-    'muteworker:build-system-prompt'?: (prev: string) => string | Promise<string>;
+    "muteworker:start"?: () => void | Promise<void>;
+    "muteworker:stop"?: () => void | Promise<void>;
+    "muteworker:build-system-prompt"?: (
+      prev: string,
+    ) => string | Promise<string>;
   }): void;
 }
 
@@ -80,8 +82,8 @@ export interface ToolsService {
 
 /** Core service refs available to all muteworker plugins. */
 export const muteworkerDeps = {
-  hooks: createServiceRef<MuteworkerHooks>({ id: 'core.hooks' }),
-  tools: createServiceRef<ToolsService>({ id: 'core.tools' }),
+  hooks: createServiceRef<MuteworkerHooks>({ id: "core.hooks" }),
+  tools: createServiceRef<ToolsService>({ id: "core.tools" }),
 };
 
 type ResolveDeps<T extends Record<string, ServiceRef<any>>> = {
@@ -124,7 +126,9 @@ export interface MuteworkerPlugin {
   readonly registerMuteworker: (env: MuteworkerEnvironment) => void;
 }
 
-export function createMuteworkerPlugin(options: MuteworkerPlugin): MuteworkerPlugin {
-  if (!options.id) throw new Error('MuteworkerPlugin: id is required');
+export function createMuteworkerPlugin(
+  options: MuteworkerPlugin,
+): MuteworkerPlugin {
+  if (!options.id) throw new Error("MuteworkerPlugin: id is required");
   return options;
 }

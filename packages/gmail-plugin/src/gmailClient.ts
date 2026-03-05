@@ -13,13 +13,13 @@ export interface GmailPluginConfig {
 
 export async function createGmailClient(config: GmailPluginConfig) {
   // Dynamic import to avoid hard failures if googleapis isn't installed
-  const { google } = await import('googleapis');
+  const { google } = await import("googleapis");
   const oauth2Client = new google.auth.OAuth2(
     config.clientId,
     config.clientSecret,
   );
   oauth2Client.setCredentials({ refresh_token: config.refreshToken });
-  return google.gmail({ version: 'v1', auth: oauth2Client });
+  return google.gmail({ version: "v1", auth: oauth2Client });
 }
 
 export async function sendEmail(
@@ -34,17 +34,16 @@ export async function sendEmail(
     `From: ${config.userEmail}`,
     `To: ${to}`,
     `Subject: ${subject}`,
-    'Content-Type: text/plain; charset=utf-8',
-    '',
+    "Content-Type: text/plain; charset=utf-8",
+    "",
     text,
   ];
-  const raw = Buffer.from(messageParts.join('\r\n'))
-    .toString('base64url');
+  const raw = Buffer.from(messageParts.join("\r\n")).toString("base64url");
 
   const result = await gmail.users.messages.send({
-    userId: 'me',
+    userId: "me",
     requestBody: { raw },
   });
 
-  return { messageId: result.data.id ?? '' };
+  return { messageId: result.data.id ?? "" };
 }

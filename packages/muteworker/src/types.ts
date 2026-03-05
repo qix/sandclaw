@@ -1,4 +1,4 @@
-export type JobStatus = 'pending' | 'in_progress' | 'complete' | 'failed';
+export type JobStatus = "pending" | "in_progress" | "complete" | "failed";
 
 export interface MuteworkerQueueJob {
   id: number;
@@ -15,10 +15,10 @@ export interface MuteworkerQueueNextResponse {
 
 export interface MuteworkerJobResult {
   jobId: number;
-  status: 'success' | 'failed';
+  status: "success" | "failed";
   summary: string;
   artifacts: Array<{
-    type: 'text';
+    type: "text";
     label: string;
     value: string;
   }>;
@@ -27,7 +27,7 @@ export interface MuteworkerJobResult {
     steps: number;
   };
   error?: {
-    kind: 'ModelError' | 'Timeout' | 'PolicyViolation' | 'ParseError';
+    kind: "ModelError" | "Timeout" | "PolicyViolation" | "ParseError";
     message: string;
   };
 }

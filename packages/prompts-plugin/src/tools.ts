@@ -1,30 +1,36 @@
-import { TSchema } from '@mariozechner/pi-ai';
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
+import { TSchema } from "@mariozechner/pi-ai";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
 
-export function createPromptTools(ctx: MuteworkerPluginContext, promptsDir: string) {
+export function createPromptTools(
+  ctx: MuteworkerPluginContext,
+  promptsDir: string,
+) {
   return [
     {
-      name: 'list_prompt_files',
-      label: 'List Prompt Files',
+      name: "list_prompt_files",
+      label: "List Prompt Files",
       description:
-        'List all files available under prompts/. Use this before reading or writing prompt files.',
+        "List all files available under prompts/. Use this before reading or writing prompt files.",
       parameters: {
-        type: 'object',
+        type: "object",
         properties: {},
         additionalProperties: false,
       } as unknown as TSchema,
       execute: async () => {
         const files = await listDir(promptsDir).catch((error) => {
-          if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
           throw error;
         });
         return {
           content: [
             {
-              type: 'text',
-              text: files.length > 0 ? files.join('\n') : 'No prompt files found in prompts/.',
+              type: "text",
+              text:
+                files.length > 0
+                  ? files.join("\n")
+                  : "No prompt files found in prompts/.",
             },
           ],
           details: { files },
@@ -32,82 +38,114 @@ export function createPromptTools(ctx: MuteworkerPluginContext, promptsDir: stri
       },
     },
     {
-      name: 'read_prompt_file',
-      label: 'Read Prompt File',
-      description: 'Read a UTF-8 text file from prompts/. Path must be relative to prompts/.',
+      name: "read_prompt_file",
+      label: "Read Prompt File",
+      description:
+        "Read a UTF-8 text file from prompts/. Path must be relative to prompts/.",
       parameters: {
-        type: 'object',
-        properties: { path: { type: 'string' } },
-        required: ['path'],
+        type: "object",
+        properties: { path: { type: "string" } },
+        required: ["path"],
         additionalProperties: false,
       } as unknown as TSchema,
       execute: async (_toolCallId: string, params: any) => {
-        const relativePath = validateRelativePath(String(params.path), promptsDir, 'prompts/');
+        const relativePath = validateRelativePath(
+          String(params.path),
+          promptsDir,
+          "prompts/",
+        );
         const absolutePath = path.join(promptsDir, relativePath);
-        const contents = await readFile(absolutePath, 'utf8');
-        ctx.artifacts.push({ type: 'text', label: 'Prompt Read', value: relativePath });
+        const contents = await readFile(absolutePath, "utf8");
+        ctx.artifacts.push({
+          type: "text",
+          label: "Prompt Read",
+          value: relativePath,
+        });
         return {
-          content: [{ type: 'text', text: contents }],
-          details: { path: relativePath, bytes: Buffer.byteLength(contents, 'utf8') },
+          content: [{ type: "text", text: contents }],
+          details: {
+            path: relativePath,
+            bytes: Buffer.byteLength(contents, "utf8"),
+          },
         };
       },
     },
     {
-      name: 'write_prompt_file',
-      label: 'Write Prompt File',
-      description: 'Write UTF-8 text to a file in prompts/. Path must be relative to prompts/.',
+      name: "write_prompt_file",
+      label: "Write Prompt File",
+      description:
+        "Write UTF-8 text to a file in prompts/. Path must be relative to prompts/.",
       parameters: {
-        type: 'object',
+        type: "object",
         properties: {
-          path: { type: 'string' },
-          content: { type: 'string' },
-          append: { type: 'boolean' },
+          path: { type: "string" },
+          content: { type: "string" },
+          append: { type: "boolean" },
         },
-        required: ['path', 'content'],
+        required: ["path", "content"],
         additionalProperties: false,
       } as unknown as TSchema,
       execute: async (_toolCallId: string, params: any) => {
-        const relativePath = validateRelativePath(String(params.path), promptsDir, 'prompts/');
+        const relativePath = validateRelativePath(
+          String(params.path),
+          promptsDir,
+          "prompts/",
+        );
         const absolutePath = path.join(promptsDir, relativePath);
         const contents = String(params.content);
         const append = Boolean(params.append);
 
         await mkdir(path.dirname(absolutePath), { recursive: true });
         if (append) {
-          const current = await readFile(absolutePath, 'utf8').catch((error) => {
-            if ((error as NodeJS.ErrnoException).code === 'ENOENT') return '';
-            throw error;
-          });
-          await writeFile(absolutePath, `${current}${contents}`, 'utf8');
+          const current = await readFile(absolutePath, "utf8").catch(
+            (error) => {
+              if ((error as NodeJS.ErrnoException).code === "ENOENT") return "";
+              throw error;
+            },
+          );
+          await writeFile(absolutePath, `${current}${contents}`, "utf8");
         } else {
-          await writeFile(absolutePath, contents, 'utf8');
+          await writeFile(absolutePath, contents, "utf8");
         }
 
-        ctx.artifacts.push({ type: 'text', label: 'Prompt Write', value: relativePath });
+        ctx.artifacts.push({
+          type: "text",
+          label: "Prompt Write",
+          value: relativePath,
+        });
         return {
           content: [
             {
-              type: 'text',
-              text: `Wrote ${Buffer.byteLength(contents, 'utf8')} bytes to prompts/${relativePath}`,
+              type: "text",
+              text: `Wrote ${Buffer.byteLength(contents, "utf8")} bytes to prompts/${relativePath}`,
             },
           ],
-          details: { path: relativePath, append, bytes: Buffer.byteLength(contents, 'utf8') },
+          details: {
+            path: relativePath,
+            append,
+            bytes: Buffer.byteLength(contents, "utf8"),
+          },
         };
       },
     },
   ];
 }
 
-function validateRelativePath(inputPath: string, rootDir: string, label: string): string {
-  const normalized = inputPath.trim().replaceAll('\\', '/');
+function validateRelativePath(
+  inputPath: string,
+  rootDir: string,
+  label: string,
+): string {
+  const normalized = inputPath.trim().replaceAll("\\", "/");
   if (!normalized) throw new Error(`${label} file path cannot be empty`);
-  if (path.isAbsolute(normalized)) throw new Error(`${label} file path must be relative`);
+  if (path.isAbsolute(normalized))
+    throw new Error(`${label} file path must be relative`);
   const absolute = path.resolve(rootDir, normalized);
   const relative = path.relative(rootDir, absolute);
-  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error(`Path escapes ${label} and is not allowed`);
   }
-  return relative.replaceAll('\\', '/');
+  return relative.replaceAll("\\", "/");
 }
 
 async function listDir(dirPath: string): Promise<string[]> {

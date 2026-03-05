@@ -68,8 +68,8 @@ export function createServiceRef<T>(config: { id: string }): ServiceRef<T> {
 /** Hooks that plugins can register to react to confidante lifecycle events. */
 export interface ConfidanteHooks {
   register(hooks: {
-    'confidante:start'?: () => void | Promise<void>;
-    'confidante:stop'?: () => void | Promise<void>;
+    "confidante:start"?: () => void | Promise<void>;
+    "confidante:stop"?: () => void | Promise<void>;
   }): void;
 }
 
@@ -79,8 +79,8 @@ export interface ConfidanteHooks {
 
 /** Core service refs available to all confidante plugins. */
 export const confidanteDeps = {
-  hooks: createServiceRef<ConfidanteHooks>({ id: 'core.hooks' }),
-  docker: createServiceRef<DockerService>({ id: 'core.docker' }),
+  hooks: createServiceRef<ConfidanteHooks>({ id: "core.hooks" }),
+  docker: createServiceRef<DockerService>({ id: "core.docker" }),
 };
 
 type ResolveDeps<T extends Record<string, ServiceRef<any>>> = {
@@ -121,7 +121,9 @@ export interface ConfidantePlugin {
   readonly registerConfidante?: (env: ConfidanteEnvironment) => void;
 }
 
-export function createConfidantePlugin(options: ConfidantePlugin): ConfidantePlugin {
-  if (!options.id) throw new Error('ConfidantePlugin: id is required');
+export function createConfidantePlugin(
+  options: ConfidantePlugin,
+): ConfidantePlugin {
+  if (!options.id) throw new Error("ConfidantePlugin: id is required");
   return options;
 }

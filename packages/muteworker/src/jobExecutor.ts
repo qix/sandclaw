@@ -1,14 +1,22 @@
-import type { MuteworkerPlugin, MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-plugin-api';
-import type { MuteworkerApiClient } from './apiClient';
-import type { MuteworkerConfig } from './config';
-import type { Logger } from './logger';
-import { runWithPi } from './piRuntime';
-import type { Artifact, ToolArgs } from './tools/index';
-import type { MuteworkerJobResult, MuteworkerQueueJob } from './types';
+import type {
+  MuteworkerPlugin,
+  MuteworkerPluginContext,
+  RunAgentFn,
+} from "@sandclaw/muteworker-plugin-api";
+import type { MuteworkerApiClient } from "./apiClient";
+import type { MuteworkerConfig } from "./config";
+import type { Logger } from "./logger";
+import { runWithPi } from "./piRuntime";
+import type { Artifact, ToolArgs } from "./tools/index";
+import type { MuteworkerJobResult, MuteworkerQueueJob } from "./types";
 
 class ExecutionError extends Error {
   constructor(
-    public readonly kind: 'ModelError' | 'Timeout' | 'PolicyViolation' | 'ParseError',
+    public readonly kind:
+      | "ModelError"
+      | "Timeout"
+      | "PolicyViolation"
+      | "ParseError",
     message: string,
   ) {
     super(message);
@@ -25,12 +33,14 @@ export interface JobArgs {
   buildSystemPrompt: () => Promise<string>;
 }
 
-export async function executeMuteworkerJob(args: JobArgs): Promise<MuteworkerJobResult> {
+export async function executeMuteworkerJob(
+  args: JobArgs,
+): Promise<MuteworkerJobResult> {
   const { config, logger, job } = args;
   const artifacts: Artifact[] = [];
   const startTime = Date.now();
 
-  logger.info('job.execution.started', {
+  logger.info("job.execution.started", {
     jobId: job.id,
     jobType: job.jobType,
     timeoutMs: config.jobTimeoutMs,
@@ -78,35 +88,44 @@ export async function executeMuteworkerJob(args: JobArgs): Promise<MuteworkerJob
       if (!prompt) {
         return {
           jobId: job.id,
-          status: 'success',
-          summary: 'No job data provided',
+          status: "success",
+          summary: "No job data provided",
           artifacts,
           logs: { durationMs: Date.now() - startTime, steps: 0 },
         };
       }
 
-      logger.info('job.execution.default_handler', { jobId: job.id, jobType: job.jobType });
+      logger.info("job.execution.default_handler", {
+        jobId: job.id,
+        jobType: job.jobType,
+      });
       await withTimeout(runAgent(prompt), config.jobTimeoutMs);
     }
 
     return {
       jobId: job.id,
-      status: 'success',
-      summary: 'Job completed',
+      status: "success",
+      summary: "Job completed",
       artifacts,
       logs: { durationMs: Date.now() - startTime, steps: artifacts.length },
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    const message = error instanceof Error ? error.message : 'Unknown job execution error';
-    const kind = error instanceof ExecutionError ? error.kind : 'ModelError';
+    const message =
+      error instanceof Error ? error.message : "Unknown job execution error";
+    const kind = error instanceof ExecutionError ? error.kind : "ModelError";
 
-    logger.error('job.execution.failed', { jobId: job.id, durationMs, kind, error: message });
+    logger.error("job.execution.failed", {
+      jobId: job.id,
+      durationMs,
+      kind,
+      error: message,
+    });
 
     return {
       jobId: job.id,
-      status: 'failed',
-      summary: 'Muteworker job execution failed',
+      status: "failed",
+      summary: "Muteworker job execution failed",
       artifacts,
       logs: { durationMs, steps: 0 },
       error: { kind, message },
@@ -114,11 +133,14 @@ export async function executeMuteworkerJob(args: JobArgs): Promise<MuteworkerJob
   }
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+): Promise<T> {
   let handle: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
     handle = setTimeout(
-      () => reject(new ExecutionError('Timeout', 'Job timeout exceeded')),
+      () => reject(new ExecutionError("Timeout", "Job timeout exceeded")),
       timeoutMs,
     );
   });

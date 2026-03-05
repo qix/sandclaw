@@ -1,10 +1,10 @@
-import React from 'react';
-import type { VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
-import { colors } from '@sandclaw/ui';
+import React from "react";
+import type { VerificationRendererProps } from "@sandclaw/gatekeeper-plugin-api";
+import { colors } from "@sandclaw/ui";
 
 export function ObsidianPanel() {
   return (
-    <div style={{ padding: '1.5rem' }}>
+    <div style={{ padding: "1.5rem" }}>
       <h2 style={{ marginTop: 0 }}>Obsidian</h2>
       <p style={{ color: colors.muted }}>
         Provides read and write access to an Obsidian vault on the host
@@ -13,10 +13,17 @@ export function ObsidianPanel() {
       </p>
       <section>
         <h3>Capabilities</h3>
-        <ul style={{ lineHeight: '1.8' }}>
-          <li><strong>Search:</strong> Full-text BM25 search across vault files</li>
-          <li><strong>Read:</strong> Read any note by path (no verification)</li>
-          <li><strong>Write:</strong> Create or overwrite notes (requires approval with diff preview)</li>
+        <ul style={{ lineHeight: "1.8" }}>
+          <li>
+            <strong>Search:</strong> Full-text BM25 search across vault files
+          </li>
+          <li>
+            <strong>Read:</strong> Read any note by path (no verification)
+          </li>
+          <li>
+            <strong>Write:</strong> Create or overwrite notes (requires approval
+            with diff preview)
+          </li>
         </ul>
       </section>
       <section>
@@ -27,11 +34,19 @@ export function ObsidianPanel() {
   );
 }
 
-export function ObsidianVerificationRenderer({ data }: VerificationRendererProps) {
-  const filePath = data?.path ?? 'unknown';
-  const mode = data?.mode ?? 'overwrite';
+export function ObsidianVerificationRenderer({
+  data,
+}: VerificationRendererProps) {
+  const filePath = data?.path ?? "unknown";
+  const mode = data?.mode ?? "overwrite";
   const diff = data?.diff as
-    | { lines?: Array<{ type: string; text: string }>; added?: number; removed?: number; unchanged?: number; truncated?: boolean }
+    | {
+        lines?: Array<{ type: string; text: string }>;
+        added?: number;
+        removed?: number;
+        unchanged?: number;
+        truncated?: boolean;
+      }
     | undefined;
   const prevBytes = data?.previousBytes ?? 0;
   const nextBytes = data?.nextBytes ?? 0;
@@ -39,62 +54,86 @@ export function ObsidianVerificationRenderer({ data }: VerificationRendererProps
   const lineColors: Record<string, React.CSSProperties> = {
     add: { background: colors.diffAddBg, color: colors.diffAddFg },
     remove: { background: colors.diffRemoveBg, color: colors.diffRemoveFg },
-    context: { background: 'transparent', color: colors.diffContextFg },
+    context: { background: "transparent", color: colors.diffContextFg },
   };
 
   const linePrefix: Record<string, string> = {
-    add: '+',
-    remove: '-',
-    context: ' ',
+    add: "+",
+    remove: "-",
+    context: " ",
   };
 
   return (
     <div>
-      <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '1rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <div style={{ fontSize: '0.85rem', color: colors.muted }}>
-          <strong style={{ color: colors.text }}>File:</strong>{' '}
-          <span style={{ fontFamily: 'monospace' }}>{filePath}</span>
+      <div
+        style={{
+          marginBottom: "0.75rem",
+          display: "flex",
+          gap: "1rem",
+          alignItems: "baseline",
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ fontSize: "0.85rem", color: colors.muted }}>
+          <strong style={{ color: colors.text }}>File:</strong>{" "}
+          <span style={{ fontFamily: "monospace" }}>{filePath}</span>
         </div>
         <span
           style={{
-            padding: '0.15rem 0.5rem',
-            borderRadius: '9999px',
-            fontSize: '0.75rem',
+            padding: "0.15rem 0.5rem",
+            borderRadius: "9999px",
+            fontSize: "0.75rem",
             fontWeight: 600,
-            background: mode === 'append' ? colors.badgeAmberBg : colors.badgeIndigoBg,
-            color: mode === 'append' ? colors.badgeAmberFg : colors.badgeIndigoFg,
+            background:
+              mode === "append" ? colors.badgeAmberBg : colors.badgeIndigoBg,
+            color:
+              mode === "append" ? colors.badgeAmberFg : colors.badgeIndigoFg,
           }}
         >
           {mode}
         </span>
-        <span style={{ fontSize: '0.8rem', color: colors.muted }}>
+        <span style={{ fontSize: "0.8rem", color: colors.muted }}>
           {prevBytes} → {nextBytes} bytes
         </span>
       </div>
 
       {diff && diff.lines && diff.lines.length > 0 ? (
         <>
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', fontSize: '0.8rem' }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              marginBottom: "0.5rem",
+              fontSize: "0.8rem",
+            }}
+          >
             {diff.added != null && diff.added > 0 && (
-              <span style={{ color: colors.diffAddFg, fontWeight: 600 }}>+{diff.added} added</span>
+              <span style={{ color: colors.diffAddFg, fontWeight: 600 }}>
+                +{diff.added} added
+              </span>
             )}
             {diff.removed != null && diff.removed > 0 && (
-              <span style={{ color: colors.diffRemoveFg, fontWeight: 600 }}>-{diff.removed} removed</span>
+              <span style={{ color: colors.diffRemoveFg, fontWeight: 600 }}>
+                -{diff.removed} removed
+              </span>
             )}
             {diff.unchanged != null && (
-              <span style={{ color: colors.muted }}>{diff.unchanged} unchanged</span>
+              <span style={{ color: colors.muted }}>
+                {diff.unchanged} unchanged
+              </span>
             )}
           </div>
           <div
             style={{
               border: `1px solid ${colors.diffBorder}`,
-              borderRadius: '0.5rem',
-              overflow: 'hidden',
-              fontFamily: "'SF Mono', 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Menlo, Monaco, Consolas, monospace",
-              fontSize: '0.82rem',
+              borderRadius: "0.5rem",
+              overflow: "hidden",
+              fontFamily:
+                "'SF Mono', 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Menlo, Monaco, Consolas, monospace",
+              fontSize: "0.82rem",
               lineHeight: 1.5,
-              maxHeight: '400px',
-              overflowY: 'auto',
+              maxHeight: "400px",
+              overflowY: "auto",
               background: colors.diffBg,
             }}
           >
@@ -102,27 +141,47 @@ export function ObsidianVerificationRenderer({ data }: VerificationRendererProps
               <div
                 key={i}
                 style={{
-                  padding: '0 0.75rem',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
+                  padding: "0 0.75rem",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
                   ...(lineColors[line.type] ?? lineColors.context),
                 }}
               >
-                <span style={{ display: 'inline-block', width: '1.2em', userSelect: 'none', opacity: 0.6 }}>
-                  {linePrefix[line.type] ?? ' '}
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: "1.2em",
+                    userSelect: "none",
+                    opacity: 0.6,
+                  }}
+                >
+                  {linePrefix[line.type] ?? " "}
                 </span>
                 {line.text}
               </div>
             ))}
           </div>
           {diff.truncated && (
-            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: colors.muted, fontStyle: 'italic' }}>
+            <div
+              style={{
+                marginTop: "0.5rem",
+                fontSize: "0.8rem",
+                color: colors.muted,
+                fontStyle: "italic",
+              }}
+            >
               Diff truncated — showing first lines only.
             </div>
           )}
         </>
       ) : (
-        <div style={{ color: colors.muted, fontStyle: 'italic', fontSize: '0.85rem' }}>
+        <div
+          style={{
+            color: colors.muted,
+            fontStyle: "italic",
+            fontSize: "0.85rem",
+          }}
+        >
           No diff available (new file).
         </div>
       )}

@@ -1,15 +1,18 @@
-import type { MuteworkerPlugin, MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
-import { ApiError, MuteworkerApiClient } from './apiClient';
-import type { MuteworkerConfig } from './config';
-import { executeMuteworkerJob } from './jobExecutor';
-import type { Logger } from './logger';
-import { assertValidJobResult } from './resultSchema';
+import type {
+  MuteworkerPlugin,
+  MuteworkerPluginContext,
+} from "@sandclaw/muteworker-plugin-api";
+import { ApiError, MuteworkerApiClient } from "./apiClient";
+import type { MuteworkerConfig } from "./config";
+import { executeMuteworkerJob } from "./jobExecutor";
+import type { Logger } from "./logger";
+import { assertValidJobResult } from "./resultSchema";
 import {
   createBackoffState,
   nextBackoffMs,
   resetBackoff,
   sleepWithStop,
-} from './retry';
+} from "./retry";
 
 export class MuteworkerQueueLoop {
   private shouldRun = true;
@@ -21,7 +24,9 @@ export class MuteworkerQueueLoop {
     private readonly config: MuteworkerConfig,
     private readonly logger: Logger,
     private readonly plugins: MuteworkerPlugin[],
-    private readonly toolFactories: Array<(ctx: MuteworkerPluginContext) => any[]>,
+    private readonly toolFactories: Array<
+      (ctx: MuteworkerPluginContext) => any[]
+    >,
     private readonly buildSystemPrompt: () => Promise<string>,
   ) {}
 
@@ -31,7 +36,9 @@ export class MuteworkerQueueLoop {
   }
 
   async start(): Promise<void> {
-    this.logger.info('queue.loop.started', { pollIntervalMs: this.config.pollIntervalMs });
+    this.logger.info("queue.loop.started", {
+      pollIntervalMs: this.config.pollIntervalMs,
+    });
 
     while (this.shouldRun) {
       try {
@@ -41,13 +48,19 @@ export class MuteworkerQueueLoop {
         if (!job) {
           resetBackoff(this.backoff);
           if (this.config.longPollTimeoutMs <= 0) {
-            await sleepWithStop(this.config.pollIntervalMs, () => !this.shouldRun);
+            await sleepWithStop(
+              this.config.pollIntervalMs,
+              () => !this.shouldRun,
+            );
           }
           continue;
         }
 
         resetBackoff(this.backoff);
-        this.logger.info('queue.job.claimed', { jobId: job.id, jobType: job.jobType });
+        this.logger.info("queue.job.claimed", {
+          jobId: job.id,
+          jobType: job.jobType,
+        });
 
         const result = await executeMuteworkerJob({
           job,
@@ -62,28 +75,33 @@ export class MuteworkerQueueLoop {
         assertValidJobResult(result);
         await this.client.markComplete(job.id);
 
-        if (result.status === 'success') {
-          this.logger.info('queue.job.completed', { jobId: job.id });
+        if (result.status === "success") {
+          this.logger.info("queue.job.completed", { jobId: job.id });
         } else {
-          this.logger.warn('queue.job.failed.completed', {
+          this.logger.warn("queue.job.failed.completed", {
             jobId: job.id,
-            errorKind: result.error?.kind ?? 'unknown',
-            error: result.error?.message ?? 'no error message',
+            errorKind: result.error?.kind ?? "unknown",
+            error: result.error?.message ?? "no error message",
           });
         }
       } catch (error) {
-        if (!this.shouldRun && error instanceof Error && error.name === 'AbortError') {
+        if (
+          !this.shouldRun &&
+          error instanceof Error &&
+          error.name === "AbortError"
+        ) {
           break;
         }
         if (error instanceof ApiError) {
-          this.logger.error('queue.api.error', {
+          this.logger.error("queue.api.error", {
             status: error.status,
             message: error.message,
             body: error.body,
           });
         } else {
-          const message = error instanceof Error ? error.message : 'Unknown queue loop error';
-          this.logger.error('queue.loop.error', { message });
+          const message =
+            error instanceof Error ? error.message : "Unknown queue loop error";
+          this.logger.error("queue.loop.error", { message });
         }
 
         const backoffMs = nextBackoffMs(
@@ -91,7 +109,7 @@ export class MuteworkerQueueLoop {
           this.config.pollIntervalMs,
           10_000,
         );
-        this.logger.warn('queue.loop.retrying', {
+        this.logger.warn("queue.loop.retrying", {
           attempts: this.backoff.attempts,
           backoffMs,
         });
@@ -99,6 +117,6 @@ export class MuteworkerQueueLoop {
       }
     }
 
-    this.logger.info('queue.loop.stopped');
+    this.logger.info("queue.loop.stopped");
   }
 }

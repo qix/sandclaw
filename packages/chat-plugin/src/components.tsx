@@ -1,6 +1,13 @@
-import React from 'react';
-import type { VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
-import { Card, CardHeader, CardBody, PageHeader, StatusDot, colors } from '@sandclaw/ui';
+import React from "react";
+import type { VerificationRendererProps } from "@sandclaw/gatekeeper-plugin-api";
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  PageHeader,
+  StatusDot,
+  colors,
+} from "@sandclaw/ui";
 
 export function ChatPanel() {
   return (
@@ -19,25 +26,32 @@ export function ChatPanel() {
           <div
             id="chat-messages"
             style={{
-              height: '400px',
-              overflowY: 'auto',
-              padding: '0.75rem',
+              height: "400px",
+              overflowY: "auto",
+              padding: "0.75rem",
               background: colors.surface,
-              borderRadius: '0.5rem',
+              borderRadius: "0.5rem",
               border: `1px solid ${colors.border}`,
-              marginBottom: '0.75rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
+              marginBottom: "0.75rem",
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.5rem",
             }}
           >
-            <p style={{ color: colors.muted, fontSize: '0.875rem', textAlign: 'center', margin: 'auto 0' }}>
+            <p
+              style={{
+                color: colors.muted,
+                fontSize: "0.875rem",
+                textAlign: "center",
+                margin: "auto 0",
+              }}
+            >
               Connecting&hellip;
             </p>
           </div>
           <form
             id="chat-form"
-            style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}
+            style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}
             onSubmit={(e: any) => e.preventDefault()}
           >
             <textarea
@@ -47,32 +61,32 @@ export function ChatPanel() {
               rows={1}
               style={{
                 flex: 1,
-                padding: '0.5rem 0.75rem',
-                borderRadius: '0.375rem',
+                padding: "0.5rem 0.75rem",
+                borderRadius: "0.375rem",
                 border: `1px solid ${colors.border}`,
                 background: colors.surface,
                 color: colors.text,
-                fontSize: '0.875rem',
-                outline: 'none',
-                resize: 'none',
-                overflow: 'hidden',
-                lineHeight: '1.4',
-                fontFamily: 'inherit',
-                maxHeight: '150px',
+                fontSize: "0.875rem",
+                outline: "none",
+                resize: "none",
+                overflow: "hidden",
+                lineHeight: "1.4",
+                fontFamily: "inherit",
+                maxHeight: "150px",
               }}
             />
             <button
               type="submit"
               style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '0.375rem',
-                border: 'none',
+                padding: "0.5rem 1rem",
+                borderRadius: "0.375rem",
+                border: "none",
                 background: colors.accent,
-                color: 'oklch(1 0 0)',
+                color: "oklch(1 0 0)",
                 fontWeight: 600,
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
+                fontSize: "0.875rem",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
               }}
             >
               Send
@@ -203,15 +217,25 @@ export function ChatPanel() {
 }
 
 export function ChatVerificationRenderer({ data }: VerificationRendererProps) {
-  const text = data?.text ?? '';
+  const text = data?.text ?? "";
   return (
     <div>
-      <div style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: colors.muted }}>
+      <div
+        style={{
+          marginBottom: "0.75rem",
+          fontSize: "0.85rem",
+          color: colors.muted,
+        }}
+      >
         <strong style={{ color: colors.text }}>Chat Message</strong>
       </div>
       <div
         className="sc-message-bubble"
-        style={{ background: colors.successTint, border: `1px solid ${colors.successTintBorder}`, color: colors.text }}
+        style={{
+          background: colors.successTint,
+          border: `1px solid ${colors.successTintBorder}`,
+          color: colors.text,
+        }}
       >
         {text}
       </div>

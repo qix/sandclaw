@@ -1,10 +1,15 @@
-import type { MuteworkerPlugin, MuteworkerHooks, MuteworkerPluginContext, ToolsService } from '@sandclaw/muteworker-plugin-api';
-import { MuteworkerApiClient } from './apiClient';
-import { DEFAULT_CONFIG, MuteworkerConfig } from './config';
-import { createLogger } from './logger';
-import { MuteworkerQueueLoop } from './queueLoop';
+import type {
+  MuteworkerPlugin,
+  MuteworkerHooks,
+  MuteworkerPluginContext,
+  ToolsService,
+} from "@sandclaw/muteworker-plugin-api";
+import { MuteworkerApiClient } from "./apiClient";
+import { DEFAULT_CONFIG, MuteworkerConfig } from "./config";
+import { createLogger } from "./logger";
+import { MuteworkerQueueLoop } from "./queueLoop";
 
-export type { MuteworkerConfig } from './config';
+export type { MuteworkerConfig } from "./config";
 
 export interface MuteworkerOptions {
   /** Plugins to load into the muteworker. */
@@ -34,7 +39,9 @@ export interface MuteworkerOptions {
  * });
  * ```
  */
-export async function startMuteworker(options: MuteworkerOptions): Promise<void> {
+export async function startMuteworker(
+  options: MuteworkerOptions,
+): Promise<void> {
   const config: MuteworkerConfig = { ...DEFAULT_CONFIG, ...options.config };
   const plugins = options.plugins ?? [];
 
@@ -44,12 +51,17 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
   // Plugin lifecycle: create services, run registerMuteworker + init
   const startHooks: Array<() => Promise<void>> = [];
   const stopHooks: Array<() => Promise<void>> = [];
-  const buildSystemPromptHooks: Array<(prev: string) => string | Promise<string>> = [];
+  const buildSystemPromptHooks: Array<
+    (prev: string) => string | Promise<string>
+  > = [];
   const hooksService: MuteworkerHooks = {
     register(hooks) {
-      if (hooks['muteworker:start']) startHooks.push(async () => hooks['muteworker:start']!());
-      if (hooks['muteworker:stop']) stopHooks.push(async () => hooks['muteworker:stop']!());
-      if (hooks['muteworker:build-system-prompt']) buildSystemPromptHooks.push(hooks['muteworker:build-system-prompt']);
+      if (hooks["muteworker:start"])
+        startHooks.push(async () => hooks["muteworker:start"]!());
+      if (hooks["muteworker:stop"])
+        stopHooks.push(async () => hooks["muteworker:stop"]!());
+      if (hooks["muteworker:build-system-prompt"])
+        buildSystemPromptHooks.push(hooks["muteworker:build-system-prompt"]);
     },
   };
 
@@ -62,13 +74,15 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
   };
 
   const services = new Map<string, any>();
-  services.set('core.hooks', hooksService);
-  services.set('core.tools', toolsService);
+  services.set("core.hooks", hooksService);
+  services.set("core.tools", toolsService);
 
   const initFns: Array<() => void | Promise<void>> = [];
   for (const plugin of plugins) {
     if (!plugin.registerMuteworker) {
-      throw new Error(`Plugin "${plugin.id}" is missing required registerMuteworker method`);
+      throw new Error(
+        `Plugin "${plugin.id}" is missing required registerMuteworker method`,
+      );
     }
     plugin.registerMuteworker({
       registerInit({ deps, init }) {
@@ -80,29 +94,40 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
       },
     });
   }
-  for (const fn of initFns) { await fn(); }
+  for (const fn of initFns) {
+    await fn();
+  }
 
   // Build the system prompt pipeline
   const buildSystemPrompt = async (): Promise<string> => {
-    let prompt = '';
+    let prompt = "";
     for (const hook of buildSystemPromptHooks) {
       prompt = await hook(prompt);
     }
     return prompt;
   };
 
-  const loop = new MuteworkerQueueLoop(client, config, logger, plugins, toolFactories, buildSystemPrompt);
+  const loop = new MuteworkerQueueLoop(
+    client,
+    config,
+    logger,
+    plugins,
+    toolFactories,
+    buildSystemPrompt,
+  );
 
   const shutdown = async () => {
-    logger.info('muteworker.shutdown.requested');
+    logger.info("muteworker.shutdown.requested");
     loop.stop();
-    for (const fn of stopHooks) { await fn(); }
+    for (const fn of stopHooks) {
+      await fn();
+    }
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 
-  logger.info('muteworker.startup', {
+  logger.info("muteworker.startup", {
     apiBaseUrl: config.apiBaseUrl,
     modelProvider: config.modelProvider,
     modelId: config.modelId,
@@ -110,7 +135,9 @@ export async function startMuteworker(options: MuteworkerOptions): Promise<void>
   });
 
   // Fire start hooks
-  for (const fn of startHooks) { await fn(); }
+  for (const fn of startHooks) {
+    await fn();
+  }
 
   await loop.start();
 }

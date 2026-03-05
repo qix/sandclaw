@@ -22,19 +22,19 @@ export interface MuteworkerConfig {
   /** Human-facing URL included in verification prompts. */
   verificationUiUrl: string;
   /** Minimum log level to emit. */
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  logLevel: "debug" | "info" | "warn" | "error";
   /** Tool-loop detection settings. */
-  loopDetection?: import('./tool-loop-detection').LoopDetectionConfig;
+  loopDetection?: import("./tool-loop-detection").LoopDetectionConfig;
 }
 
 export const DEFAULT_CONFIG: MuteworkerConfig = {
-  apiBaseUrl: 'http://localhost:3000',
-  modelProvider: 'anthropic',
-  modelId: 'claude-sonnet-4-6',
+  apiBaseUrl: "http://localhost:3000",
+  modelProvider: "anthropic",
+  modelId: "claude-sonnet-4-6",
   pollIntervalMs: 3000,
   longPollTimeoutMs: 25000,
   jobTimeoutMs: 120000,
   maxSteps: 8,
-  verificationUiUrl: 'http://localhost:3000',
-  logLevel: 'info',
+  verificationUiUrl: "http://localhost:3000",
+  logLevel: "info",
 };

@@ -1,17 +1,25 @@
-import { createElement } from 'react';
-import { renderToString } from 'react-dom/server';
-import { Hono } from 'hono';
-import { serve } from '@hono/node-server';
-import type { Knex } from 'knex';
-import type { GatekeeperPlugin, GatekeeperHooks, StatusColorValue, TabsService, RoutesService, WebSocketService, VerificationRendererProps } from '@sandclaw/gatekeeper-plugin-api';
-import type { ComponentType } from 'react';
-import { WebSocketServer, WebSocket } from 'ws';
-import { App } from './pages/App';
-import type { TabRenderData } from './pages/App';
-import type { VerificationHistoryPage } from './pages/VerificationsPage';
-import { createDb, runCoreMigrations } from './db';
-import { logger } from './logger';
-import { registerCoreRoutes, registerVerificationFormRoutes } from './routes';
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+import type { Knex } from "knex";
+import type {
+  GatekeeperPlugin,
+  GatekeeperHooks,
+  StatusColorValue,
+  TabsService,
+  RoutesService,
+  WebSocketService,
+  VerificationRendererProps,
+} from "@sandclaw/gatekeeper-plugin-api";
+import type { ComponentType } from "react";
+import { WebSocketServer, WebSocket } from "ws";
+import { App } from "./pages/App";
+import type { TabRenderData } from "./pages/App";
+import type { VerificationHistoryPage } from "./pages/VerificationsPage";
+import { createDb, runCoreMigrations } from "./db";
+import { logger } from "./logger";
+import { registerCoreRoutes, registerVerificationFormRoutes } from "./routes";
 
 /** Internal registration with the statusColor getter preserved for per-request evaluation. */
 interface TabRegistrationInternal {
@@ -31,16 +39,21 @@ export interface GatekeeperOptions {
   port?: number;
 }
 
-export async function startGatekeeper(options: GatekeeperOptions): Promise<void> {
+export async function startGatekeeper(
+  options: GatekeeperOptions,
+): Promise<void> {
   const { plugins, dbPath, port = 3000 } = options;
   const app = new Hono();
 
   // Request logging middleware
-  app.use('*', async (c, next) => {
+  app.use("*", async (c, next) => {
     const start = Date.now();
     await next();
     const ms = Date.now() - start;
-    logger.info({ method: c.req.method, path: c.req.path, status: c.res.status, ms }, 'request');
+    logger.info(
+      { method: c.req.method, path: c.req.path, status: c.res.status, ms },
+      "request",
+    );
   });
 
   // 1. Initialise DB and run core + plugin migrations
@@ -57,20 +70,31 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   const stopHooks: Array<() => Promise<void>> = [];
   const hooksService: GatekeeperHooks = {
     register(hooks) {
-      if (hooks['gatekeeper:start']) startHooks.push(async () => hooks['gatekeeper:start']!());
-      if (hooks['gatekeeper:stop']) stopHooks.push(async () => hooks['gatekeeper:stop']!());
+      if (hooks["gatekeeper:start"])
+        startHooks.push(async () => hooks["gatekeeper:start"]!());
+      if (hooks["gatekeeper:stop"])
+        stopHooks.push(async () => hooks["gatekeeper:stop"]!());
     },
   };
 
   // Collected tab registrations and route handlers from all plugins
   const tabRegistrations: TabRegistrationInternal[] = [];
-  const allRouteHandlers: Array<{ pluginId: string; handler: (app: Hono) => void }> = [];
+  const allRouteHandlers: Array<{
+    pluginId: string;
+    handler: (app: Hono) => void;
+  }> = [];
 
   // Collected verification renderers
-  const renderers: Record<string, ComponentType<VerificationRendererProps>> = {};
+  const renderers: Record<
+    string,
+    ComponentType<VerificationRendererProps>
+  > = {};
 
   // WebSocket upgrade handlers collected from plugins
-  const wsUpgradeHandlers = new Map<string, (req: any, socket: any, head: Buffer) => void>();
+  const wsUpgradeHandlers = new Map<
+    string,
+    (req: any, socket: any, head: Buffer) => void
+  >();
   const wsService: WebSocketService = {
     onUpgrade(path, handler) {
       wsUpgradeHandlers.set(path, handler);
@@ -78,14 +102,16 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   };
 
   const services = new Map<string, any>();
-  services.set('core.db', db);
-  services.set('core.hooks', hooksService);
-  services.set('core.ws', wsService);
+  services.set("core.db", db);
+  services.set("core.hooks", hooksService);
+  services.set("core.ws", wsService);
 
   const initFns: Array<() => void | Promise<void>> = [];
   for (const plugin of plugins) {
     if (!plugin.registerGateway) {
-      throw new Error(`Plugin "${plugin.id}" is missing required registerGateway method`);
+      throw new Error(
+        `Plugin "${plugin.id}" is missing required registerGateway method`,
+      );
     }
 
     // Collect verification renderers
@@ -98,7 +124,10 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
     let tabCount = 0;
     const tabsService: TabsService = {
       registerTab(registration) {
-        const tabKey = tabCount === 0 ? pluginId : `${pluginId}:${registration.tabName.toLowerCase().replace(/\s+/g, '-')}`;
+        const tabKey =
+          tabCount === 0
+            ? pluginId
+            : `${pluginId}:${registration.tabName.toLowerCase().replace(/\s+/g, "-")}`;
         tabCount++;
         tabRegistrations.push({
           tabKey,
@@ -119,8 +148,8 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
 
     // Clone services map with per-plugin services
     const pluginServices = new Map(services);
-    pluginServices.set('core.tabs', tabsService);
-    pluginServices.set('core.routes', routesService);
+    pluginServices.set("core.tabs", tabsService);
+    pluginServices.set("core.routes", routesService);
 
     plugin.registerGateway({
       registerInit({ deps, init }) {
@@ -132,7 +161,9 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
       },
     });
   }
-  for (const fn of initFns) { await fn(); }
+  for (const fn of initFns) {
+    await fn();
+  }
 
   // 3. Core WebSocket for real-time verification count
   const coreWss = new WebSocketServer({ noServer: true });
@@ -140,13 +171,13 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   let lastBroadcastCount = -1;
 
   async function broadcastVerificationCount() {
-    const [{ count }] = await db('verification_requests')
-      .where('status', 'pending')
-      .count('* as count');
+    const [{ count }] = await db("verification_requests")
+      .where("status", "pending")
+      .count("* as count");
     const n = Number(count);
     if (n === lastBroadcastCount) return;
     lastBroadcastCount = n;
-    const msg = JSON.stringify({ type: 'verification_count', count: n });
+    const msg = JSON.stringify({ type: "verification_count", count: n });
     for (const client of coreClients) {
       if (client.readyState === WebSocket.OPEN) client.send(msg);
     }
@@ -175,25 +206,31 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   registerVerificationFormRoutes(app, db, notifyVerificationChange);
 
   // 6. SSR — render the React shell on every GET
-  app.get('/*', async (c) => {
-    const tabParam = c.req.query('tab');
-    const pluginParam = c.req.query('plugin');
-    const page = c.req.query('page') ?? (tabParam || pluginParam ? undefined : 'verifications');
+  app.get("/*", async (c) => {
+    const tabParam = c.req.query("tab");
+    const pluginParam = c.req.query("plugin");
+    const page =
+      c.req.query("page") ??
+      (tabParam || pluginParam ? undefined : "verifications");
 
     // Resolve active tab: ?tab= takes priority, ?plugin= as fallback (backward compat)
-    let activeTabKey = tabParam ?? '';
+    let activeTabKey = tabParam ?? "";
     if (!activeTabKey && pluginParam) {
-      const pluginTab = tabRegistrations.find((t) => t.pluginId === pluginParam);
-      activeTabKey = pluginTab?.tabKey ?? '';
+      const pluginTab = tabRegistrations.find(
+        (t) => t.pluginId === pluginParam,
+      );
+      activeTabKey = pluginTab?.tabKey ?? "";
     }
     if (!activeTabKey && !page) {
-      activeTabKey = tabRegistrations[0]?.tabKey ?? '';
+      activeTabKey = tabRegistrations[0]?.tabKey ?? "";
     }
 
     // Always fetch pending count for the sidebar badge
-    const [{ count: pendingVerificationCount }] = await db('verification_requests')
-      .where('status', 'pending')
-      .count('* as count');
+    const [{ count: pendingVerificationCount }] = await db(
+      "verification_requests",
+    )
+      .where("status", "pending")
+      .count("* as count");
 
     // Evaluate statusColor getters per-request for dynamic status
     const tabs: TabRenderData[] = tabRegistrations.map((reg) => ({
@@ -206,10 +243,10 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
 
     let verificationRequests: any[] | undefined;
     let verificationHistory: VerificationHistoryPage | undefined;
-    if (page === 'verifications') {
-      const rows = await db('verification_requests')
-        .where('status', 'pending')
-        .orderBy('created_at', 'desc');
+    if (page === "verifications") {
+      const rows = await db("verification_requests")
+        .where("status", "pending")
+        .orderBy("created_at", "desc");
       verificationRequests = rows.map((r: any) => ({
         id: r.id,
         plugin: r.plugin,
@@ -220,20 +257,23 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
       }));
 
       // Fetch resolved verifications history with pagination
-      const historyPageParam = parseInt(c.req.query('historyPage') || '1', 10);
-      const historyPage = Math.max(1, isNaN(historyPageParam) ? 1 : historyPageParam);
+      const historyPageParam = parseInt(c.req.query("historyPage") || "1", 10);
+      const historyPage = Math.max(
+        1,
+        isNaN(historyPageParam) ? 1 : historyPageParam,
+      );
       const historyLimit = 20;
       const historyOffset = (historyPage - 1) * historyLimit;
 
-      const [{ count: totalResolved }] = await db('verification_requests')
-        .whereIn('status', ['approved', 'rejected'])
-        .count('* as count');
+      const [{ count: totalResolved }] = await db("verification_requests")
+        .whereIn("status", ["approved", "rejected"])
+        .count("* as count");
 
       const total = Number(totalResolved);
       if (total > 0) {
-        const historyRows = await db('verification_requests')
-          .whereIn('status', ['approved', 'rejected'])
-          .orderBy('updated_at', 'desc')
+        const historyRows = await db("verification_requests")
+          .whereIn("status", ["approved", "rejected"])
+          .orderBy("updated_at", "desc")
           .limit(historyLimit)
           .offset(historyOffset);
 
@@ -269,24 +309,24 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   });
 
   const server = serve({ fetch: app.fetch, port });
-  logger.info({ port }, 'Gatekeeper listening');
+  logger.info({ port }, "Gatekeeper listening");
 
   // Attach WebSocket upgrade dispatcher (always — core WS is always available)
-  (server as any).on('upgrade', (req: any, socket: any, head: Buffer) => {
+  (server as any).on("upgrade", (req: any, socket: any, head: Buffer) => {
     const url = new URL(req.url!, `http://${req.headers.host}`);
 
     // Core gatekeeper WebSocket for verification count
-    if (url.pathname === '/api/gatekeeper/ws') {
+    if (url.pathname === "/api/gatekeeper/ws") {
       coreWss.handleUpgrade(req, socket, head, async (ws) => {
         coreClients.add(ws);
         // Query and send current count immediately on connect
-        const [{ count }] = await db('verification_requests')
-          .where('status', 'pending')
-          .count('* as count');
+        const [{ count }] = await db("verification_requests")
+          .where("status", "pending")
+          .count("* as count");
         const n = Number(count);
         lastBroadcastCount = n;
-        ws.send(JSON.stringify({ type: 'verification_count', count: n }));
-        ws.on('close', () => coreClients.delete(ws));
+        ws.send(JSON.stringify({ type: "verification_count", count: n }));
+        ws.on("close", () => coreClients.delete(ws));
       });
       return;
     }
@@ -301,13 +341,17 @@ export async function startGatekeeper(options: GatekeeperOptions): Promise<void>
   });
 
   // Fire start hooks (after server is accepting connections)
-  for (const fn of startHooks) { await fn(); }
+  for (const fn of startHooks) {
+    await fn();
+  }
 
   // Graceful shutdown
   const shutdown = async () => {
-    for (const fn of stopHooks) { await fn(); }
+    for (const fn of stopHooks) {
+      await fn();
+    }
     process.exit(0);
   };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }

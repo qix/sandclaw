@@ -1,4 +1,4 @@
-import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
+import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
 
 export interface IncomingEmailPayload {
   messageId: string;
@@ -7,64 +7,70 @@ export interface IncomingEmailPayload {
   subject: string;
   text: string;
   threadId?: string | null;
-  history?: Array<{ role: 'user' | 'assistant'; text: string; timestamp: number }>;
+  history?: Array<{
+    role: "user" | "assistant";
+    text: string;
+    timestamp: number;
+  }>;
 }
 
 export function buildEmailPrompt(payload: IncomingEmailPayload): string {
   const historyLines = payload.history?.length
     ? [
-        '--- Email Conversation History ---',
+        "--- Email Conversation History ---",
         ...payload.history.map(
           (h) =>
-            `[${new Date(h.timestamp * 1000).toISOString()}] ${h.role === 'assistant' ? 'Assistant' : 'User'}: ${h.text}`,
+            `[${new Date(h.timestamp * 1000).toISOString()}] ${h.role === "assistant" ? "Assistant" : "User"}: ${h.text}`,
         ),
-        '---------------------------------',
+        "---------------------------------",
       ]
     : [];
 
   return [
-    '--- Email received via Gmail ---',
+    "--- Email received via Gmail ---",
     `From: ${payload.from}`,
     `To: ${payload.to}`,
     `Subject: ${payload.subject}`,
-    payload.threadId ? `Thread ID: ${payload.threadId}` : '',
+    payload.threadId ? `Thread ID: ${payload.threadId}` : "",
     ...historyLines,
-    'Latest email body:',
-    payload.text || '[No text content]',
-    '---------------------------------',
+    "Latest email body:",
+    payload.text || "[No text content]",
+    "---------------------------------",
   ]
     .filter(Boolean)
-    .join('\n');
+    .join("\n");
 }
 
 export function createSendEmailTool(ctx: MuteworkerPluginContext) {
   return {
-    name: 'send_email',
-    label: 'Send Email',
+    name: "send_email",
+    label: "Send Email",
     description:
-      'Request sending an email via Gmail. The send requires human verification before delivery.',
+      "Request sending an email via Gmail. The send requires human verification before delivery.",
     parameters: {
-      type: 'object',
+      type: "object",
       properties: {
-        to: { type: 'string' },
-        subject: { type: 'string' },
-        text: { type: 'string' },
+        to: { type: "string" },
+        subject: { type: "string" },
+        text: { type: "string" },
       },
-      required: ['to', 'subject', 'text'],
+      required: ["to", "subject", "text"],
       additionalProperties: false,
     } as any,
     execute: async (_toolCallId: string, params: any) => {
       const { to, subject, text } = params;
 
       const response = await fetch(`${ctx.apiBaseUrl}/api/gmail/send`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        method: "POST",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ to, subject, text }),
       });
 
       if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        throw new Error(`Gmail send failed (${response.status}): ${body.slice(0, 200)}`);
+        const body = await response.text().catch(() => "");
+        throw new Error(
+          `Gmail send failed (${response.status}): ${body.slice(0, 200)}`,
+        );
       }
 
       const result = (await response.json()) as {
@@ -72,18 +78,22 @@ export function createSendEmailTool(ctx: MuteworkerPluginContext) {
         verificationStatus?: string;
       };
 
-      ctx.artifacts.push({ type: 'text', label: `Email to ${to}`, value: subject });
+      ctx.artifacts.push({
+        type: "text",
+        label: `Email to ${to}`,
+        value: subject,
+      });
 
-      const needsVerification = result.verificationStatus === 'pending';
+      const needsVerification = result.verificationStatus === "pending";
       const replyText = needsVerification
         ? [
             `Email send request queued for ${to} (subject: "${subject}") and pending verification.`,
             `Open ${ctx.verificationUiUrl} to approve request #${result.verificationRequestId}.`,
-          ].join('\n')
+          ].join("\n")
         : `Email sent to ${to}.`;
 
       return {
-        content: [{ type: 'text', text: replyText }],
+        content: [{ type: "text", text: replyText }],
         details: result,
       };
     },

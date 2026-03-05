@@ -1,7 +1,10 @@
-import type { MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-plugin-api';
+import type {
+  MuteworkerPluginContext,
+  RunAgentFn,
+} from "@sandclaw/muteworker-plugin-api";
 
 export const builderJobHandlers = {
-  async 'builder:response'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
+  async "builder:response"(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
     let payload: { requestId: string; result: string };
     try {
       payload = JSON.parse(ctx.job.data);
@@ -9,24 +12,24 @@ export const builderJobHandlers = {
       throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
     }
 
-    ctx.logger.info('builder.result.received', {
+    ctx.logger.info("builder.result.received", {
       jobId: ctx.job.id,
       requestId: payload.requestId,
     });
 
     ctx.artifacts.push({
-      type: 'text',
-      label: 'Build Result',
+      type: "text",
+      label: "Build Result",
       value: payload.result.slice(0, 200),
     });
 
     const prompt = [
-      '--- Build Result ---',
+      "--- Build Result ---",
       `Request ID: ${payload.requestId}`,
-      '',
+      "",
       payload.result,
-      '--------------------',
-    ].join('\n');
+      "--------------------",
+    ].join("\n");
 
     await runAgent(prompt);
   },

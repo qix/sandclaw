@@ -9,10 +9,7 @@ function muted(text: string) {
   process.stderr.write(`${DIM}${text}${RESET}\n`);
 }
 
-function runSpawn(
-  cmd: string,
-  args: string[],
-): Promise<number> {
+function runSpawn(cmd: string, args: string[]): Promise<number> {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
       stdio: ["ignore", "pipe", "pipe"],
@@ -56,9 +53,7 @@ export async function prepareWorkDir(
       encoding: "utf-8",
     });
     if (status.trim()) {
-      throw new Error(
-        `Working directory ${workDir} has uncommitted changes`,
-      );
+      throw new Error(`Working directory ${workDir} has uncommitted changes`);
     }
     muted(`Working directory ${workDir} exists and is clean`);
   } else {

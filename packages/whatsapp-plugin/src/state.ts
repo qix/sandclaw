@@ -1,6 +1,10 @@
-import type { ConversationSummary } from '@sandclaw/ui';
+import type { ConversationSummary } from "@sandclaw/ui";
 
-export type ConnectionStatus = 'disconnected' | 'qr_pending' | 'connecting' | 'connected';
+export type ConnectionStatus =
+  | "disconnected"
+  | "qr_pending"
+  | "connecting"
+  | "connected";
 
 export interface WhatsAppState {
   waSocket: any;
@@ -10,13 +14,13 @@ export interface WhatsAppState {
   recentConversations: ConversationSummary[];
 }
 
-const STATE_KEY = '__sandclaw_whatsapp_state__';
+const STATE_KEY = "__sandclaw_whatsapp_state__";
 
 const _g = globalThis as any;
 if (!_g[STATE_KEY]) {
   _g[STATE_KEY] = {
     waSocket: null,
-    connectionStatus: 'disconnected' as ConnectionStatus,
+    connectionStatus: "disconnected" as ConnectionStatus,
     qrDataUrl: null,
     phoneNumber: null,
     recentConversations: [],

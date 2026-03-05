@@ -1,8 +1,8 @@
-import { AgentTool } from '@mariozechner/pi-agent-core';
-import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
-import type { MuteworkerApiClient } from '../apiClient';
-import type { MuteworkerConfig } from '../config';
-import type { Logger } from '../logger';
+import { AgentTool } from "@mariozechner/pi-agent-core";
+import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
+import type { MuteworkerApiClient } from "../apiClient";
+import type { MuteworkerConfig } from "../config";
+import type { Logger } from "../logger";
 import {
   createLoopDetectionState,
   detectToolCallLoop,
@@ -10,11 +10,11 @@ import {
   recordToolCallOutcome,
   shouldEmitWarning,
   type LoopDetectionState,
-} from '../tool-loop-detection';
-import type { MuteworkerQueueJob } from '../types';
+} from "../tool-loop-detection";
+import type { MuteworkerQueueJob } from "../types";
 
 export interface Artifact {
-  type: 'text';
+  type: "text";
   label: string;
   value: string;
 }
@@ -39,7 +39,7 @@ export function getTools(artifacts: Artifact[], args: ToolArgs): AgentTool[] {
     tools.push(...(factory(ctx) as AgentTool[]));
   }
 
-  args.logger.info('tools.assembled', {
+  args.logger.info("tools.assembled", {
     jobId: args.job.id,
     toolCount: tools.length,
     toolNames: tools.map((t) => t.name),
@@ -73,13 +73,22 @@ function withLoopDetection(
   return {
     ...tool,
     execute: async (toolCallId: string, params: unknown) => {
-      args.logger.info('tool.called', { jobId: args.job.id, tool: tool.name, params });
+      args.logger.info("tool.called", {
+        jobId: args.job.id,
+        tool: tool.name,
+        params,
+      });
 
       // Check for stuck loops before executing
-      const detection = detectToolCallLoop(loopState, tool.name, params, loopConfig);
+      const detection = detectToolCallLoop(
+        loopState,
+        tool.name,
+        params,
+        loopConfig,
+      );
 
-      if (detection.stuck && detection.level === 'critical') {
-        args.logger.error('tool.loop.blocked', {
+      if (detection.stuck && detection.level === "critical") {
+        args.logger.error("tool.loop.blocked", {
           jobId: args.job.id,
           tool: tool.name,
           detector: detection.detector,
@@ -91,9 +100,11 @@ function withLoopDetection(
       }
 
       let warningMessage: string | undefined;
-      if (detection.stuck && detection.level === 'warning') {
-        if (shouldEmitWarning(loopState, detection.warningKey, detection.count)) {
-          args.logger.warn('tool.loop.warning', {
+      if (detection.stuck && detection.level === "warning") {
+        if (
+          shouldEmitWarning(loopState, detection.warningKey, detection.count)
+        ) {
+          args.logger.warn("tool.loop.warning", {
             jobId: args.job.id,
             tool: tool.name,
             detector: detection.detector,
@@ -121,7 +132,10 @@ function withLoopDetection(
         if (warningMessage) {
           return {
             ...result,
-            content: [{ type: 'text' as const, text: warningMessage }, ...result.content],
+            content: [
+              { type: "text" as const, text: warningMessage },
+              ...result.content,
+            ],
           };
         }
         return result;

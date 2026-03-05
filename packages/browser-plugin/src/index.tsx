@@ -1,20 +1,20 @@
-import { gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
-import type { PluginEnvironment } from '@sandclaw/gatekeeper-plugin-api';
-import { muteworkerDeps } from '@sandclaw/muteworker-plugin-api';
-import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
-import type { ConfidanteEnvironment } from '@sandclaw/confidante-plugin-api';
-import { BrowserPanel, BrowserVerificationRenderer } from './components';
-import { registerRoutes } from './routes';
-import { createRequestBrowserTool } from './tools';
-import { browserJobHandlers } from './jobHandlers';
-import { browserConfidanteHandlers } from './confidanteHandlers';
+import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
+import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
+import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
+import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
+import type { ConfidanteEnvironment } from "@sandclaw/confidante-plugin-api";
+import { BrowserPanel, BrowserVerificationRenderer } from "./components";
+import { registerRoutes } from "./routes";
+import { createRequestBrowserTool } from "./tools";
+import { browserJobHandlers } from "./jobHandlers";
+import { browserConfidanteHandlers } from "./confidanteHandlers";
 
-export { BrowserPanel, BrowserVerificationRenderer } from './components';
-export { createRequestBrowserTool } from './tools';
+export { BrowserPanel, BrowserVerificationRenderer } from "./components";
+export { createRequestBrowserTool } from "./tools";
 
 export function createBrowserPlugin() {
   return {
-    id: 'browser' as const,
+    id: "browser" as const,
     verificationRenderer: BrowserVerificationRenderer,
 
     jobHandlers: browserJobHandlers,
@@ -22,10 +22,14 @@ export function createBrowserPlugin() {
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({
-        deps: { db: gatekeeperDeps.db, tabs: gatekeeperDeps.tabs, routes: gatekeeperDeps.routes },
+        deps: {
+          db: gatekeeperDeps.db,
+          tabs: gatekeeperDeps.tabs,
+          routes: gatekeeperDeps.routes,
+        },
         init({ db, tabs, routes }) {
           tabs.registerTab({
-            tabName: 'Browser',
+            tabName: "Browser",
             component: BrowserPanel,
           });
 

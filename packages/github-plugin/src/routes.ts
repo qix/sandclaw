@@ -1,13 +1,13 @@
-import { execFile as execFileCb } from 'node:child_process';
-import { promisify } from 'node:util';
-import { GITHUB_PLUGIN_ID, GITHUB_PR_CREATED_ACTION } from './constants';
+import { execFile as execFileCb } from "node:child_process";
+import { promisify } from "node:util";
+import { GITHUB_PLUGIN_ID, GITHUB_PR_CREATED_ACTION } from "./constants";
 
 const execFile = promisify(execFileCb);
 
 export function registerRoutes(app: any, db: any) {
   // POST /create-pr — create a PR on GitHub and add to verification queue
-  app.post('/create-pr', async (c: any) => {
-    const body = await c.req.json() as {
+  app.post("/create-pr", async (c: any) => {
+    const body = (await c.req.json()) as {
       repo?: string;
       head?: string;
       title?: string;
@@ -17,21 +17,30 @@ export function registerRoutes(app: any, db: any) {
     const { repo, head, title, body: prBody } = body;
 
     if (!repo || !head) {
-      return c.json({ error: 'repo and head are required' }, 400);
+      return c.json({ error: "repo and head are required" }, 400);
     }
 
     const prTitle = title || head;
 
-    const args = ['pr', 'create', '--repo', repo, '--head', head, '--title', prTitle];
+    const args = [
+      "pr",
+      "create",
+      "--repo",
+      repo,
+      "--head",
+      head,
+      "--title",
+      prTitle,
+    ];
     if (prBody) {
-      args.push('--body', prBody);
+      args.push("--body", prBody);
     }
 
     let prUrl: string;
     let prNumber: number;
 
     try {
-      const { stdout } = await execFile('gh', args);
+      const { stdout } = await execFile("gh", args);
       // gh pr create outputs the PR URL on stdout
       prUrl = stdout.trim();
       const match = prUrl.match(/\/pull\/(\d+)$/);
@@ -40,7 +49,7 @@ export function registerRoutes(app: any, db: any) {
       }
       prNumber = parseInt(match[1], 10);
     } catch (err: any) {
-      const message = err.stderr || err.message || 'Unknown error';
+      const message = err.stderr || err.message || "Unknown error";
       return c.json({ error: `gh pr create failed: ${message}` }, 500);
     }
 
@@ -51,15 +60,15 @@ export function registerRoutes(app: any, db: any) {
       prNumber,
       branch: head,
       title: prTitle,
-      body: prBody || '',
+      body: prBody || "",
       createdAt: new Date(now).toISOString(),
     };
 
-    const [id] = await db('verification_requests').insert({
+    const [id] = await db("verification_requests").insert({
       plugin: GITHUB_PLUGIN_ID,
       action: GITHUB_PR_CREATED_ACTION,
       data: JSON.stringify(data),
-      status: 'pending',
+      status: "pending",
       created_at: now,
       updated_at: now,
     });
@@ -68,40 +77,46 @@ export function registerRoutes(app: any, db: any) {
       verificationRequestId: id,
       prUrl,
       prNumber,
-      status: 'pending',
+      status: "pending",
     });
   });
 
   // POST /approve/:id — approve and auto-merge the PR
-  app.post('/approve/:id', async (c: any) => {
-    const id = parseInt(c.req.param('id'), 10);
-    if (!id || isNaN(id)) return c.json({ error: 'Invalid id' }, 400);
+  app.post("/approve/:id", async (c: any) => {
+    const id = parseInt(c.req.param("id"), 10);
+    if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
 
-    const request = await db('verification_requests').where('id', id).first();
-    if (!request || request.status !== 'pending') {
-      return c.json({ error: 'Not found or already resolved' }, 404);
+    const request = await db("verification_requests").where("id", id).first();
+    if (!request || request.status !== "pending") {
+      return c.json({ error: "Not found or already resolved" }, 404);
     }
-    if (request.plugin !== GITHUB_PLUGIN_ID || request.action !== GITHUB_PR_CREATED_ACTION) {
-      return c.json({ error: 'Not a GitHub PR request' }, 400);
+    if (
+      request.plugin !== GITHUB_PLUGIN_ID ||
+      request.action !== GITHUB_PR_CREATED_ACTION
+    ) {
+      return c.json({ error: "Not a GitHub PR request" }, 400);
     }
 
     const data = JSON.parse(request.data) as { repo: string; prNumber: number };
 
     try {
-      await execFile('gh', [
-        'pr', 'merge', String(data.prNumber),
-        '--repo', data.repo,
-        '--rebase',
-        '--auto',
+      await execFile("gh", [
+        "pr",
+        "merge",
+        String(data.prNumber),
+        "--repo",
+        data.repo,
+        "--rebase",
+        "--auto",
       ]);
     } catch (err: any) {
-      const message = err.stderr || err.message || 'Unknown error';
+      const message = err.stderr || err.message || "Unknown error";
       return c.json({ error: `gh pr merge failed: ${message}` }, 500);
     }
 
-    await db('verification_requests')
-      .where('id', id)
-      .update({ status: 'approved', updated_at: Date.now() });
+    await db("verification_requests")
+      .where("id", id)
+      .update({ status: "approved", updated_at: Date.now() });
 
     return c.json({ success: true });
   });

@@ -1,16 +1,16 @@
-import pino from 'pino';
+import pino from "pino";
 
-type Level = 'debug' | 'info' | 'warn' | 'error';
+type Level = "debug" | "info" | "warn" | "error";
 
 export class Logger {
   private readonly pino: pino.Logger;
 
   constructor(minLevel: Level) {
     this.pino = pino({
-      name: 'confidante',
+      name: "confidante",
       level: minLevel,
       transport: {
-        target: 'pino-pretty',
+        target: "pino-pretty",
       },
     });
   }

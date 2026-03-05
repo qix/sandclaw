@@ -2,7 +2,7 @@ const MAX_DIFF_PREVIEW_LINES = 500;
 const LCS_MATRIX_LIMIT = 90_000;
 
 export interface DiffLine {
-  type: 'context' | 'add' | 'remove';
+  type: "context" | "add" | "remove";
   text: string;
 }
 
@@ -16,8 +16,8 @@ export interface DiffPreview {
 }
 
 export function computeDiff(before: string, after: string): DiffPreview {
-  const beforeLines = before.split('\n');
-  const afterLines = after.split('\n');
+  const beforeLines = before.split("\n");
+  const afterLines = after.split("\n");
 
   let diffLines: DiffLine[];
 
@@ -29,14 +29,16 @@ export function computeDiff(before: string, after: string): DiffPreview {
 
   const totalLines = diffLines.length;
   const truncated = totalLines > MAX_DIFF_PREVIEW_LINES;
-  const lines = truncated ? diffLines.slice(0, MAX_DIFF_PREVIEW_LINES) : diffLines;
+  const lines = truncated
+    ? diffLines.slice(0, MAX_DIFF_PREVIEW_LINES)
+    : diffLines;
 
   let added = 0;
   let removed = 0;
   let unchanged = 0;
   for (const line of diffLines) {
-    if (line.type === 'add') added++;
-    else if (line.type === 'remove') removed++;
+    if (line.type === "add") added++;
+    else if (line.type === "remove") removed++;
     else unchanged++;
   }
 
@@ -48,7 +50,9 @@ function lcsDiff(before: string[], after: string[]): DiffLine[] {
   const n = after.length;
 
   // Build LCS table
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  const dp: number[][] = Array.from({ length: m + 1 }, () =>
+    Array(n + 1).fill(0),
+  );
 
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
@@ -67,14 +71,14 @@ function lcsDiff(before: string[], after: string[]): DiffLine[] {
 
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && before[i - 1] === after[j - 1]) {
-      result.push({ type: 'context', text: before[i - 1] });
+      result.push({ type: "context", text: before[i - 1] });
       i--;
       j--;
     } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      result.push({ type: 'add', text: after[j - 1] });
+      result.push({ type: "add", text: after[j - 1] });
       j--;
     } else {
-      result.push({ type: 'remove', text: before[i - 1] });
+      result.push({ type: "remove", text: before[i - 1] });
       i--;
     }
   }
@@ -92,10 +96,14 @@ function prefixSuffixDiff(before: string[], after: string[]): DiffLine[] {
 
   // Find common suffix (not overlapping with prefix)
   let suffixLen = 0;
-  const maxSuffix = Math.min(before.length - prefixLen, after.length - prefixLen);
+  const maxSuffix = Math.min(
+    before.length - prefixLen,
+    after.length - prefixLen,
+  );
   while (
     suffixLen < maxSuffix &&
-    before[before.length - 1 - suffixLen] === after[after.length - 1 - suffixLen]
+    before[before.length - 1 - suffixLen] ===
+      after[after.length - 1 - suffixLen]
   ) {
     suffixLen++;
   }
@@ -104,22 +112,22 @@ function prefixSuffixDiff(before: string[], after: string[]): DiffLine[] {
 
   // Prefix (context)
   for (let i = 0; i < prefixLen; i++) {
-    result.push({ type: 'context', text: before[i] });
+    result.push({ type: "context", text: before[i] });
   }
 
   // Middle removed
   for (let i = prefixLen; i < before.length - suffixLen; i++) {
-    result.push({ type: 'remove', text: before[i] });
+    result.push({ type: "remove", text: before[i] });
   }
 
   // Middle added
   for (let i = prefixLen; i < after.length - suffixLen; i++) {
-    result.push({ type: 'add', text: after[i] });
+    result.push({ type: "add", text: after[i] });
   }
 
   // Suffix (context)
   for (let i = before.length - suffixLen; i < before.length; i++) {
-    result.push({ type: 'context', text: before[i] });
+    result.push({ type: "context", text: before[i] });
   }
 
   return result;

@@ -1,15 +1,15 @@
-import type { ConfidantePlugin } from '@sandclaw/confidante-plugin-api';
-import { ApiError, ConfidanteApiClient } from './apiClient';
-import type { ConfidanteConfig } from './config';
-import type { DockerServiceImpl } from './docker';
-import { executeConfidanteJob } from './jobExecutor';
-import type { Logger } from './logger';
+import type { ConfidantePlugin } from "@sandclaw/confidante-plugin-api";
+import { ApiError, ConfidanteApiClient } from "./apiClient";
+import type { ConfidanteConfig } from "./config";
+import type { DockerServiceImpl } from "./docker";
+import { executeConfidanteJob } from "./jobExecutor";
+import type { Logger } from "./logger";
 import {
   createBackoffState,
   nextBackoffMs,
   resetBackoff,
   sleepWithStop,
-} from './retry';
+} from "./retry";
 
 export class ConfidanteQueueLoop {
   private shouldRun = true;
@@ -30,7 +30,9 @@ export class ConfidanteQueueLoop {
   }
 
   async start(): Promise<void> {
-    this.logger.info('queue.loop.started', { pollIntervalMs: this.config.pollIntervalMs });
+    this.logger.info("queue.loop.started", {
+      pollIntervalMs: this.config.pollIntervalMs,
+    });
 
     while (this.shouldRun) {
       try {
@@ -40,13 +42,19 @@ export class ConfidanteQueueLoop {
         if (!job) {
           resetBackoff(this.backoff);
           if (this.config.longPollTimeoutMs <= 0) {
-            await sleepWithStop(this.config.pollIntervalMs, () => !this.shouldRun);
+            await sleepWithStop(
+              this.config.pollIntervalMs,
+              () => !this.shouldRun,
+            );
           }
           continue;
         }
 
         resetBackoff(this.backoff);
-        this.logger.info('queue.job.claimed', { jobId: job.id, jobType: job.jobType });
+        this.logger.info("queue.job.claimed", {
+          jobId: job.id,
+          jobType: job.jobType,
+        });
 
         const result = await executeConfidanteJob({
           job,
@@ -59,28 +67,36 @@ export class ConfidanteQueueLoop {
 
         await this.client.markComplete(job.id, result.result);
 
-        if (result.status === 'success') {
-          this.logger.info('queue.job.completed', { jobId: job.id, durationMs: result.durationMs });
-        } else {
-          this.logger.warn('queue.job.failed.completed', {
+        if (result.status === "success") {
+          this.logger.info("queue.job.completed", {
             jobId: job.id,
-            errorKind: result.error?.kind ?? 'unknown',
-            error: result.error?.message ?? 'no error message',
+            durationMs: result.durationMs,
+          });
+        } else {
+          this.logger.warn("queue.job.failed.completed", {
+            jobId: job.id,
+            errorKind: result.error?.kind ?? "unknown",
+            error: result.error?.message ?? "no error message",
           });
         }
       } catch (error) {
-        if (!this.shouldRun && error instanceof Error && error.name === 'AbortError') {
+        if (
+          !this.shouldRun &&
+          error instanceof Error &&
+          error.name === "AbortError"
+        ) {
           break;
         }
         if (error instanceof ApiError) {
-          this.logger.error('queue.api.error', {
+          this.logger.error("queue.api.error", {
             status: error.status,
             message: error.message,
             body: error.body,
           });
         } else {
-          const message = error instanceof Error ? error.message : 'Unknown queue loop error';
-          this.logger.error('queue.loop.error', { message });
+          const message =
+            error instanceof Error ? error.message : "Unknown queue loop error";
+          this.logger.error("queue.loop.error", { message });
         }
 
         const backoffMs = nextBackoffMs(
@@ -88,7 +104,7 @@ export class ConfidanteQueueLoop {
           this.config.pollIntervalMs,
           10_000,
         );
-        this.logger.warn('queue.loop.retrying', {
+        this.logger.warn("queue.loop.retrying", {
           attempts: this.backoff.attempts,
           backoffMs,
         });
@@ -96,6 +112,6 @@ export class ConfidanteQueueLoop {
       }
     }
 
-    this.logger.info('queue.loop.stopped');
+    this.logger.info("queue.loop.stopped");
   }
 }

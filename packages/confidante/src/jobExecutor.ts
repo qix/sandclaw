@@ -1,13 +1,16 @@
-import type { ConfidantePlugin, ConfidantePluginContext } from '@sandclaw/confidante-plugin-api';
-import type { ConfidanteApiClient } from './apiClient';
-import type { ConfidanteConfig } from './config';
-import type { DockerServiceImpl } from './docker';
-import type { Logger } from './logger';
-import type { ConfidanteQueueJob } from './types';
+import type {
+  ConfidantePlugin,
+  ConfidantePluginContext,
+} from "@sandclaw/confidante-plugin-api";
+import type { ConfidanteApiClient } from "./apiClient";
+import type { ConfidanteConfig } from "./config";
+import type { DockerServiceImpl } from "./docker";
+import type { Logger } from "./logger";
+import type { ConfidanteQueueJob } from "./types";
 
 class ExecutionError extends Error {
   constructor(
-    public readonly kind: 'HandlerError' | 'Timeout' | 'NoHandler',
+    public readonly kind: "HandlerError" | "Timeout" | "NoHandler",
     message: string,
   ) {
     super(message);
@@ -25,18 +28,20 @@ export interface ConfidanteJobArgs {
 
 export interface ConfidanteJobResult {
   jobId: number;
-  status: 'success' | 'failed';
+  status: "success" | "failed";
   /** Result string returned by the handler (if any). */
   result?: string;
   durationMs: number;
   error?: { kind: string; message: string };
 }
 
-export async function executeConfidanteJob(args: ConfidanteJobArgs): Promise<ConfidanteJobResult> {
+export async function executeConfidanteJob(
+  args: ConfidanteJobArgs,
+): Promise<ConfidanteJobResult> {
   const { config, logger, job } = args;
   const startTime = Date.now();
 
-  logger.info('job.execution.started', { jobId: job.id, jobType: job.jobType });
+  logger.info("job.execution.started", { jobId: job.id, jobType: job.jobType });
 
   try {
     const ctx: ConfidantePluginContext = {
@@ -60,36 +65,48 @@ export async function executeConfidanteJob(args: ConfidanteJobArgs): Promise<Con
     }
 
     if (!handled) {
-      throw new ExecutionError('NoHandler', `No confidante handler for job type "${job.jobType}"`);
+      throw new ExecutionError(
+        "NoHandler",
+        `No confidante handler for job type "${job.jobType}"`,
+      );
     }
 
     return {
       jobId: job.id,
-      status: 'success',
-      result: typeof result === 'string' ? result : undefined,
+      status: "success",
+      result: typeof result === "string" ? result : undefined,
       durationMs: Date.now() - startTime,
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    const message = error instanceof Error ? error.message : 'Unknown job execution error';
-    const kind = error instanceof ExecutionError ? error.kind : 'HandlerError';
+    const message =
+      error instanceof Error ? error.message : "Unknown job execution error";
+    const kind = error instanceof ExecutionError ? error.kind : "HandlerError";
 
-    logger.error('job.execution.failed', { jobId: job.id, durationMs, kind, error: message });
+    logger.error("job.execution.failed", {
+      jobId: job.id,
+      durationMs,
+      kind,
+      error: message,
+    });
 
     return {
       jobId: job.id,
-      status: 'failed',
+      status: "failed",
       durationMs,
       error: { kind, message },
     };
   }
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+): Promise<T> {
   let handle: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
     handle = setTimeout(
-      () => reject(new ExecutionError('Timeout', 'Job timeout exceeded')),
+      () => reject(new ExecutionError("Timeout", "Job timeout exceeded")),
       timeoutMs,
     );
   });

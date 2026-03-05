@@ -1,2 +1,2 @@
-export { registerCoreRoutes } from './core';
-export { registerVerificationFormRoutes } from './verifications';
+export { registerCoreRoutes } from "./core";
+export { registerVerificationFormRoutes } from "./verifications";

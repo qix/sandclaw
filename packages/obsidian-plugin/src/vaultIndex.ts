@@ -1,11 +1,11 @@
-import { readdir, readFile, stat } from 'node:fs/promises';
-import path from 'node:path';
+import { readdir, readFile, stat } from "node:fs/promises";
+import path from "node:path";
 
 const INDEX_REFRESH_MIN_MS = 2000;
 const BM25_K1 = 1.5;
 const BM25_B = 0.75;
-const SUPPORTED_EXTENSIONS = new Set(['.md', '.markdown', '.txt', '.mdx']);
-const SKIP_DIRS = new Set(['.git', '.obsidian', '.trash', 'node_modules']);
+const SUPPORTED_EXTENSIONS = new Set([".md", ".markdown", ".txt", ".mdx"]);
+const SKIP_DIRS = new Set([".git", ".obsidian", ".trash", "node_modules"]);
 
 interface DocumentEntry {
   /** Vault-relative path. */
@@ -42,7 +42,9 @@ export class ObsidianVaultIndex {
   }
 
   get indexedAt(): string {
-    return this.lastScanMs > 0 ? new Date(this.lastScanMs).toISOString() : new Date().toISOString();
+    return this.lastScanMs > 0
+      ? new Date(this.lastScanMs).toISOString()
+      : new Date().toISOString();
   }
 
   markStale(): void {
@@ -50,7 +52,10 @@ export class ObsidianVaultIndex {
   }
 
   async ensureFresh(): Promise<void> {
-    if (Date.now() - this.lastScanMs >= INDEX_REFRESH_MIN_MS || this.lastScanMs === 0) {
+    if (
+      Date.now() - this.lastScanMs >= INDEX_REFRESH_MIN_MS ||
+      this.lastScanMs === 0
+    ) {
       if (!this.scanPromise) {
         this.scanPromise = this.scan().finally(() => {
           this.scanPromise = null;
@@ -60,7 +65,10 @@ export class ObsidianVaultIndex {
     }
   }
 
-  async search(query: string, limit: number): Promise<{ totalMatches: number; results: SearchResult[] }> {
+  async search(
+    query: string,
+    limit: number,
+  ): Promise<{ totalMatches: number; results: SearchResult[] }> {
     await this.ensureFresh();
     const queryTokens = tokenize(query);
     if (queryTokens.length === 0) return { totalMatches: 0, results: [] };
@@ -83,7 +91,9 @@ export class ObsidianVaultIndex {
         const idf = Math.log((N - df + 0.5) / (df + 0.5) + 1);
         const tfNorm =
           (tf * (BM25_K1 + 1)) /
-          (tf + BM25_K1 * (1 - BM25_B + BM25_B * (doc.tokenCount / this.avgDocLength)));
+          (tf +
+            BM25_K1 *
+              (1 - BM25_B + BM25_B * (doc.tokenCount / this.avgDocLength)));
         score += idf * tfNorm;
       }
 
@@ -108,7 +118,7 @@ export class ObsidianVaultIndex {
 
   private async scan(): Promise<void> {
     const newDocs = new Map<string, DocumentEntry>();
-    await this.walkDir(this.vaultRoot, '', newDocs);
+    await this.walkDir(this.vaultRoot, "", newDocs);
 
     let totalTokens = 0;
     for (const doc of newDocs.values()) {
@@ -154,7 +164,7 @@ export class ObsidianVaultIndex {
 
       try {
         const [content, fileStat] = await Promise.all([
-          readFile(absPath, 'utf8'),
+          readFile(absPath, "utf8"),
           stat(absPath),
         ]);
 
@@ -180,8 +190,8 @@ export class ObsidianVaultIndex {
 }
 
 function tokenize(text: string): string[] {
-  const normalized = text.normalize('NFKD').toLowerCase();
-  const stripped = normalized.replace(/[^\p{L}\p{N}\s]/gu, '');
+  const normalized = text.normalize("NFKD").toLowerCase();
+  const stripped = normalized.replace(/[^\p{L}\p{N}\s]/gu, "");
   return stripped.split(/\s+/).filter((t) => t.length >= 2);
 }
 
@@ -204,12 +214,12 @@ function generateExcerpt(content: string, queryTokens: string[]): string {
   }
 
   if (bestPos === -1) {
-    return content.slice(0, 280).trim() + (content.length > 280 ? '...' : '');
+    return content.slice(0, 280).trim() + (content.length > 280 ? "..." : "");
   }
 
   const start = Math.max(0, bestPos - 80);
   const end = Math.min(content.length, bestPos + 240);
-  const prefix = start > 0 ? '...' : '';
-  const suffix = end < content.length ? '...' : '';
+  const prefix = start > 0 ? "..." : "";
+  const suffix = end < content.length ? "..." : "";
   return `${prefix}${content.slice(start, end).trim()}${suffix}`;
 }

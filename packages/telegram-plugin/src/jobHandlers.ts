@@ -1,9 +1,21 @@
-import type { MuteworkerPluginContext, RunAgentFn } from '@sandclaw/muteworker-plugin-api';
-import { buildTelegramPrompt, clampReply, type IncomingTelegramPayload } from './tools';
+import type {
+  MuteworkerPluginContext,
+  RunAgentFn,
+} from "@sandclaw/muteworker-plugin-api";
+import {
+  buildTelegramPrompt,
+  clampReply,
+  type IncomingTelegramPayload,
+} from "./tools";
 
-export function createTelegramJobHandlers(operatorChatIds: ReadonlySet<string>) {
+export function createTelegramJobHandlers(
+  operatorChatIds: ReadonlySet<string>,
+) {
   return {
-    async 'telegram:incoming_message'(ctx: MuteworkerPluginContext, runAgent: RunAgentFn) {
+    async "telegram:incoming_message"(
+      ctx: MuteworkerPluginContext,
+      runAgent: RunAgentFn,
+    ) {
       let payload: IncomingTelegramPayload;
       try {
         payload = JSON.parse(ctx.job.data) as IncomingTelegramPayload;
@@ -11,13 +23,14 @@ export function createTelegramJobHandlers(operatorChatIds: ReadonlySet<string>) 
         throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
       }
 
-      if (!payload.chatId) throw new Error(`Job ${ctx.job.id} payload missing chatId`);
+      if (!payload.chatId)
+        throw new Error(`Job ${ctx.job.id} payload missing chatId`);
 
       // Send typing indicator while the agent works
       const sendTyping = () =>
         fetch(`${ctx.apiBaseUrl}/api/telegram/typing`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          method: "POST",
+          headers: { "content-type": "application/json" },
           body: JSON.stringify({ chatId: payload.chatId }),
         }).catch(() => {});
       await sendTyping();
@@ -35,18 +48,28 @@ export function createTelegramJobHandlers(operatorChatIds: ReadonlySet<string>) 
       if (result.reply && ctx.job.context) {
         try {
           const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
-          if (jobCtx.channel === 'telegram' && typeof jobCtx.chatId === 'string') {
+          if (
+            jobCtx.channel === "telegram" &&
+            typeof jobCtx.chatId === "string"
+          ) {
             const reply = clampReply(result.reply);
             await fetch(`${ctx.apiBaseUrl}/api/telegram/send`, {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
+              method: "POST",
+              headers: { "content-type": "application/json" },
               body: JSON.stringify({ chatId: jobCtx.chatId, text: reply }),
             });
-            ctx.artifacts.push({ type: 'text', label: 'Auto-Reply', value: reply });
-            ctx.logger.info('telegram.auto_reply', { jobId: ctx.job.id, chatId: jobCtx.chatId });
+            ctx.artifacts.push({
+              type: "text",
+              label: "Auto-Reply",
+              value: reply,
+            });
+            ctx.logger.info("telegram.auto_reply", {
+              jobId: ctx.job.id,
+              chatId: jobCtx.chatId,
+            });
           }
         } catch {
-          ctx.logger.warn('telegram.auto_reply.failed', { jobId: ctx.job.id });
+          ctx.logger.warn("telegram.auto_reply.failed", { jobId: ctx.job.id });
         }
       }
     },

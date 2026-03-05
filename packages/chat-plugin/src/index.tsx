@@ -1,19 +1,19 @@
-import { gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
-import type { PluginEnvironment } from '@sandclaw/gatekeeper-plugin-api';
-import { muteworkerDeps } from '@sandclaw/muteworker-plugin-api';
-import type { MuteworkerEnvironment } from '@sandclaw/muteworker-plugin-api';
-import { ChatPanel, ChatVerificationRenderer } from './components';
-import { registerRoutes } from './routes';
-import { handleUpgrade } from './websocket';
-import { createSendChatTool } from './tools';
-import { createChatJobHandlers } from './jobHandlers';
+import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
+import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
+import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
+import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
+import { ChatPanel, ChatVerificationRenderer } from "./components";
+import { registerRoutes } from "./routes";
+import { handleUpgrade } from "./websocket";
+import { createSendChatTool } from "./tools";
+import { createChatJobHandlers } from "./jobHandlers";
 
-export { ChatPanel, ChatVerificationRenderer } from './components';
-export { createSendChatTool } from './tools';
+export { ChatPanel, ChatVerificationRenderer } from "./components";
+export { createSendChatTool } from "./tools";
 
 export function buildChatPlugin() {
   return {
-    id: 'chat' as const,
+    id: "chat" as const,
     verificationRenderer: ChatVerificationRenderer,
 
     jobHandlers: createChatJobHandlers(),
@@ -28,14 +28,14 @@ export function buildChatPlugin() {
         },
         init({ db, tabs, routes, ws }) {
           tabs.registerTab({
-            tabName: 'Chat',
+            tabName: "Chat",
             component: ChatPanel,
-            statusColor: () => 'green' as const,
+            statusColor: () => "green" as const,
           });
 
           routes.registerRoutes((app) => registerRoutes(app, db));
 
-          ws.onUpgrade('/api/chat/ws', handleUpgrade(db));
+          ws.onUpgrade("/api/chat/ws", handleUpgrade(db));
         },
       });
     },

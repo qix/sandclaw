@@ -1,4 +1,4 @@
-export type JobStatus = 'pending' | 'in_progress' | 'complete' | 'failed';
+export type JobStatus = "pending" | "in_progress" | "complete" | "failed";
 
 export interface ConfidanteQueueJob {
   id: number;

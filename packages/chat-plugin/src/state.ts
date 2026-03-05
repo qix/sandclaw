@@ -1,10 +1,10 @@
-import type { WebSocket } from 'ws';
+import type { WebSocket } from "ws";
 
 export interface ChatState {
   clients: Set<WebSocket>;
 }
 
-const STATE_KEY = '__sandclaw_chat_state__';
+const STATE_KEY = "__sandclaw_chat_state__";
 
 const _g = globalThis as any;
 if (!_g[STATE_KEY]) {

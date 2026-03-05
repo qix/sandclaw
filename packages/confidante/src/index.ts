@@ -1,13 +1,16 @@
-import * as readline from 'node:readline';
-import type { ConfidantePlugin, ConfidanteHooks } from '@sandclaw/confidante-plugin-api';
-import { ConfidanteApiClient } from './apiClient';
-import { DEFAULT_CONFIG, ConfidanteConfig } from './config';
-import { DockerServiceImpl } from './docker';
-import { executeConfidanteJob } from './jobExecutor';
-import { createLogger } from './logger';
-import { ConfidanteQueueLoop } from './queueLoop';
+import * as readline from "node:readline";
+import type {
+  ConfidantePlugin,
+  ConfidanteHooks,
+} from "@sandclaw/confidante-plugin-api";
+import { ConfidanteApiClient } from "./apiClient";
+import { DEFAULT_CONFIG, ConfidanteConfig } from "./config";
+import { DockerServiceImpl } from "./docker";
+import { executeConfidanteJob } from "./jobExecutor";
+import { createLogger } from "./logger";
+import { ConfidanteQueueLoop } from "./queueLoop";
 
-export type { ConfidanteConfig } from './config';
+export type { ConfidanteConfig } from "./config";
 
 export interface ConfidanteOptions {
   /** Plugins to load into the confidante. */
@@ -39,7 +42,9 @@ export interface ConfidanteScriptOptions extends ConfidanteOptions {
  * });
  * ```
  */
-export async function startConfidante(options: ConfidanteOptions): Promise<void> {
+export async function startConfidante(
+  options: ConfidanteOptions,
+): Promise<void> {
   const config: ConfidanteConfig = { ...DEFAULT_CONFIG, ...options.config };
   const plugins = options.plugins ?? [];
 
@@ -52,14 +57,16 @@ export async function startConfidante(options: ConfidanteOptions): Promise<void>
   const stopHooks: Array<() => Promise<void>> = [];
   const hooksService: ConfidanteHooks = {
     register(hooks) {
-      if (hooks['confidante:start']) startHooks.push(async () => hooks['confidante:start']!());
-      if (hooks['confidante:stop']) stopHooks.push(async () => hooks['confidante:stop']!());
+      if (hooks["confidante:start"])
+        startHooks.push(async () => hooks["confidante:start"]!());
+      if (hooks["confidante:stop"])
+        stopHooks.push(async () => hooks["confidante:stop"]!());
     },
   };
 
   const services = new Map<string, any>();
-  services.set('core.hooks', hooksService);
-  services.set('core.docker', docker);
+  services.set("core.hooks", hooksService);
+  services.set("core.docker", docker);
 
   const initFns: Array<() => void | Promise<void>> = [];
   for (const plugin of plugins) {
@@ -75,27 +82,33 @@ export async function startConfidante(options: ConfidanteOptions): Promise<void>
       });
     }
   }
-  for (const fn of initFns) { await fn(); }
+  for (const fn of initFns) {
+    await fn();
+  }
 
   const loop = new ConfidanteQueueLoop(client, config, logger, plugins, docker);
 
   const shutdown = async () => {
-    logger.info('confidante.shutdown.requested');
+    logger.info("confidante.shutdown.requested");
     loop.stop();
-    for (const fn of stopHooks) { await fn(); }
+    for (const fn of stopHooks) {
+      await fn();
+    }
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 
-  logger.info('confidante.startup', {
+  logger.info("confidante.startup", {
     apiBaseUrl: config.apiBaseUrl,
     dockerImage: config.dockerImage,
     plugins: plugins.map((p) => p.id),
   });
 
   // Fire start hooks
-  for (const fn of startHooks) { await fn(); }
+  for (const fn of startHooks) {
+    await fn();
+  }
 
   await loop.start();
 }
@@ -107,7 +120,9 @@ export async function startConfidante(options: ConfidanteOptions): Promise<void>
  * displays its details, prompts for confirmation, and executes it.
  * Otherwise falls through to the normal queue loop.
  */
-export async function confidanteScript(options: ConfidanteScriptOptions): Promise<void> {
+export async function confidanteScript(
+  options: ConfidanteScriptOptions,
+): Promise<void> {
   if (options.replayJobId == null) {
     return startConfidante(options);
   }
@@ -123,14 +138,16 @@ export async function confidanteScript(options: ConfidanteScriptOptions): Promis
   const stopHooks: Array<() => Promise<void>> = [];
   const hooksService: ConfidanteHooks = {
     register(hooks) {
-      if (hooks['confidante:start']) startHooks.push(async () => hooks['confidante:start']!());
-      if (hooks['confidante:stop']) stopHooks.push(async () => hooks['confidante:stop']!());
+      if (hooks["confidante:start"])
+        startHooks.push(async () => hooks["confidante:start"]!());
+      if (hooks["confidante:stop"])
+        stopHooks.push(async () => hooks["confidante:stop"]!());
     },
   };
 
   const services = new Map<string, any>();
-  services.set('core.hooks', hooksService);
-  services.set('core.docker', docker);
+  services.set("core.hooks", hooksService);
+  services.set("core.docker", docker);
 
   const initFns: Array<() => void | Promise<void>> = [];
   for (const plugin of plugins) {
@@ -146,38 +163,46 @@ export async function confidanteScript(options: ConfidanteScriptOptions): Promis
       });
     }
   }
-  for (const fn of initFns) { await fn(); }
+  for (const fn of initFns) {
+    await fn();
+  }
 
-  for (const fn of startHooks) { await fn(); }
+  for (const fn of startHooks) {
+    await fn();
+  }
 
   // Fetch the job
   const job = await client.getJob(options.replayJobId);
   if (!job) {
-    logger.error('replay.job.not_found', { jobId: options.replayJobId });
+    logger.error("replay.job.not_found", { jobId: options.replayJobId });
     console.error(`Job ${options.replayJobId} not found.`);
     process.exitCode = 1;
-    for (const fn of stopHooks) { await fn(); }
+    for (const fn of stopHooks) {
+      await fn();
+    }
     return;
   }
 
   // Display job details
-  console.log('\n--- Job Details ---');
+  console.log("\n--- Job Details ---");
   console.log(`  ID:      ${job.id}`);
   console.log(`  Type:    ${job.jobType}`);
   console.log(`  Status:  ${job.status}`);
   console.log(`  Data:    ${job.data}`);
-  console.log('-------------------\n');
+  console.log("-------------------\n");
 
   // Prompt for confirmation
-  const confirmed = await confirm('Proceed with executing this job?');
+  const confirmed = await confirm("Proceed with executing this job?");
   if (!confirmed) {
-    console.log('Aborted.');
-    for (const fn of stopHooks) { await fn(); }
+    console.log("Aborted.");
+    for (const fn of stopHooks) {
+      await fn();
+    }
     return;
   }
 
   // Execute the job using the same path as the queue loop
-  logger.info('replay.job.started', { jobId: job.id, jobType: job.jobType });
+  logger.info("replay.job.started", { jobId: job.id, jobType: job.jobType });
   const result = await executeConfidanteJob({
     job,
     client,
@@ -189,28 +214,40 @@ export async function confidanteScript(options: ConfidanteScriptOptions): Promis
 
   await client.markComplete(job.id, result.result);
 
-  if (result.status === 'success') {
-    logger.info('replay.job.completed', { jobId: job.id, durationMs: result.durationMs });
-    console.log(`Job ${job.id} completed successfully (${result.durationMs}ms).`);
-  } else {
-    logger.warn('replay.job.failed', {
+  if (result.status === "success") {
+    logger.info("replay.job.completed", {
       jobId: job.id,
-      errorKind: result.error?.kind ?? 'unknown',
-      error: result.error?.message ?? 'no error message',
+      durationMs: result.durationMs,
     });
-    console.error(`Job ${job.id} failed: ${result.error?.message ?? 'unknown error'}`);
+    console.log(
+      `Job ${job.id} completed successfully (${result.durationMs}ms).`,
+    );
+  } else {
+    logger.warn("replay.job.failed", {
+      jobId: job.id,
+      errorKind: result.error?.kind ?? "unknown",
+      error: result.error?.message ?? "no error message",
+    });
+    console.error(
+      `Job ${job.id} failed: ${result.error?.message ?? "unknown error"}`,
+    );
     process.exitCode = 1;
   }
 
-  for (const fn of stopHooks) { await fn(); }
+  for (const fn of stopHooks) {
+    await fn();
+  }
 }
 
 function confirm(question: string): Promise<boolean> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
   return new Promise((resolve) => {
     rl.question(`${question} [y/N] `, (answer) => {
       rl.close();
-      resolve(answer.trim().toLowerCase() === 'y');
+      resolve(answer.trim().toLowerCase() === "y");
     });
   });
 }

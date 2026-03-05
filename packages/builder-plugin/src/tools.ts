@@ -1,28 +1,28 @@
-import type { MuteworkerPluginContext } from '@sandclaw/muteworker-plugin-api';
-import { DEFAULT_BUILDER_RESULT_JOB_TYPE } from './constants';
+import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
+import { DEFAULT_BUILDER_RESULT_JOB_TYPE } from "./constants";
 
 export function createRequestBuildTool(ctx: MuteworkerPluginContext) {
   return {
-    name: 'request_build',
-    label: 'Request Build',
+    name: "request_build",
+    label: "Request Build",
     description:
-      'Create a build request that must be human-approved before the Confidante agent executes it. ' +
-      'Use this to request code changes such as adding features, fixing bugs, or refactoring.',
+      "Create a build request that must be human-approved before the Confidante agent executes it. " +
+      "Use this to request code changes such as adding features, fixing bugs, or refactoring.",
     parameters: {
-      type: 'object',
+      type: "object",
       properties: {
-        prompt: { type: 'string' },
+        prompt: { type: "string" },
       },
-      required: ['prompt'],
+      required: ["prompt"],
       additionalProperties: false,
     } as any,
     execute: async (_toolCallId: string, params: any) => {
-      const prompt = String(params.prompt ?? '').trim();
-      if (!prompt) throw new Error('prompt is required');
+      const prompt = String(params.prompt ?? "").trim();
+      if (!prompt) throw new Error("prompt is required");
 
       const response = await fetch(`${ctx.apiBaseUrl}/api/builder/request`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        method: "POST",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({
           prompt,
           responseJobType: DEFAULT_BUILDER_RESULT_JOB_TYPE,
@@ -30,8 +30,10 @@ export function createRequestBuildTool(ctx: MuteworkerPluginContext) {
       });
 
       if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        throw new Error(`Builder request failed (${response.status}): ${body.slice(0, 200)}`);
+        const body = await response.text().catch(() => "");
+        throw new Error(
+          `Builder request failed (${response.status}): ${body.slice(0, 200)}`,
+        );
       }
 
       const data = (await response.json()) as {
@@ -40,17 +42,21 @@ export function createRequestBuildTool(ctx: MuteworkerPluginContext) {
         status: string;
       };
 
-      ctx.artifacts.push({ type: 'text', label: 'Build Request', value: prompt });
+      ctx.artifacts.push({
+        type: "text",
+        label: "Build Request",
+        value: prompt,
+      });
 
       return {
         content: [
           {
-            type: 'text',
+            type: "text",
             text: [
-              'Build request queued and pending verification.',
+              "Build request queued and pending verification.",
               `Open ${ctx.verificationUiUrl} to approve the request.`,
-              'The system will handle the result asynchronously after approval.',
-            ].join('\n'),
+              "The system will handle the result asynchronously after approval.",
+            ].join("\n"),
           },
         ],
         details: data,
