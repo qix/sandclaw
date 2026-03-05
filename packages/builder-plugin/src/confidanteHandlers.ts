@@ -111,7 +111,7 @@ export function createBuilderConfidanteHandlers(
       });
 
       // Step 4: Detect and commit changes
-      const commitResult = detectAndCommitChanges({
+      const commitResult = await detectAndCommitChanges({
         workDir,
         commitMessage: prompt,
       });

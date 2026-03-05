@@ -101,7 +101,7 @@ muted(`pi exited with code: ${piExitCode}`);
 
 // --- Step 4: Check for changes and commit ---
 
-const { changed, headBefore, headAfter } = detectAndCommitChanges({
+const { changed, headBefore, headAfter } = await detectAndCommitChanges({
   workDir,
   commitMessage,
 });

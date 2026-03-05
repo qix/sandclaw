@@ -1,4 +1,3 @@
-import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { quote } from "shell-quote";
@@ -15,22 +14,33 @@ function logCmd(cmd: string, args: string[]) {
   process.stderr.write(`${BOLD}$ ${quote([cmd, ...args])}${RESET}\n`);
 }
 
-function runExec(command: string, opts: { cwd: string }): string {
-  logCmd(command.split(" ")[0], command.split(" ").slice(1));
-  return execSync(command, { ...opts, encoding: "utf-8" });
-}
-
-function runSpawn(cmd: string, args: string[]): Promise<number> {
+function run(
+  cmd: string,
+  args: string[],
+  opts?: { cwd?: string; capture?: boolean },
+): Promise<string> {
   logCmd(cmd, args);
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, {
+      cwd: opts?.cwd,
       stdio: ["ignore", "pipe", "pipe"],
     });
-    child.stdout?.on("data", () => {});
-    child.stderr?.on("data", (chunk: Buffer) => {
+    const chunks: Buffer[] = [];
+    child.stdout.on("data", (chunk: Buffer) => {
+      if (opts?.capture) chunks.push(chunk);
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
       process.stderr.write(`${DIM}${chunk.toString()}${RESET}`);
     });
-    child.on("close", (code) => resolve(code ?? 1));
+    child.on("close", (code) => {
+      if (code !== 0) {
+        reject(
+          new Error(`${quote([cmd, ...args])} failed with code ${code}`),
+        );
+      } else {
+        resolve(Buffer.concat(chunks).toString("utf-8"));
+      }
+    });
   });
 }
 
@@ -60,36 +70,23 @@ export async function prepareWorkDir(
   const { repo, workDir, branch = "main" } = options;
 
   if (existsSync(workDir)) {
-    const status = runExec("git status --porcelain", { cwd: workDir });
+    const status = await run("git", ["status", "--porcelain"], {
+      cwd: workDir,
+      capture: true,
+    });
     if (status.trim()) {
       throw new Error(`Working directory ${workDir} has uncommitted changes`);
     }
     muted(`Working directory ${workDir} exists and is clean, pulling latest...`);
-    const pullCode = await runSpawn("git", [
-      "-C",
-      workDir,
-      "pull",
-      "origin",
-      branch,
-    ]);
-    if (pullCode !== 0) {
-      throw new Error(`git pull origin ${branch} failed with code ${pullCode}`);
-    }
+    await run("git", ["-C", workDir, "pull", "origin", branch]);
   } else {
     muted(`Cloning ${repo} (branch: ${branch}) into ${workDir}...`);
-    const cloneCode = await runSpawn("git", [
-      "clone",
-      "--branch",
-      branch,
-      repo,
-      workDir,
-    ]);
-    if (cloneCode !== 0) {
-      throw new Error(`git clone failed with code ${cloneCode}`);
-    }
+    await run("git", ["clone", "--branch", branch, repo, workDir]);
   }
 
-  const headBefore = runExec("git rev-parse HEAD", { cwd: workDir }).trim();
+  const headBefore = (
+    await run("git", ["rev-parse", "HEAD"], { cwd: workDir, capture: true })
+  ).trim();
   muted(`HEAD before: ${headBefore}`);
 
   return { headBefore };
@@ -119,27 +116,32 @@ export interface DetectAndCommitChangesResult {
  * Check for uncommitted changes, stage everything, commit, and return
  * before/after HEAD shas.
  */
-export function detectAndCommitChanges(
+export async function detectAndCommitChanges(
   options: DetectAndCommitChangesOptions,
-): DetectAndCommitChangesResult {
+): Promise<DetectAndCommitChangesResult> {
   const { workDir, commitMessage } = options;
 
-  const headBefore = runExec("git rev-parse HEAD", { cwd: workDir }).trim();
+  const headBefore = (
+    await run("git", ["rev-parse", "HEAD"], { cwd: workDir, capture: true })
+  ).trim();
 
-  const status = runExec("git status --porcelain", { cwd: workDir });
+  const status = await run("git", ["status", "--porcelain"], {
+    cwd: workDir,
+    capture: true,
+  });
 
   if (status.trim()) {
     muted("Changes detected, committing...");
-    runExec("git add -A", { cwd: workDir });
-    runExec(`git commit -m ${JSON.stringify(commitMessage)}`, {
-      cwd: workDir,
-    });
+    await run("git", ["add", "-A"], { cwd: workDir });
+    await run("git", ["commit", "-m", commitMessage], { cwd: workDir });
     muted(`Committed changes with message: ${commitMessage}`);
   } else {
     muted("No changes detected.");
   }
 
-  const headAfter = runExec("git rev-parse HEAD", { cwd: workDir }).trim();
+  const headAfter = (
+    await run("git", ["rev-parse", "HEAD"], { cwd: workDir, capture: true })
+  ).trim();
   muted(`HEAD after: ${headAfter}`);
 
   return {
