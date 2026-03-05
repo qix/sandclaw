@@ -189,7 +189,9 @@ export async function confidanteScript(
   console.log(`  ID:      ${job.id}`);
   console.log(`  Type:    ${job.jobType}`);
   console.log(`  Status:  ${job.status}`);
-  console.log(`  Data:    ${inspect(job.data, { colors: true, depth: null }).replace(/\n/g, "\n           ")}`);
+  console.log(
+    `  Data:    ${inspect(JSON.parse(job.data), { colors: true, depth: null }).replace(/\n/g, "\n           ")}`,
+  );
   console.log("-------------------\n");
 
   // Prompt for confirmation
