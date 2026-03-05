@@ -8,7 +8,7 @@ export interface GithubRouteOptions {
   /** If set, `git pull` will be run in this directory after a PR is merged on the matching repo. */
   autoPullPath?: string;
   /** The GitHub repo (owner/name) that must match for auto-pull to trigger. */
-  autoPullRemote?: string;
+  autoPullRepo?: string;
 }
 
 export function registerRoutes(
@@ -148,8 +148,8 @@ export function registerRoutes(
     // Auto-pull the local repo if configured and the repo matches
     if (
       options?.autoPullPath &&
-      options?.autoPullRemote &&
-      data.repo === options.autoPullRemote
+      options?.autoPullRepo &&
+      data.repo === options.autoPullRepo
     ) {
       try {
         await execFile("git", ["pull"], { cwd: options.autoPullPath });

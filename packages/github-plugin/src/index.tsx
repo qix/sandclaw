@@ -13,7 +13,7 @@ export interface GithubPluginOptions {
   /** If set, `git pull` will be run in this directory after a PR is merged on the matching repo. */
   autoPullPath?: string;
   /** The GitHub repo (owner/name) that must match for auto-pull to trigger. */
-  autoPullRemote?: string;
+  autoPullRepo?: string;
 }
 
 export function createGithubPlugin(options?: GithubPluginOptions) {
@@ -28,7 +28,7 @@ export function createGithubPlugin(options?: GithubPluginOptions) {
           routes.registerRoutes((app) =>
             registerRoutes(app, db, {
               autoPullPath: options?.autoPullPath,
-              autoPullRemote: options?.autoPullRemote,
+              autoPullRepo: options?.autoPullRepo,
             }),
           );
         },
