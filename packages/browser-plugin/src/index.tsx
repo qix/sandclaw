@@ -1,4 +1,5 @@
-import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
+import React from "react";
+import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
@@ -28,10 +29,10 @@ export function createBrowserPlugin() {
           routes: gatekeeperDeps.routes,
         },
         init({ db, components, routes }) {
-          components.register("tabs:primary", Object.assign(
-            function BrowserTab() { return null; },
-            { title: "Browser", href: "?page=browser" },
-          ));
+          function BrowserTab() {
+            return <TabLink href="?page=browser" title="Browser" />;
+          }
+          components.register("tabs:primary", BrowserTab);
           components.register("page:browser", BrowserPanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db));

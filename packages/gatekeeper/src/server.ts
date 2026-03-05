@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import React, { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
@@ -7,7 +7,6 @@ import type {
   GatekeeperPlugin,
   GatekeeperHooks,
   ComponentsService,
-  TabComponent,
   RoutesService,
   WebSocketService,
   VerificationRendererProps,
@@ -15,7 +14,6 @@ import type {
 import type { ComponentType } from "react";
 import { WebSocketServer, WebSocket } from "ws";
 import { App } from "./pages/App";
-import type { TabRenderData } from "./pages/App";
 import type { VerificationHistoryPage } from "./pages/VerificationsPage";
 import { createDb, runCoreMigrations } from "./db";
 import { logger } from "./logger";
@@ -189,16 +187,6 @@ export async function startGatekeeper(
   // 5. Form-action routes for the Verifications page
   registerVerificationFormRoutes(app, db, notifyVerificationChange);
 
-  // Helper: extract tab metadata from a TabComponent for rendering
-  function evalTabComponent(component: ComponentType<any>): TabRenderData {
-    const tab = component as TabComponent;
-    return {
-      title: tab.title,
-      href: tab.href,
-      statusColor: tab.statusColor?.(),
-    };
-  }
-
   // 6. SSR — render the React shell on every GET
   app.get("/*", async (c) => {
     const activePage = c.req.query("page") ?? "verifications";
@@ -210,9 +198,9 @@ export async function startGatekeeper(
       .where("status", "pending")
       .count("* as count");
 
-    // Evaluate tab metadata per-request for dynamic statusColor
-    const channelTabs = (componentRegistry.get("tabs:channels") ?? []).map(evalTabComponent);
-    const primaryTabs = (componentRegistry.get("tabs:primary") ?? []).map(evalTabComponent);
+    // Tab component arrays (rendered directly by App via context)
+    const channelTabs = componentRegistry.get("tabs:channels") ?? [];
+    const primaryTabs = componentRegistry.get("tabs:primary") ?? [];
 
     // Resolve page component (if not the built-in verifications page)
     let pageComponent: ComponentType | undefined;
@@ -278,19 +266,23 @@ export async function startGatekeeper(
       }
     }
 
-    const html = renderToString(
-      createElement(App, {
-        channelTabs,
-        primaryTabs,
-        activePage,
-        pageComponent,
-        pageNotFound,
-        verificationRequests,
-        verificationHistory,
-        pendingVerificationCount: Number(pendingVerificationCount),
-        renderers,
-      }),
-    );
+    // Build App element, then wrap in registered context providers
+    let element: React.ReactElement = createElement(App, {
+      channelTabs,
+      primaryTabs,
+      activePage,
+      pageComponent,
+      pageNotFound,
+      verificationRequests,
+      verificationHistory,
+      pendingVerificationCount: Number(pendingVerificationCount),
+      renderers,
+    });
+    for (const Provider of componentRegistry.get("provider") ?? []) {
+      element = createElement(Provider, null, element);
+    }
+
+    const html = renderToString(element);
     return c.html(`<!DOCTYPE html>${html}`);
   });
 

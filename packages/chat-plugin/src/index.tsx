@@ -1,4 +1,5 @@
-import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
+import React from "react";
+import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
@@ -27,14 +28,10 @@ export function buildChatPlugin() {
           ws: gatekeeperDeps.ws,
         },
         init({ db, components, routes, ws }) {
-          components.register("tabs:primary", Object.assign(
-            function ChatTab() { return null; },
-            {
-              title: "Chat",
-              href: "?page=chat",
-              statusColor: () => "green" as const,
-            },
-          ));
+          function ChatTab() {
+            return <TabLink href="?page=chat" title="Chat" statusColor="green" />;
+          }
+          components.register("tabs:primary", ChatTab);
           components.register("page:chat", ChatPanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db));

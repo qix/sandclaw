@@ -1,4 +1,5 @@
-import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
+import React from "react";
+import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
@@ -33,10 +34,10 @@ export function createObsidianPlugin(config: ObsidianPluginConfig) {
           routes: gatekeeperDeps.routes,
         },
         init({ db, components, routes }) {
-          components.register("tabs:primary", Object.assign(
-            function ObsidianTab() { return null; },
-            { title: "Obsidian", href: "?page=obsidian" },
-          ));
+          function ObsidianTab() {
+            return <TabLink href="?page=obsidian" title="Obsidian" />;
+          }
+          components.register("tabs:primary", ObsidianTab);
           components.register("page:obsidian", ObsidianPanel);
 
           routes.registerRoutes((app) =>

@@ -1,4 +1,5 @@
-import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
+import React from "react";
+import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
@@ -13,9 +14,14 @@ import { registerRoutes } from "./routes";
 import { migrations } from "./migrations";
 import { createSendTelegramTool } from "./tools";
 import { createTelegramJobHandlers } from "./jobHandlers";
+import {
+  TelegramStatusContext,
+  useTelegramStatus,
+} from "./statusContext";
 
 export type { TelegramState, ConnectionStatus } from "./state";
 export { TelegramPanel, TelegramVerificationRenderer } from "./components";
+export { TelegramStatusContext, useTelegramStatus } from "./statusContext";
 export { createSendTelegramTool } from "./tools";
 
 export interface TelegramGatekeeperPluginOptions {
@@ -49,26 +55,34 @@ export function buildTelegramPlugin(
           routes: gatekeeperDeps.routes,
         },
         async init({ db, hooks, components, routes }) {
-          components.register("tabs:channels", Object.assign(
-            function TelegramTab() { return null; },
-            {
-              title: "Telegram",
-              href: "?page=telegram",
-              statusColor: () => {
-                switch (tgState.connectionStatus) {
-                  case "connected":
-                    return "green" as const;
-                  case "connecting":
-                    return "yellow" as const;
-                  case "disconnected":
-                  case "waiting_for_token":
-                  default:
-                    return "red" as const;
-                }
-              },
-            },
-          ));
+          function TelegramTab() {
+            const { statusColor } = useTelegramStatus();
+            return <TabLink href="?page=telegram" title="Telegram" statusColor={statusColor} />;
+          }
+
+          function TelegramProvider({ children }: { children: React.ReactNode }) {
+            const statusColor = (() => {
+              switch (tgState.connectionStatus) {
+                case "connected":
+                  return "green" as const;
+                case "connecting":
+                  return "yellow" as const;
+                case "disconnected":
+                case "waiting_for_token":
+                default:
+                  return "red" as const;
+              }
+            })();
+            return (
+              <TelegramStatusContext.Provider value={{ statusColor }}>
+                {children}
+              </TelegramStatusContext.Provider>
+            );
+          }
+
+          components.register("tabs:channels", TelegramTab);
           components.register("page:telegram", TelegramPanel);
+          components.register("provider", TelegramProvider);
 
           routes.registerRoutes((app) =>
             registerRoutes(app, db, operatorChatIds),

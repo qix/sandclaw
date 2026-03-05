@@ -1,4 +1,5 @@
-import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
+import React from "react";
+import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
@@ -13,9 +14,14 @@ import { registerRoutes } from "./routes";
 import { migrations } from "./migrations";
 import { createSendWhatsappTool } from "./tools";
 import { createWhatsappJobHandlers } from "./jobHandlers";
+import {
+  WhatsAppStatusContext,
+  useWhatsAppStatus,
+} from "./statusContext";
 
 export type { WhatsAppState, ConnectionStatus } from "./state";
 export { WhatsAppPanel, WhatsAppVerificationRenderer } from "./components";
+export { WhatsAppStatusContext, useWhatsAppStatus } from "./statusContext";
 export { createSendWhatsappTool } from "./tools";
 
 export interface WhatsappGatekeeperPluginOptions {
@@ -50,26 +56,34 @@ export function buildWhatsappPlugin(
           routes: gatekeeperDeps.routes,
         },
         async init({ db, hooks, components, routes }) {
-          components.register("tabs:channels", Object.assign(
-            function WhatsAppTab() { return null; },
-            {
-              title: "WhatsApp",
-              href: "?page=whatsapp",
-              statusColor: () => {
-                switch (waState.connectionStatus) {
-                  case "connected":
-                    return "green" as const;
-                  case "connecting":
-                  case "qr_pending":
-                    return "yellow" as const;
-                  case "disconnected":
-                  default:
-                    return "red" as const;
-                }
-              },
-            },
-          ));
+          function WhatsAppTab() {
+            const { statusColor } = useWhatsAppStatus();
+            return <TabLink href="?page=whatsapp" title="WhatsApp" statusColor={statusColor} />;
+          }
+
+          function WhatsAppProvider({ children }: { children: React.ReactNode }) {
+            const statusColor = (() => {
+              switch (waState.connectionStatus) {
+                case "connected":
+                  return "green" as const;
+                case "connecting":
+                case "qr_pending":
+                  return "yellow" as const;
+                case "disconnected":
+                default:
+                  return "red" as const;
+              }
+            })();
+            return (
+              <WhatsAppStatusContext.Provider value={{ statusColor }}>
+                {children}
+              </WhatsAppStatusContext.Provider>
+            );
+          }
+
+          components.register("tabs:channels", WhatsAppTab);
           components.register("page:whatsapp", WhatsAppPanel);
+          components.register("provider", WhatsAppProvider);
 
           routes.registerRoutes((app) => registerRoutes(app, db, operatorJids));
 

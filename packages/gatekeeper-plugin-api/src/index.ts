@@ -1,5 +1,8 @@
 import type { ComponentType } from "react";
 
+export { NavigationContext, TabVariantContext, TabLink } from "./components";
+export type { TabLinkProps } from "./components";
+
 // Lazy-import types to avoid pulling in heavy runtime dependencies at the
 // definition layer.  Concrete types are used by the gatekeeper at runtime.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,17 +37,6 @@ export interface GatekeeperHooks {
 // ---------------------------------------------------------------------------
 
 export type StatusColorValue = "green" | "yellow" | "red" | "gray";
-
-/**
- * A Tab component with static metadata for sidebar rendering.
- * The component function itself is not rendered — the gateway reads
- * `title`, `statusColor`, and `href` to build the navigation.
- */
-export type TabComponent = ComponentType<{}> & {
-  title: string;
-  statusColor?: () => StatusColorValue | undefined;
-  href: string;
-};
 
 export interface ComponentsService {
   register(name: string, component: ComponentType<any>): void;

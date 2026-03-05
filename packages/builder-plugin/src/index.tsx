@@ -1,4 +1,5 @@
-import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
+import React from "react";
+import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
@@ -53,10 +54,10 @@ export function createBuilderPlugin(options: BuilderPluginOptions) {
           routes: gatekeeperDeps.routes,
         },
         init({ db, components, routes }) {
-          components.register("tabs:primary", Object.assign(
-            function BuilderTab() { return null; },
-            { title: "Builder", href: "?page=builder" },
-          ));
+          function BuilderTab() {
+            return <TabLink href="?page=builder" title="Builder" />;
+          }
+          components.register("tabs:primary", BuilderTab);
           components.register("page:builder", BuilderPanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db, config));
