@@ -18,7 +18,7 @@ export interface ConfidanteOptions {
 
 export interface ConfidanteScriptOptions extends ConfidanteOptions {
   /** Replay a specific job by ID instead of running the queue loop. */
-  replay?: number;
+  replayJobId?: number;
 }
 
 /**
@@ -108,7 +108,7 @@ export async function startConfidante(options: ConfidanteOptions): Promise<void>
  * Otherwise falls through to the normal queue loop.
  */
 export async function confidanteScript(options: ConfidanteScriptOptions): Promise<void> {
-  if (options.replay == null) {
+  if (options.replayJobId == null) {
     return startConfidante(options);
   }
 
@@ -151,10 +151,10 @@ export async function confidanteScript(options: ConfidanteScriptOptions): Promis
   for (const fn of startHooks) { await fn(); }
 
   // Fetch the job
-  const job = await client.getJob(options.replay);
+  const job = await client.getJob(options.replayJobId);
   if (!job) {
-    logger.error('replay.job.not_found', { jobId: options.replay });
-    console.error(`Job ${options.replay} not found.`);
+    logger.error('replay.job.not_found', { jobId: options.replayJobId });
+    console.error(`Job ${options.replayJobId} not found.`);
     process.exitCode = 1;
     for (const fn of stopHooks) { await fn(); }
     return;

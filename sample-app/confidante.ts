@@ -29,5 +29,5 @@ confidanteScript({
   config: {
     apiBaseUrl: 'http://localhost:3000',
   },
-  replay,
+  replayJobId: replay,
 });
