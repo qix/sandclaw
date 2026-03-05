@@ -21,6 +21,8 @@ export interface BuilderPluginOptions {
   branch?: string;
   /** Docker image name. @default "builder-plugin" */
   image?: string;
+  /** Override for docker mount arguments  */
+  dockerArgsOverride?: string[];
 }
 
 export function createBuilderPlugin(options: BuilderPluginOptions) {
@@ -39,6 +41,7 @@ export function createBuilderPlugin(options: BuilderPluginOptions) {
     confidanteHandlers: createBuilderConfidanteHandlers({
       workDir: config.workDir,
       repo: config.repo,
+      dockerArgsOverride: options.dockerArgsOverride,
     }),
 
     registerGateway(env: PluginEnvironment) {

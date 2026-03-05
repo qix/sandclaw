@@ -1,9 +1,15 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
+import { quote } from "shell-quote";
 import { PiEventPrinter } from "./events.js";
 
 const DIM = "\x1b[2m";
+const BOLD = "\x1b[1m";
 const RESET = "\x1b[0m";
+
+function logCmd(cmd: string, args: string[]) {
+  process.stderr.write(`${BOLD}$ ${quote([cmd, ...args])}${RESET}\n`);
+}
 
 // ---------------------------------------------------------------------------
 // runDockerCommand — simple `docker run --rm` for non-pi commands
@@ -30,11 +36,12 @@ export function runDockerCommand(
 ): Promise<{ exitCode: number }> {
   const { image, command, dockerArgs = [] } = options;
 
-  const child = spawn(
-    "docker",
-    ["run", "--rm", ...dockerArgs, image, ...command],
-    { stdio: ["ignore", "pipe", "pipe"] },
-  );
+  const fullArgs = ["run", "--rm", ...dockerArgs, image, ...command];
+  logCmd("docker", fullArgs);
+
+  const child = spawn("docker", fullArgs, {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 
   child.stdout.on("data", () => {});
   child.stderr.on("data", (chunk: Buffer) => {
@@ -114,11 +121,19 @@ export function runDockerPi(
     prompt,
   ];
 
-  const child = spawn(
-    "docker",
-    ["run", "--rm", ...envFlags, ...dockerArgs, image, ...containerCommand],
-    { stdio: ["ignore", "pipe", "pipe"] },
-  );
+  const fullArgs = [
+    "run",
+    "--rm",
+    ...envFlags,
+    ...dockerArgs,
+    image,
+    ...containerCommand,
+  ];
+  logCmd("docker", fullArgs);
+
+  const child = spawn("docker", fullArgs, {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 
   const printer = new PiEventPrinter();
   const rl = createInterface({ input: child.stdout });

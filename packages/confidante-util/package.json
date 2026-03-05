@@ -8,6 +8,10 @@
     "build": "tsc"
   },
   "devDependencies": {
+    "@types/shell-quote": "^1.7.5",
     "typescript": "*"
+  },
+  "dependencies": {
+    "shell-quote": "^1.8.3"
   }
 }

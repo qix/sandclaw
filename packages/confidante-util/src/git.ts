@@ -1,15 +1,27 @@
 import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
+import { quote } from "shell-quote";
 
 const DIM = "\x1b[2m";
+const BOLD = "\x1b[1m";
 const RESET = "\x1b[0m";
 
 function muted(text: string) {
   process.stderr.write(`${DIM}${text}${RESET}\n`);
 }
 
+function logCmd(cmd: string, args: string[]) {
+  process.stderr.write(`${BOLD}$ ${quote([cmd, ...args])}${RESET}\n`);
+}
+
+function runExec(command: string, opts: { cwd: string }): string {
+  logCmd(command.split(" ")[0], command.split(" ").slice(1));
+  return execSync(command, { ...opts, encoding: "utf-8" });
+}
+
 function runSpawn(cmd: string, args: string[]): Promise<number> {
+  logCmd(cmd, args);
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
       stdio: ["ignore", "pipe", "pipe"],
@@ -48,10 +60,7 @@ export async function prepareWorkDir(
   const { repo, workDir, branch = "main" } = options;
 
   if (existsSync(workDir)) {
-    const status = execSync("git status --porcelain", {
-      cwd: workDir,
-      encoding: "utf-8",
-    });
+    const status = runExec("git status --porcelain", { cwd: workDir });
     if (status.trim()) {
       throw new Error(`Working directory ${workDir} has uncommitted changes`);
     }
@@ -80,10 +89,7 @@ export async function prepareWorkDir(
     }
   }
 
-  const headBefore = execSync("git rev-parse HEAD", {
-    cwd: workDir,
-    encoding: "utf-8",
-  }).trim();
+  const headBefore = runExec("git rev-parse HEAD", { cwd: workDir }).trim();
   muted(`HEAD before: ${headBefore}`);
 
   return { headBefore };
@@ -118,20 +124,14 @@ export function detectAndCommitChanges(
 ): DetectAndCommitChangesResult {
   const { workDir, commitMessage } = options;
 
-  const headBefore = execSync("git rev-parse HEAD", {
-    cwd: workDir,
-    encoding: "utf-8",
-  }).trim();
+  const headBefore = runExec("git rev-parse HEAD", { cwd: workDir }).trim();
 
-  const status = execSync("git status --porcelain", {
-    cwd: workDir,
-    encoding: "utf-8",
-  });
+  const status = runExec("git status --porcelain", { cwd: workDir });
 
   if (status.trim()) {
     muted("Changes detected, committing...");
-    execSync("git add -A", { cwd: workDir });
-    execSync(`git commit -m ${JSON.stringify(commitMessage)}`, {
+    runExec("git add -A", { cwd: workDir });
+    runExec(`git commit -m ${JSON.stringify(commitMessage)}`, {
       cwd: workDir,
     });
     muted(`Committed changes with message: ${commitMessage}`);
@@ -139,10 +139,7 @@ export function detectAndCommitChanges(
     muted("No changes detected.");
   }
 
-  const headAfter = execSync("git rev-parse HEAD", {
-    cwd: workDir,
-    encoding: "utf-8",
-  }).trim();
+  const headAfter = runExec("git rev-parse HEAD", { cwd: workDir }).trim();
   muted(`HEAD after: ${headAfter}`);
 
   return {

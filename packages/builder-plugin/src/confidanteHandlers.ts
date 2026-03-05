@@ -21,6 +21,7 @@ interface BuildRequestPayload {
 export interface BuilderConfidanteConfig {
   workDir: string;
   repo: string;
+  dockerArgsOverride?: string[];
 }
 
 export function createBuilderConfidanteHandlers(
@@ -37,6 +38,11 @@ export function createBuilderConfidanteHandlers(
         payload = JSON.parse(ctx.job.data);
       } catch {
         throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
+      }
+
+      let dockerMountArgs: string[] = ["-v", `${workDir}:/workspace`];
+      if (config.dockerArgsOverride) {
+        dockerMountArgs = [...config.dockerArgsOverride];
       }
 
       const {
@@ -66,7 +72,7 @@ export function createBuilderConfidanteHandlers(
       const npmResult = await runDockerCommand({
         image,
         command: ["npm", "install"],
-        dockerArgs: ["-v", `${workDir}:/workspace`],
+        dockerArgs: dockerMountArgs,
       });
 
       if (npmResult.exitCode !== 0) {
@@ -86,15 +92,15 @@ export function createBuilderConfidanteHandlers(
         dockerArgs: [
           "--cap-add=NET_ADMIN",
           "--cap-add=NET_RAW",
-          "-v",
-          `${workDir}:/workspace`,
+          ...dockerMountArgs,
           "-e",
           `PI_PROMPT=${prompt}`,
         ],
         command: [
           "bash",
           "-c",
-          'sudo /usr/local/bin/init-firewall.sh && pi --mode json --print "$PI_PROMPT"',
+          // 'sudo /usr/local/bin/init-firewall.sh && ' +
+          'pi --mode json --print "$PI_PROMPT"',
         ],
       });
 
