@@ -4,7 +4,18 @@ import { GITHUB_PLUGIN_ID, GITHUB_PR_CREATED_ACTION } from "./constants";
 
 const execFile = promisify(execFileCb);
 
-export function registerRoutes(app: any, db: any) {
+export interface GithubRouteOptions {
+  /** If set, `git pull` will be run in this directory after a PR is merged on the matching repo. */
+  autoPullPath?: string;
+  /** The GitHub repo (owner/name) that must match for auto-pull to trigger. */
+  autoPullRemote?: string;
+}
+
+export function registerRoutes(
+  app: any,
+  db: any,
+  options?: GithubRouteOptions,
+) {
   // POST /create-pr — create a PR on GitHub and add to verification queue
   app.post("/create-pr", async (c: any) => {
     const body = (await c.req.json()) as {
@@ -53,6 +64,21 @@ export function registerRoutes(app: any, db: any) {
       return c.json({ error: `gh pr create failed: ${message}` }, 500);
     }
 
+    // Fetch the full PR diff
+    let diff = "";
+    try {
+      const { stdout } = await execFile("gh", [
+        "pr",
+        "diff",
+        String(prNumber),
+        "--repo",
+        repo,
+      ]);
+      diff = stdout;
+    } catch {
+      // Non-fatal — verification will just show no diff
+    }
+
     const now = Date.now();
     const data = {
       repo,
@@ -61,6 +87,7 @@ export function registerRoutes(app: any, db: any) {
       branch: head,
       title: prTitle,
       body: prBody || "",
+      diff,
       createdAt: new Date(now).toISOString(),
     };
 
@@ -117,6 +144,19 @@ export function registerRoutes(app: any, db: any) {
     await db("verification_requests")
       .where("id", id)
       .update({ status: "approved", updated_at: Date.now() });
+
+    // Auto-pull the local repo if configured and the repo matches
+    if (
+      options?.autoPullPath &&
+      options?.autoPullRemote &&
+      data.repo === options.autoPullRemote
+    ) {
+      try {
+        await execFile("git", ["pull"], { cwd: options.autoPullPath });
+      } catch {
+        // Non-fatal — the merge itself succeeded
+      }
+    }
 
     return c.json({ success: true });
   });

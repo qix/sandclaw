@@ -9,7 +9,14 @@ import { createPullRequestTool } from "./tools";
 export { GithubVerificationRenderer } from "./components";
 export { createPullRequestTool } from "./tools";
 
-export function createGithubPlugin() {
+export interface GithubPluginOptions {
+  /** If set, `git pull` will be run in this directory after a PR is merged on the matching repo. */
+  autoPullPath?: string;
+  /** The GitHub repo (owner/name) that must match for auto-pull to trigger. */
+  autoPullRemote?: string;
+}
+
+export function createGithubPlugin(options?: GithubPluginOptions) {
   return {
     id: "github" as const,
     verificationRenderer: GithubVerificationRenderer,
@@ -18,7 +25,12 @@ export function createGithubPlugin() {
       env.registerInit({
         deps: { db: gatekeeperDeps.db, routes: gatekeeperDeps.routes },
         init({ db, routes }) {
-          routes.registerRoutes((app) => registerRoutes(app, db));
+          routes.registerRoutes((app) =>
+            registerRoutes(app, db, {
+              autoPullPath: options?.autoPullPath,
+              autoPullRemote: options?.autoPullRemote,
+            }),
+          );
         },
       });
     },

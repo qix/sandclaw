@@ -10,6 +10,7 @@ export function GithubVerificationRenderer({
   const title = data?.title ?? "";
   const branch = data?.branch ?? "";
   const body = data?.body ?? "";
+  const diff = data?.diff ?? "";
   const createdAt = data?.createdAt ?? "";
 
   return (
@@ -164,6 +165,40 @@ export function GithubVerificationRenderer({
             }}
           >
             {body}
+          </div>
+        </div>
+      )}
+
+      {/* Full PR diff */}
+      {diff && (
+        <div style={{ marginTop: "1rem" }}>
+          <div
+            style={{
+              fontSize: "0.82rem",
+              color: colors.muted,
+              fontWeight: 600,
+              marginBottom: "0.4rem",
+            }}
+          >
+            Diff
+          </div>
+          <div
+            style={{
+              background: colors.bg,
+              border: `1px solid ${colors.border}`,
+              borderRadius: "0.5rem",
+              padding: "1rem",
+              fontSize: "0.78rem",
+              fontFamily: "monospace",
+              whiteSpace: "pre",
+              overflowX: "auto",
+              overflowY: "auto",
+              lineHeight: 1.4,
+              maxHeight: "500px",
+              color: colors.text,
+            }}
+          >
+            {diff}
           </div>
         </div>
       )}
