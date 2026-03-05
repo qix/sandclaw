@@ -1,4 +1,5 @@
 import * as readline from "node:readline";
+import { inspect } from "node:util";
 import type {
   ConfidantePlugin,
   ConfidanteHooks,
@@ -188,7 +189,7 @@ export async function confidanteScript(
   console.log(`  ID:      ${job.id}`);
   console.log(`  Type:    ${job.jobType}`);
   console.log(`  Status:  ${job.status}`);
-  console.log(`  Data:    ${job.data}`);
+  console.log(`  Data:    ${inspect(job.data, { colors: true, depth: null }).replace(/\n/g, "\n           ")}`);
   console.log("-------------------\n");
 
   // Prompt for confirmation
