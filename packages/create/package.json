@@ -1,0 +1,16 @@
+{
+  "name": "@sandclaw/create",
+  "version": "0.1.0",
+  "description": "Create a new Sandclaw project",
+  "bin": {
+    "create-sandclaw": "./src/index.mjs"
+  },
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "sandclaw",
+    "create",
+    "scaffold"
+  ]
+}
