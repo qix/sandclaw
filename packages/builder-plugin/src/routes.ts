@@ -28,7 +28,7 @@ export function registerRoutes(
       requestId,
       prompt: body.prompt,
       responseJobType,
-      // Pass plugin config so the confidante handler has repo/branch/image
+      // Include config values for display in the verification UI
       repo: pluginConfig.repo,
       branch: pluginConfig.branch ?? "main",
       image: pluginConfig.image ?? "builder-plugin",
@@ -74,7 +74,6 @@ export function registerRoutes(
         requestId: verificationData.requestId,
         prompt: verificationData.prompt,
         responseJobType: verificationData.responseJobType,
-        repo: verificationData.repo,
         branch: verificationData.branch,
         image: verificationData.image,
       }),

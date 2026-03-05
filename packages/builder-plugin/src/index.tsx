@@ -38,6 +38,7 @@ export function createBuilderPlugin(options: BuilderPluginOptions) {
     jobHandlers: builderJobHandlers,
     confidanteHandlers: createBuilderConfidanteHandlers({
       workDir: config.workDir,
+      repo: config.repo,
     }),
 
     registerGateway(env: PluginEnvironment) {

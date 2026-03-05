@@ -13,7 +13,6 @@ import {
 interface BuildRequestPayload {
   requestId: string;
   prompt: string;
-  repo: string;
   branch?: string;
   image?: string;
   responseJobType?: string;
@@ -21,12 +20,13 @@ interface BuildRequestPayload {
 
 export interface BuilderConfidanteConfig {
   workDir: string;
+  repo: string;
 }
 
 export function createBuilderConfidanteHandlers(
   config: BuilderConfidanteConfig,
 ) {
-  const { workDir } = config;
+  const { workDir, repo } = config;
 
   return {
     async [BUILDER_CONFIDANTE_JOB_TYPE](
@@ -42,7 +42,6 @@ export function createBuilderConfidanteHandlers(
       const {
         requestId,
         prompt,
-        repo,
         branch = "main",
         image = "builder-plugin",
         responseJobType = DEFAULT_BUILDER_RESULT_JOB_TYPE,
