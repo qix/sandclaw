@@ -45,26 +45,30 @@ export function buildTelegramPlugin(
         deps: {
           db: gatekeeperDeps.db,
           hooks: gatekeeperDeps.hooks,
-          tabs: gatekeeperDeps.tabs,
+          components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
         },
-        async init({ db, hooks, tabs, routes }) {
-          tabs.registerTab({
-            tabName: "Telegram",
-            component: TelegramPanel,
-            statusColor: () => {
-              switch (tgState.connectionStatus) {
-                case "connected":
-                  return "green" as const;
-                case "connecting":
-                  return "yellow" as const;
-                case "disconnected":
-                case "waiting_for_token":
-                default:
-                  return "red" as const;
-              }
+        async init({ db, hooks, components, routes }) {
+          components.register("tabs:channels", Object.assign(
+            function TelegramTab() { return null; },
+            {
+              title: "Telegram",
+              href: "?page=telegram",
+              statusColor: () => {
+                switch (tgState.connectionStatus) {
+                  case "connected":
+                    return "green" as const;
+                  case "connecting":
+                    return "yellow" as const;
+                  case "disconnected":
+                  case "waiting_for_token":
+                  default:
+                    return "red" as const;
+                }
+              },
             },
-          });
+          ));
+          components.register("page:telegram", TelegramPanel);
 
           routes.registerRoutes((app) =>
             registerRoutes(app, db, operatorChatIds),

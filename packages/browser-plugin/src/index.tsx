@@ -24,14 +24,15 @@ export function createBrowserPlugin() {
       env.registerInit({
         deps: {
           db: gatekeeperDeps.db,
-          tabs: gatekeeperDeps.tabs,
+          components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
         },
-        init({ db, tabs, routes }) {
-          tabs.registerTab({
-            tabName: "Browser",
-            component: BrowserPanel,
-          });
+        init({ db, components, routes }) {
+          components.register("tabs:primary", Object.assign(
+            function BrowserTab() { return null; },
+            { title: "Browser", href: "?page=browser" },
+          ));
+          components.register("page:browser", BrowserPanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db));
         },

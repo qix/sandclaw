@@ -46,26 +46,30 @@ export function buildWhatsappPlugin(
         deps: {
           db: gatekeeperDeps.db,
           hooks: gatekeeperDeps.hooks,
-          tabs: gatekeeperDeps.tabs,
+          components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
         },
-        async init({ db, hooks, tabs, routes }) {
-          tabs.registerTab({
-            tabName: "WhatsApp",
-            component: WhatsAppPanel,
-            statusColor: () => {
-              switch (waState.connectionStatus) {
-                case "connected":
-                  return "green" as const;
-                case "connecting":
-                case "qr_pending":
-                  return "yellow" as const;
-                case "disconnected":
-                default:
-                  return "red" as const;
-              }
+        async init({ db, hooks, components, routes }) {
+          components.register("tabs:channels", Object.assign(
+            function WhatsAppTab() { return null; },
+            {
+              title: "WhatsApp",
+              href: "?page=whatsapp",
+              statusColor: () => {
+                switch (waState.connectionStatus) {
+                  case "connected":
+                    return "green" as const;
+                  case "connecting":
+                  case "qr_pending":
+                    return "yellow" as const;
+                  case "disconnected":
+                  default:
+                    return "red" as const;
+                }
+              },
             },
-          });
+          ));
+          components.register("page:whatsapp", WhatsAppPanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db, operatorJids));
 

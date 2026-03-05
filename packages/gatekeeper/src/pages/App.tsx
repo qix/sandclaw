@@ -14,17 +14,17 @@ import {
 import type { ComponentType } from "react";
 
 export interface TabRenderData {
-  tabKey: string;
-  pluginId: string;
-  tabName: string;
-  component: ComponentType;
+  title: string;
+  href: string;
   statusColor?: StatusColorValue;
 }
 
 interface AppProps {
-  tabs: TabRenderData[];
-  activeTabKey: string;
-  activePage?: string;
+  channelTabs: TabRenderData[];
+  primaryTabs: TabRenderData[];
+  activePage: string;
+  pageComponent?: ComponentType;
+  pageNotFound?: boolean;
   verificationRequests?: VerificationRequest[];
   verificationHistory?: VerificationHistoryPage;
   pendingVerificationCount: number;
@@ -32,17 +32,19 @@ interface AppProps {
 }
 
 export function App({
-  tabs,
-  activeTabKey,
+  channelTabs,
+  primaryTabs,
   activePage,
+  pageComponent,
+  pageNotFound,
   verificationRequests,
   verificationHistory,
   pendingVerificationCount,
   renderers,
 }: AppProps) {
-  const activeTab = activePage
-    ? null
-    : (tabs.find((t) => t.tabKey === activeTabKey) ?? tabs[0]);
+  const allTabs = [...channelTabs, ...primaryTabs];
+  const activePageHref = `?page=${activePage}`;
+  const activeTabTitle = allTabs.find((t) => t.href === activePageHref)?.title;
 
   return (
     <html lang="en">
@@ -88,15 +90,26 @@ export function App({
               </Badge>
             </span>
           </a>
-          <div className="sc-nav-divider" />
-          {tabs.map((t) => (
+          {channelTabs.length > 0 && <div className="sc-nav-divider" />}
+          {channelTabs.map((t) => (
             <a
-              key={t.tabKey}
-              href={`?tab=${t.tabKey}`}
-              className={`sc-nav-link ${t.tabKey === activeTab?.tabKey ? "active" : ""}`}
+              key={t.href}
+              href={t.href}
+              className={`sc-nav-link ${t.href === activePageHref ? "active" : ""}`}
             >
               {t.statusColor && <StatusDot color={t.statusColor} />}
-              {t.tabName}
+              {t.title}
+            </a>
+          ))}
+          {primaryTabs.length > 0 && <div className="sc-nav-divider" />}
+          {primaryTabs.map((t) => (
+            <a
+              key={t.href}
+              href={t.href}
+              className={`sc-nav-link ${t.href === activePageHref ? "active" : ""}`}
+            >
+              {t.statusColor && <StatusDot color={t.statusColor} />}
+              {t.title}
             </a>
           ))}
         </nav>
@@ -115,7 +128,7 @@ export function App({
               <span>
                 {activePage === "verifications"
                   ? "Verifications"
-                  : (activeTab?.tabName ?? "Select page")}
+                  : (activeTabTitle ?? activePage)}
               </span>
               <svg
                 className="sc-dropdown-chevron"
@@ -169,13 +182,13 @@ export function App({
                   </Badge>
                 </span>
               </a>
-              <div className="sc-dropdown-separator" />
-              {tabs.map((t) => {
-                const isActive = t.tabKey === activeTab?.tabKey;
+              {channelTabs.length > 0 && <div className="sc-dropdown-separator" />}
+              {channelTabs.map((t) => {
+                const isActive = t.href === activePageHref;
                 return (
                   <a
-                    key={t.tabKey}
-                    href={`?tab=${t.tabKey}`}
+                    key={t.href}
+                    href={t.href}
                     className={`sc-dropdown-item ${isActive ? "active" : ""}`}
                     role="menuitem"
                   >
@@ -183,7 +196,25 @@ export function App({
                       {isActive ? "\u2713" : ""}
                     </span>
                     {t.statusColor && <StatusDot color={t.statusColor} />}
-                    {t.tabName}
+                    {t.title}
+                  </a>
+                );
+              })}
+              {primaryTabs.length > 0 && <div className="sc-dropdown-separator" />}
+              {primaryTabs.map((t) => {
+                const isActive = t.href === activePageHref;
+                return (
+                  <a
+                    key={t.href}
+                    href={t.href}
+                    className={`sc-dropdown-item ${isActive ? "active" : ""}`}
+                    role="menuitem"
+                  >
+                    <span className="sc-dropdown-check">
+                      {isActive ? "\u2713" : ""}
+                    </span>
+                    {t.statusColor && <StatusDot color={t.statusColor} />}
+                    {t.title}
                   </a>
                 );
               })}
@@ -217,8 +248,10 @@ export function App({
               history={verificationHistory}
               renderers={renderers}
             />
-          ) : activeTab ? (
-            createElement(activeTab.component)
+          ) : pageComponent ? (
+            createElement(pageComponent)
+          ) : pageNotFound ? (
+            <NotFoundPage page={activePage} />
           ) : (
             <NoPlugins />
           )}
@@ -265,6 +298,17 @@ export function App({
         />
       </body>
     </html>
+  );
+}
+
+function NotFoundPage({ page }: { page: string }) {
+  return (
+    <div className="sc-section" style={{ color: "#8b8fa3", textAlign: "center", paddingTop: "4rem" }}>
+      <h2 style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>404</h2>
+      <p>
+        Page <code>{page}</code> not found.
+      </p>
+    </div>
   );
 }
 

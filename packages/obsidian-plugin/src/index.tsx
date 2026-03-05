@@ -29,14 +29,15 @@ export function createObsidianPlugin(config: ObsidianPluginConfig) {
       env.registerInit({
         deps: {
           db: gatekeeperDeps.db,
-          tabs: gatekeeperDeps.tabs,
+          components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
         },
-        init({ db, tabs, routes }) {
-          tabs.registerTab({
-            tabName: "Obsidian",
-            component: ObsidianPanel,
-          });
+        init({ db, components, routes }) {
+          components.register("tabs:primary", Object.assign(
+            function ObsidianTab() { return null; },
+            { title: "Obsidian", href: "?page=obsidian" },
+          ));
+          components.register("page:obsidian", ObsidianPanel);
 
           routes.registerRoutes((app) =>
             registerRoutes(app, db, vaultRoot, vaultIndex),

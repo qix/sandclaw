@@ -35,14 +35,19 @@ export interface GatekeeperHooks {
 
 export type StatusColorValue = "green" | "yellow" | "red" | "gray";
 
-export interface TabRegistration {
-  tabName: string;
-  component: ComponentType;
+/**
+ * A Tab component with static metadata for sidebar rendering.
+ * The component function itself is not rendered — the gateway reads
+ * `title`, `statusColor`, and `href` to build the navigation.
+ */
+export type TabComponent = ComponentType<{}> & {
+  title: string;
   statusColor?: () => StatusColorValue | undefined;
-}
+  href: string;
+};
 
-export interface TabsService {
-  registerTab(registration: TabRegistration): void;
+export interface ComponentsService {
+  register(name: string, component: ComponentType<any>): void;
 }
 
 export interface RoutesService {
@@ -60,7 +65,7 @@ export interface WebSocketService {
 export const gatekeeperDeps = {
   db: createServiceRef<Knex>({ id: "core.db" }),
   hooks: createServiceRef<GatekeeperHooks>({ id: "core.hooks" }),
-  tabs: createServiceRef<TabsService>({ id: "core.tabs" }),
+  components: createServiceRef<ComponentsService>({ id: "core.components" }),
   routes: createServiceRef<RoutesService>({ id: "core.routes" }),
   ws: createServiceRef<WebSocketService>({ id: "core.ws" }),
 };

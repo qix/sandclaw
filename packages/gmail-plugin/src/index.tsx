@@ -23,14 +23,15 @@ export function createGmailPlugin(config: GmailPluginConfig) {
       env.registerInit({
         deps: {
           db: gatekeeperDeps.db,
-          tabs: gatekeeperDeps.tabs,
+          components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
         },
-        init({ db, tabs, routes }) {
-          tabs.registerTab({
-            tabName: "Gmail",
-            component: GmailPanel,
-          });
+        init({ db, components, routes }) {
+          components.register("tabs:primary", Object.assign(
+            function GmailTab() { return null; },
+            { title: "Gmail", href: "?page=gmail" },
+          ));
+          components.register("page:gmail", GmailPanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db, config));
         },

@@ -49,14 +49,15 @@ export function createBuilderPlugin(options: BuilderPluginOptions) {
       env.registerInit({
         deps: {
           db: gatekeeperDeps.db,
-          tabs: gatekeeperDeps.tabs,
+          components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
         },
-        init({ db, tabs, routes }) {
-          tabs.registerTab({
-            tabName: "Builder",
-            component: BuilderPanel,
-          });
+        init({ db, components, routes }) {
+          components.register("tabs:primary", Object.assign(
+            function BuilderTab() { return null; },
+            { title: "Builder", href: "?page=builder" },
+          ));
+          components.register("page:builder", BuilderPanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db, config));
         },

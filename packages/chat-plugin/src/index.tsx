@@ -22,16 +22,20 @@ export function buildChatPlugin() {
       env.registerInit({
         deps: {
           db: gatekeeperDeps.db,
-          tabs: gatekeeperDeps.tabs,
+          components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
           ws: gatekeeperDeps.ws,
         },
-        init({ db, tabs, routes, ws }) {
-          tabs.registerTab({
-            tabName: "Chat",
-            component: ChatPanel,
-            statusColor: () => "green" as const,
-          });
+        init({ db, components, routes, ws }) {
+          components.register("tabs:primary", Object.assign(
+            function ChatTab() { return null; },
+            {
+              title: "Chat",
+              href: "?page=chat",
+              statusColor: () => "green" as const,
+            },
+          ));
+          components.register("page:chat", ChatPanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db));
 

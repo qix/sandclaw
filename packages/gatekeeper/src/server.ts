@@ -6,8 +6,8 @@ import type { Knex } from "knex";
 import type {
   GatekeeperPlugin,
   GatekeeperHooks,
-  StatusColorValue,
-  TabsService,
+  ComponentsService,
+  TabComponent,
   RoutesService,
   WebSocketService,
   VerificationRendererProps,
@@ -20,15 +20,6 @@ import type { VerificationHistoryPage } from "./pages/VerificationsPage";
 import { createDb, runCoreMigrations } from "./db";
 import { logger } from "./logger";
 import { registerCoreRoutes, registerVerificationFormRoutes } from "./routes";
-
-/** Internal registration with the statusColor getter preserved for per-request evaluation. */
-interface TabRegistrationInternal {
-  tabKey: string;
-  pluginId: string;
-  tabName: string;
-  component: ComponentType;
-  statusColorFn?: () => StatusColorValue | undefined;
-}
 
 export interface GatekeeperOptions {
   /** Plugins to load into the gatekeeper. */
@@ -77,8 +68,20 @@ export async function startGatekeeper(
     },
   };
 
-  // Collected tab registrations and route handlers from all plugins
-  const tabRegistrations: TabRegistrationInternal[] = [];
+  // Component registry: maps names like "tabs:channels", "tabs:primary", "page:whatsapp" to components
+  const componentRegistry = new Map<string, ComponentType<any>[]>();
+  const componentsService: ComponentsService = {
+    register(name, component) {
+      let list = componentRegistry.get(name);
+      if (!list) {
+        list = [];
+        componentRegistry.set(name, list);
+      }
+      list.push(component);
+    },
+  };
+
+  // Collected route handlers from all plugins
   const allRouteHandlers: Array<{
     pluginId: string;
     handler: (app: Hono) => void;
@@ -104,6 +107,7 @@ export async function startGatekeeper(
   const services = new Map<string, any>();
   services.set("core.db", db);
   services.set("core.hooks", hooksService);
+  services.set("core.components", componentsService);
   services.set("core.ws", wsService);
 
   const initFns: Array<() => void | Promise<void>> = [];
@@ -119,36 +123,16 @@ export async function startGatekeeper(
       renderers[plugin.id] = plugin.verificationRenderer;
     }
 
-    // Create per-plugin TabsService
-    const pluginId = plugin.id;
-    let tabCount = 0;
-    const tabsService: TabsService = {
-      registerTab(registration) {
-        const tabKey =
-          tabCount === 0
-            ? pluginId
-            : `${pluginId}:${registration.tabName.toLowerCase().replace(/\s+/g, "-")}`;
-        tabCount++;
-        tabRegistrations.push({
-          tabKey,
-          pluginId,
-          tabName: registration.tabName,
-          component: registration.component,
-          statusColorFn: registration.statusColor,
-        });
-      },
-    };
-
     // Create per-plugin RoutesService
+    const pluginId = plugin.id;
     const routesService: RoutesService = {
       registerRoutes(handler) {
         allRouteHandlers.push({ pluginId, handler });
       },
     };
 
-    // Clone services map with per-plugin services
+    // Clone services map with per-plugin routes service
     const pluginServices = new Map(services);
-    pluginServices.set("core.tabs", tabsService);
     pluginServices.set("core.routes", routesService);
 
     plugin.registerGateway({
@@ -205,25 +189,19 @@ export async function startGatekeeper(
   // 5. Form-action routes for the Verifications page
   registerVerificationFormRoutes(app, db, notifyVerificationChange);
 
+  // Helper: extract tab metadata from a TabComponent for rendering
+  function evalTabComponent(component: ComponentType<any>): TabRenderData {
+    const tab = component as TabComponent;
+    return {
+      title: tab.title,
+      href: tab.href,
+      statusColor: tab.statusColor?.(),
+    };
+  }
+
   // 6. SSR — render the React shell on every GET
   app.get("/*", async (c) => {
-    const tabParam = c.req.query("tab");
-    const pluginParam = c.req.query("plugin");
-    const page =
-      c.req.query("page") ??
-      (tabParam || pluginParam ? undefined : "verifications");
-
-    // Resolve active tab: ?tab= takes priority, ?plugin= as fallback (backward compat)
-    let activeTabKey = tabParam ?? "";
-    if (!activeTabKey && pluginParam) {
-      const pluginTab = tabRegistrations.find(
-        (t) => t.pluginId === pluginParam,
-      );
-      activeTabKey = pluginTab?.tabKey ?? "";
-    }
-    if (!activeTabKey && !page) {
-      activeTabKey = tabRegistrations[0]?.tabKey ?? "";
-    }
+    const activePage = c.req.query("page") ?? "verifications";
 
     // Always fetch pending count for the sidebar badge
     const [{ count: pendingVerificationCount }] = await db(
@@ -232,18 +210,17 @@ export async function startGatekeeper(
       .where("status", "pending")
       .count("* as count");
 
-    // Evaluate statusColor getters per-request for dynamic status
-    const tabs: TabRenderData[] = tabRegistrations.map((reg) => ({
-      tabKey: reg.tabKey,
-      pluginId: reg.pluginId,
-      tabName: reg.tabName,
-      component: reg.component,
-      statusColor: reg.statusColorFn?.(),
-    }));
+    // Evaluate tab metadata per-request for dynamic statusColor
+    const channelTabs = (componentRegistry.get("tabs:channels") ?? []).map(evalTabComponent);
+    const primaryTabs = (componentRegistry.get("tabs:primary") ?? []).map(evalTabComponent);
+
+    // Resolve page component (if not the built-in verifications page)
+    let pageComponent: ComponentType | undefined;
+    let pageNotFound = false;
 
     let verificationRequests: any[] | undefined;
     let verificationHistory: VerificationHistoryPage | undefined;
-    if (page === "verifications") {
+    if (activePage === "verifications") {
       const rows = await db("verification_requests")
         .where("status", "pending")
         .orderBy("created_at", "desc");
@@ -292,13 +269,22 @@ export async function startGatekeeper(
           total,
         };
       }
+    } else {
+      const components = componentRegistry.get(`page:${activePage}`);
+      if (components?.[0]) {
+        pageComponent = components[0];
+      } else {
+        pageNotFound = true;
+      }
     }
 
     const html = renderToString(
       createElement(App, {
-        tabs,
-        activeTabKey,
-        activePage: page,
+        channelTabs,
+        primaryTabs,
+        activePage,
+        pageComponent,
+        pageNotFound,
         verificationRequests,
         verificationHistory,
         pendingVerificationCount: Number(pendingVerificationCount),
