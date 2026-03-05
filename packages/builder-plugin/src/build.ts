@@ -67,8 +67,9 @@ export async function executeBuild(
     workDir,
   });
 
-  // Step 1: Prepare working directory (clone or verify clean)
-  await prepareWorkDir({ repo, workDir, branch });
+  // Step 1: Prepare working directory — fetch origin/main, create builder branch
+  const outputBranch = `builder-${ctx.job.id}`;
+  await prepareWorkDir({ repo, workDir, branchName: outputBranch, baseBranch: branch });
 
   // Step 2: npm install in Docker
   ctx.logger.info("builder.build.npm_install", {
@@ -126,12 +127,11 @@ export async function executeBuild(
     headAfter: commitResult.headAfter,
   });
 
-  // Step 5: If changes were committed, push to a feature branch and create a PR
-  const outputBranch = `builder-output-${ctx.job.id}`;
+  // Step 5: If changes were committed, push branch and create a PR
   let prUrl: string | undefined;
 
   if (commitResult.changed) {
-    await pushBranch(workDir, outputBranch, branch);
+    await pushBranch(workDir, outputBranch);
 
     ctx.logger.info("builder.build.pushed", {
       jobId: ctx.job.id,

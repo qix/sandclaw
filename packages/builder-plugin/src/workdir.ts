@@ -51,28 +51,49 @@ function run(
 export interface PrepareWorkDirOptions {
   repo: string;
   workDir: string;
-  branch?: string;
+  branchName: string;
+  baseBranch?: string;
 }
 
 export async function prepareWorkDir(
   options: PrepareWorkDirOptions,
 ): Promise<{ headBefore: string }> {
-  const { repo, workDir, branch = "main" } = options;
+  const { repo, workDir, branchName, baseBranch = "main" } = options;
 
   if (existsSync(workDir)) {
+    // Warn and clean any in-progress work
     const status = await run("git", ["status", "--porcelain"], {
       cwd: workDir,
       capture: true,
     });
     if (status.trim()) {
-      throw new Error(`Working directory ${workDir} has uncommitted changes`);
+      muted(
+        `WARNING: Working directory ${workDir} has uncommitted changes — cleaning...`,
+      );
+      await run("git", ["checkout", "."], { cwd: workDir });
+      await run("git", ["clean", "-fd"], { cwd: workDir });
     }
-    muted(`Working directory ${workDir} exists and is clean, pulling latest...`);
-    await run("git", ["-C", workDir, "pull", "origin", branch]);
+
+    muted(`Fetching origin/${baseBranch}...`);
+    await run("git", ["fetch", "origin", baseBranch], { cwd: workDir });
   } else {
-    muted(`Cloning ${repo} (branch: ${branch}) into ${workDir}...`);
-    await run("git", ["clone", "--branch", branch, repo, workDir]);
+    muted(`Cloning ${repo} into ${workDir}...`);
+    await run("git", ["clone", repo, workDir]);
   }
+
+  // Delete local branch if it already exists (e.g. from a previous retry)
+  try {
+    await run("git", ["branch", "-D", branchName], { cwd: workDir });
+  } catch {
+    // branch doesn't exist yet, that's fine
+  }
+
+  muted(`Creating branch ${branchName} from origin/${baseBranch}...`);
+  await run(
+    "git",
+    ["checkout", "-b", branchName, `origin/${baseBranch}`],
+    { cwd: workDir },
+  );
 
   const headBefore = (
     await run("git", ["rev-parse", "HEAD"], { cwd: workDir, capture: true })
@@ -133,10 +154,7 @@ export async function detectAndCommitChanges(
 export async function pushBranch(
   workDir: string,
   branchName: string,
-  returnToBranch: string = "main",
 ): Promise<void> {
-  muted(`Creating and pushing branch ${branchName}...`);
-  await run("git", ["checkout", "-b", branchName], { cwd: workDir });
+  muted(`Pushing branch ${branchName}...`);
   await run("git", ["push", "origin", branchName], { cwd: workDir });
-  await run("git", ["checkout", returnToBranch], { cwd: workDir });
 }
