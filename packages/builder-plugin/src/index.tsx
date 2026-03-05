@@ -11,6 +11,7 @@ import { createBuilderConfidanteHandlers } from "./confidanteHandlers";
 
 export { BuilderPanel, BuilderVerificationRenderer } from "./components";
 export { createRequestBuildTool } from "./tools";
+export type { BuildConfig } from "./build";
 
 export interface BuilderPluginOptions {
   /** Git repo URL to clone/build against. */
