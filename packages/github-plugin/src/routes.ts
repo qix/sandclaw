@@ -153,8 +153,9 @@ export function registerRoutes(
     ) {
       try {
         await execFile("git", ["pull"], { cwd: options.autoPullPath });
-      } catch {
+      } catch (err) {
         // Non-fatal — the merge itself succeeded
+        console.error("Auto-pull failed:", err);
       }
     }
 

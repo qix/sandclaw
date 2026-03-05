@@ -31,7 +31,7 @@ export function buildChatPlugin() {
           function ChatTab() {
             return <TabLink href="?page=chat" title="Chat" statusColor="green" />;
           }
-          components.register("tabs:primary", ChatTab);
+          components.register("tabs:channels", ChatTab);
           components.register("page:chat", ChatPanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db));
