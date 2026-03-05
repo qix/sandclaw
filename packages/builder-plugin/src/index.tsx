@@ -7,7 +7,7 @@ import { BuilderPanel, BuilderVerificationRenderer } from './components';
 import { registerRoutes, type BuilderPluginConfig } from './routes';
 import { createRequestBuildTool } from './tools';
 import { builderJobHandlers } from './jobHandlers';
-import { builderConfidanteHandlers } from './confidanteHandlers';
+import { createBuilderConfidanteHandlers } from './confidanteHandlers';
 
 export { BuilderPanel, BuilderVerificationRenderer } from './components';
 export { createRequestBuildTool } from './tools';
@@ -36,7 +36,7 @@ export function createBuilderPlugin(options: BuilderPluginOptions) {
     verificationRenderer: BuilderVerificationRenderer,
 
     jobHandlers: builderJobHandlers,
-    confidanteHandlers: builderConfidanteHandlers,
+    confidanteHandlers: createBuilderConfidanteHandlers({ workDir: config.workDir }),
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({

@@ -23,9 +23,8 @@ export function registerRoutes(app: any, db: any, pluginConfig: BuilderPluginCon
       requestId,
       prompt: body.prompt,
       responseJobType,
-      // Pass plugin config so the confidante handler has repo/workDir/branch/image
+      // Pass plugin config so the confidante handler has repo/branch/image
       repo: pluginConfig.repo,
-      workDir: pluginConfig.workDir,
       branch: pluginConfig.branch ?? 'main',
       image: pluginConfig.image ?? 'builder-plugin',
       createdAt: new Date(now).toISOString(),
@@ -67,7 +66,6 @@ export function registerRoutes(app: any, db: any, pluginConfig: BuilderPluginCon
         prompt: verificationData.prompt,
         responseJobType: verificationData.responseJobType,
         repo: verificationData.repo,
-        workDir: verificationData.workDir,
         branch: verificationData.branch,
         image: verificationData.image,
       }),
