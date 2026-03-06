@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/muteworker-plugin-api",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Sandclaw muteworker plugin API contract",
   "repository": {
     "type": "git",

@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/confidante-plugin-api",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Sandclaw Confidante plugin API — contract for plugins targeting the Confidante",
   "repository": {
     "type": "git",
