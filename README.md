@@ -8,109 +8,119 @@
 
 ---
 
-Sandclaw separates **safe operations** (processing data that may contain prompt injections) from **dangerous operations** (actions that can affect the outside world or leak secrets). Every dangerous action must pass through a human approval step before it executes.
+Every dangerous action your AI agent takes — sending a message, pushing code, making an API call — must be approved by a human before it executes.
 
-## Architecture
+Sandclaw enforces this by splitting work between two agents:
 
-Sandclaw has three core components:
-
-| Component | Role |
-|-----------|------|
-| **Gatekeeper** | The control center. Hosts the approval UI, manages the SQLite database, and exposes the REST API consumed by the other two components. |
-| **Muteworker** | The "safe" agent. Does all the reasoning and LLM inference, but has no credentials and cannot reach the outside world directly. All real-world actions are submitted to the Gatekeeper as verification requests. |
-| **Confidante** | The "dangerous" agent. Holds credentials and has direct internet/browser access. It only receives jobs that a human has already approved in the Gatekeeper UI. |
+- **Muteworker** — does all the thinking, but has no credentials and no internet access. It submits actions as verification requests.
+- **Confidante** — has credentials and internet access, but only executes jobs that a human has approved.
+- **Gatekeeper** — the web UI that sits between them, where you review and approve actions.
 
 ```
-                    ┌─────────────────┐
-  Incoming data ──► │   Muteworker    │ (no credentials, no internet)
-                    │  (safe agent)   │
-                    └────────┬────────┘
-                             │ verification requests
-                             ▼
-                    ┌─────────────────┐
-  Operator ◄──────► │   Gatekeeper   │ (approval UI + REST API)
-                    └────────┬────────┘
-                             │ approved jobs only
-                             ▼
-                    ┌─────────────────┐
-                    │   Confidante    │ (credentials, browser access)
-                    │ (danger agent)  │
-                    └─────────────────┘
+                  ┌─────────────────┐
+Incoming data ──► │   Muteworker    │ (no credentials, no internet)
+                  └────────┬────────┘
+                           │ verification requests
+                           ▼
+                  ┌─────────────────┐
+Operator ◄──────► │   Gatekeeper   │ (approval UI + REST API)
+                  └────────┬────────┘
+                           │ approved jobs only
+                           ▼
+                  ┌─────────────────┐
+                  │   Confidante    │ (credentials, browser access)
+                  └─────────────────┘
 ```
 
-## Packages
+## Getting Started
 
-This is a Node.js monorepo. All packages live under `packages/`.
+```bash
+npx @sandclaw/create
+```
 
-### Core
+This scaffolds a new project with all three components, prompts for your model provider, and installs dependencies.
 
-| Package | Description |
-|---------|-------------|
-| `gatekeeper` | Web UI and backend (Hono + React + SQLite) |
-| `muteworker` | Safe agent loop and job executor |
-| `confidante` | Dangerous agent with browser automation |
-| `gatekeeper-plugin-api` | Plugin contract for extending the Gatekeeper |
+Then:
 
-### Built-in Plugins
+```bash
+cd your-project
+
+# Add your API keys
+edit .env
+
+# Start all three services
+npm start
+```
+
+The Gatekeeper UI will be available at `http://localhost:3000`.
+
+## Plugins
+
+Sandclaw is built around plugins. Each plugin can add UI panels, API routes, database tables, and agent tools.
+
+### Built-in plugins
 
 | Plugin | Description |
 |--------|-------------|
-| `whatsapp-plugin` | Send and receive WhatsApp messages |
-| `gmail-plugin` | Gmail integration and webhooks |
-| `github-plugin` | Create and merge pull requests, download code |
-| `obsidian-plugin` | Search, read, and write Obsidian vault notes |
-| `browser-plugin` | Browser automation via the Confidante |
+| `@sandclaw/chat-plugin` | Chat interface for talking to your agent |
+| `@sandclaw/web-search-plugin` | Web search via Brave API |
+| `@sandclaw/browser-plugin` | Browser automation via the Confidante |
+| `@sandclaw/github-plugin` | Create PRs, download code, manage repos |
+| `@sandclaw/gmail-plugin` | Read and send Gmail messages |
+| `@sandclaw/whatsapp-plugin` | Send and receive WhatsApp messages |
+| `@sandclaw/telegram-plugin` | Telegram bot integration |
+| `@sandclaw/obsidian-plugin` | Search, read, and write Obsidian vault notes |
+| `@sandclaw/google-maps-plugin` | Google Maps lookups |
+| `@sandclaw/memory-plugin` | Persistent agent memory |
+| `@sandclaw/prompts-plugin` | Editable system prompts |
+| `@sandclaw/builder-plugin` | Code generation and deployment |
 
-## Plugin System
+Plugins are configured in `plugins.ts`. Enable or disable them by adding or removing them from the array.
 
-Sandclaw's functionality is built around plugins. Each plugin can contribute UI panels, backend routes, and database migrations to the Gatekeeper.
-
-### Creating a plugin
+### Writing a plugin
 
 ```typescript
-import { createGatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
+import { createGatekeeperPlugin, gatekeeperDeps } from '@sandclaw/gatekeeper-plugin-api';
 
 export const myPlugin = createGatekeeperPlugin({
   id: 'my-plugin',
-  title: 'My Plugin',
-  component: MyPanelComponent, // React component for the sidebar
-  routes: (app) => {           // Hono route registrations
-    app.post('/api/my-plugin/action', handler);
+  registerGateway(env) {
+    env.registerInit({
+      deps: { routes: gatekeeperDeps.routes, db: gatekeeperDeps.db },
+      init({ routes, db }) {
+        routes.registerRoutes((app) => {
+          app.get('/api/my-plugin/status', (c) => c.json({ ok: true }));
+        });
+      },
+    });
   },
-  migrations: async (knex) => { // DB migrations run on startup
-    await knex.schema.createTable('my_table', (t) => { /* ... */ });
+  migrations: async (knex) => {
+    await knex.schema.createTable('my_table', (t) => {
+      t.increments('id');
+      t.text('data');
+    });
   },
 });
 ```
 
-### Starting the Gatekeeper with plugins
+## Project Structure
 
-```typescript
-import { startGatekeeper } from '@sandclaw/gatekeeper';
-import { myPlugin } from '@sandclaw/my-plugin';
-
-startGatekeeper({
-  plugins: [myPlugin],
-  port: 3000,
-});
+```
+your-project/
+├── gatekeeper.ts     # Web UI + approval API
+├── muteworker.ts      # Safe agent (no internet)
+├── confidante.ts      # Dangerous agent (has credentials)
+├── config.ts          # Ports, model provider, paths
+├── plugins.ts         # Which plugins to enable
+├── prompts/           # Agent personality and instructions
+│   ├── IDENTITY.md
+│   ├── SOUL.md
+│   ├── SYSTEM.md
+│   └── USER.md
+├── memory/            # Persistent agent memory
+└── data/              # SQLite database
 ```
 
-On startup, `startGatekeeper` runs each plugin's migrations, registers its routes, and renders its component as a sidebar tab in the UI.
+## License
 
-## Tech Stack
-
-- **Gatekeeper**: [Hono](https://hono.dev) · [React](https://react.dev) · [HeroUI](https://www.heroui.com) · [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) via Knex
-- **Muteworker / Confidante**: `@mariozechner/pi-agent-core` · `@mariozechner/pi-ai`
-
-## Sample App
-
-A working example using the built-in plugins is in `sample-app/`.
-
-```typescript
-// sample-app/gatekeeper.ts
-import { startGatekeeper } from '@sandclaw/gatekeeper';
-import { whatsappPlugin } from '@sandclaw/whatsapp-plugin';
-// ... additional plugins
-
-startGatekeeper({ plugins: [whatsappPlugin, /* ... */], port: 3000 });
-```
+MIT

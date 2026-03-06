@@ -307,14 +307,15 @@ export async function startGatekeeper(
     "╚══╝               ╚══╝",
   ];
   const infoLines = [
-    "Gatekeeper",
+    "Sandclaw Gatekeeper",
     "",
     `Port ${port}`,
     externalUrl,
     "",
   ];
   const formatInfo = (line: string, i: number) => {
-    if (i === 0) return `${bold}${yellow}${line}${reset}`;
+    if (i === 0)
+      return `${bold}${yellow}Sand${cyan}claw ${yellow}Gatekeeper${reset}`;
     if (line) return `${dim}${line}${reset}`;
     return line;
   };
