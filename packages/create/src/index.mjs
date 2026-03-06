@@ -146,7 +146,7 @@ export const gatekeeperConfig = {
   gatekeeperPort,
 
   /* Local storage paths */
-  dbPath: __dirname + "/data/db.sqlite",
+  dbPath: path.join(__dirname, "data/db.sqlite"),
   memoryDir: path.join(__dirname, "memory"),
   promptsDir: path.join(__dirname, "prompts"),
 };

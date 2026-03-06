@@ -19,21 +19,27 @@ import { createDb, runCoreMigrations } from "./db";
 import { logger } from "./logger";
 import { registerCoreRoutes, registerVerificationFormRoutes } from "./routes";
 
-export interface GatekeeperOptions {
+export interface GatekeeperConfig {
   /** External url */
   gatekeeperExternalUrl: string;
-  /** Plugins to load into the gatekeeper. */
-  plugins: GatekeeperPlugin[];
   /** Path to the SQLite database file. Parent directory is created if absent. */
   dbPath: string;
   /** TCP port to listen on. Defaults to 3000. */
   port?: number;
 }
 
+export interface GatekeeperOptions {
+  /** Plugins to load into the gatekeeper. */
+  plugins: GatekeeperPlugin[];
+  /** Config overrides (merged with defaults). */
+  config: GatekeeperConfig;
+}
+
 export async function startGatekeeper(
   options: GatekeeperOptions,
 ): Promise<void> {
-  const { plugins, dbPath, port = 3000 } = options;
+  const { plugins, config } = options;
+  const { dbPath, port = 3000 } = config;
   const app = new Hono();
 
   // Request logging middleware
