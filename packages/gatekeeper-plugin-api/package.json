@@ -1,10 +1,12 @@
 {
   "name": "@sandclaw/gatekeeper-plugin-api",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "API for creating Sandclaw Gatekeeper plugins",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },
