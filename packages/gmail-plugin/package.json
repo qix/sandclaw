@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/gmail-plugin",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Sandclaw Gmail plugin — send and receive emails via Gmail API",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,8 +14,8 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@sandclaw/gatekeeper-plugin-api": "^0.0.4",
-    "@sandclaw/muteworker-plugin-api": "^0.0.4",
+    "@sandclaw/gatekeeper-plugin-api": "^0.0.5",
+    "@sandclaw/muteworker-plugin-api": "^0.0.5",
     "googleapis": "^144.0.0"
   },
   "peerDependencies": {
