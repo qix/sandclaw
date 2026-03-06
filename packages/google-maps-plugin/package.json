@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/google-maps-plugin",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Sandclaw Google Maps plugin — generate Google Maps links",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,7 +14,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@sandclaw/gatekeeper-plugin-api": "^0.0.7",
-    "@sandclaw/muteworker-plugin-api": "^0.0.7"
+    "@sandclaw/gatekeeper-plugin-api": "^0.0.8",
+    "@sandclaw/muteworker-plugin-api": "^0.0.8"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/browser-plugin",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Sandclaw Browser plugin — web research via Confidante with human approval",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,10 +14,10 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@sandclaw/gatekeeper-plugin-api": "^0.0.7",
-    "@sandclaw/muteworker-plugin-api": "^0.0.7",
-    "@sandclaw/confidante-plugin-api": "^0.0.7",
-    "@sandclaw/confidante-util": "^0.0.7",
+    "@sandclaw/gatekeeper-plugin-api": "^0.0.8",
+    "@sandclaw/muteworker-plugin-api": "^0.0.8",
+    "@sandclaw/confidante-plugin-api": "^0.0.8",
+    "@sandclaw/confidante-util": "^0.0.8",
     "cac": "^7.0.0"
   },
   "peerDependencies": {
