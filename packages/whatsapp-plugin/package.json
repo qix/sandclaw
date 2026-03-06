@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/whatsapp-plugin",
-  "version": "0.0.11",
+  "version": "0.1.0",
   "description": "Sandclaw WhatsApp plugin — connects to WhatsApp via Baileys",
   "repository": {
     "type": "git",
@@ -19,9 +19,9 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@sandclaw/gatekeeper-plugin-api": "^0.0.11",
-    "@sandclaw/muteworker-plugin-api": "^0.0.11",
-    "@sandclaw/ui": "^0.0.11",
+    "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0",
     "@whiskeysockets/baileys": "^6.7.16",
     "qrcode": "^1.5.4",
     "pino": "^9.6.0"

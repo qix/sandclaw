@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/gatekeeper",
-  "version": "0.0.11",
+  "version": "0.1.0",
   "description": "Sandclaw Gatekeeper — control-centre web app",
   "repository": {
     "type": "git",
@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "@hono/node-server": "*",
-    "@sandclaw/gatekeeper-plugin-api": "^0.0.11",
-    "@sandclaw/ui": "^0.0.11",
+    "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0",
     "better-sqlite3": "^11.0.0",
     "hono": "*",
     "knex": "^3.0.0",
