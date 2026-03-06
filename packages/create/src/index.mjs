@@ -73,28 +73,22 @@ function buildTemplates({
     "gatekeeper.ts": `\
 import { startGatekeeper } from "@sandclaw/gatekeeper";
 import { plugins } from "./plugins";
-import { config } from "./config";
+import { gatekeeperConfig } from "./config";
 
 startGatekeeper({
   plugins,
-  dbPath: config.dbPath,
-  port: config.gatekeeperPort,
+  config: gatekeeperConfig,
 });
 `,
 
     "muteworker.ts": `\
 import { startMuteworker } from "@sandclaw/muteworker";
-import { config } from "./config";
+import { muteworkerConfig } from "./config";
 import { plugins } from "./plugins";
 
 startMuteworker({
   plugins,
-  config: {
-    modelId: config.modelId,
-    modelProvider: config.modelProvider,
-    gatekeeperInternalUrl: config.gatekeeperInternalUrl,
-    gatekeeperExternalUrl: config.gatekeeperExternalUrl,
-  },
+  config: muteworkerConfig,
 });
 `,
 
@@ -102,7 +96,7 @@ startMuteworker({
 import { parseArgs } from "node:util";
 import { confidanteScript } from "@sandclaw/confidante";
 import { plugins } from "./plugins";
-import { config } from "./config";
+import { confidanteConfig } from "./config";
 
 const { values } = parseArgs({
   options: {
@@ -120,33 +114,23 @@ if (values.replay !== undefined && (replay == null || isNaN(replay))) {
 
 confidanteScript({
   plugins,
-  config: {
-    gatekeeperInternalUrl: config.gatekeeperInternalUrl,
-  },
+  config: confidanteConfig,
   replayJobId: replay,
 });
 `,
 
     "config.ts": `\
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from "url";
+import path from "path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const gatekeeperPort = 3000;
 
-export const config = {
-  /* Local storage paths */
-  dbPath: __dirname + "/data/db.sqlite",
-  memoryDir: path.join(__dirname, 'memory'),
-  promptsDir: path.join(__dirname, 'prompts'),
-
+const shared = {
   /* Pi agent model configuration */
   modelProvider: "${modelProvider}",
   modelId: "${modelId}",
-
-  /* Port to run gatekeep on */
-  gatekeeperPort,
 
   /* Address that the muteworker and confidante instances use to talk to gatekeeper. Should be localhost if running on the same machine. */
   gatekeeperInternalUrl: \`http://localhost:\${gatekeeperPort}\`,
@@ -154,6 +138,28 @@ export const config = {
   /* Address that the gatekeeper instance is available from remote. Recommend using tailscale, etc. */
   gatekeeperExternalUrl: \`http://localhost:\${gatekeeperPort}\`,
 };
+
+export const gatekeeperConfig = {
+  ...shared,
+
+  /* Port to run gatekeeper on */
+  gatekeeperPort,
+
+  /* Local storage paths */
+  dbPath: __dirname + "/data/db.sqlite",
+  memoryDir: path.join(__dirname, "memory"),
+  promptsDir: path.join(__dirname, "prompts"),
+};
+
+export const muteworkerConfig = {
+  ...shared,
+};
+
+export const confidanteConfig = {
+  ...shared,
+};
+
+export const config = gatekeeperConfig;
 `,
 
     "plugins.ts": `\
