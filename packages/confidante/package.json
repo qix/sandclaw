@@ -2,6 +2,11 @@
   "name": "@sandclaw/confidante",
   "version": "0.0.8",
   "description": "Sandclaw Confidante — sandboxed agent with Docker and credentials",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/confidante"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

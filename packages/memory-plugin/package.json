@@ -2,6 +2,11 @@
   "name": "@sandclaw/memory-plugin",
   "version": "0.0.8",
   "description": "Sandclaw Memory plugin — agent memory file tools and system prompt hook",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/memory-plugin"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

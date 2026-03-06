@@ -2,6 +2,11 @@
   "name": "@sandclaw/builder-plugin",
   "version": "0.0.8",
   "description": "Sandclaw Builder plugin — Docker-based code builds via Confidante with human approval",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/builder-plugin"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

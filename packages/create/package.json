@@ -2,6 +2,11 @@
   "name": "@sandclaw/create",
   "version": "0.0.8",
   "description": "Create a new Sandclaw project",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/create"
+  },
   "bin": {
     "create-sandclaw": "./src/index.mjs"
   },

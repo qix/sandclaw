@@ -2,6 +2,11 @@
   "name": "@sandclaw/github-plugin",
   "version": "0.0.8",
   "description": "Sandclaw GitHub plugin — PR creation and approval via gh CLI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/github-plugin"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

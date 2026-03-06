@@ -2,6 +2,11 @@
   "name": "@sandclaw/browser-plugin",
   "version": "0.0.8",
   "description": "Sandclaw Browser plugin — web research via Confidante with human approval",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/browser-plugin"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

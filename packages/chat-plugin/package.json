@@ -2,6 +2,11 @@
   "name": "@sandclaw/chat-plugin",
   "version": "0.0.8",
   "description": "Sandclaw Chat plugin — direct browser chat with the AI agent",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/chat-plugin"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

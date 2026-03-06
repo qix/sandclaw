@@ -2,6 +2,11 @@
   "name": "@sandclaw/confidante-plugin-api",
   "version": "0.0.8",
   "description": "Sandclaw Confidante plugin API — contract for plugins targeting the Confidante",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/confidante-plugin-api"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

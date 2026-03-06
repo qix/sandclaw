@@ -2,6 +2,11 @@
   "name": "@sandclaw/whatsapp-plugin",
   "version": "0.0.8",
   "description": "Sandclaw WhatsApp plugin — connects to WhatsApp via Baileys",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/whatsapp-plugin"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

@@ -2,6 +2,11 @@
   "name": "@sandclaw/google-maps-plugin",
   "version": "0.0.8",
   "description": "Sandclaw Google Maps plugin — generate Google Maps links",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/google-maps-plugin"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

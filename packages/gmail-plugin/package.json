@@ -2,6 +2,11 @@
   "name": "@sandclaw/gmail-plugin",
   "version": "0.0.8",
   "description": "Sandclaw Gmail plugin — send and receive emails via Gmail API",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/gmail-plugin"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

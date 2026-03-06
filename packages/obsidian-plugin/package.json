@@ -2,6 +2,11 @@
   "name": "@sandclaw/obsidian-plugin",
   "version": "0.0.8",
   "description": "Sandclaw Obsidian plugin — read/write access to an Obsidian vault",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/obsidian-plugin"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
