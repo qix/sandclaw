@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/ui",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Sandclaw shared UI component library — dark-themed SSR components",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

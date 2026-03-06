@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/web-search-plugin",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Sandclaw Web Search plugin — Brave Search API integration",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,7 +14,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@sandclaw/gatekeeper-plugin-api": "^0.0.3",
-    "@sandclaw/muteworker-plugin-api": "^0.0.3"
+    "@sandclaw/gatekeeper-plugin-api": "^0.0.4",
+    "@sandclaw/muteworker-plugin-api": "^0.0.4"
   }
 }
