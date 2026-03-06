@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/create",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Create a new Sandclaw project",
   "bin": {
     "create-sandclaw": "./src/index.mjs"
