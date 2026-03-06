@@ -292,6 +292,8 @@ export async function startGatekeeper(
 
   const cyan = "\x1b[36m";
   const yellow = "\x1b[33m";
+  const white = "\x1b[37m";
+  const whiteBright = "\x1b[97m";
   const bold = "\x1b[1m";
   const dim = "\x1b[2m";
   const reset = "\x1b[0m";
@@ -306,17 +308,13 @@ export async function startGatekeeper(
     "║  ║     \\_^_/     ║  ║",
     "╚══╝               ╚══╝",
   ];
-  const infoLines = [
-    "Sandclaw Gatekeeper",
-    "",
-    `Port ${port}`,
-    externalUrl,
-    "",
-  ];
+  const infoLines = ["", "Sandclaw Gatekeeper", "", externalUrl, ""];
   const formatInfo = (line: string, i: number) => {
-    if (i === 0)
-      return `${bold}${yellow}Sand${cyan}claw ${yellow}Gatekeeper${reset}`;
-    if (line) return `${dim}${line}${reset}`;
+    if (i === 1)
+      return `${bold}${whiteBright}Sand${cyan}claw ${white}Gatekeeper${reset}`;
+    if (i === 3) return `${white}${line}${reset}`;
+    else if (line) return `${dim}${line}${reset}`;
+
     return line;
   };
 
