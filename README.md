@@ -22,6 +22,9 @@ The Confidante is an agent that is intended to run with secrets, but the scope o
 
 ## Getting Started
 
+> [!WARNING]
+> This is a *very early* release and work in progress, it should start up with the chat plugin, but some of the other plugins, especially the builder, will require tweaking on your end to get working.
+
 ```bash
 npx @sandclaw/create
 ```
@@ -61,7 +64,7 @@ Sandclaw has a minimal core, and most of the logic is implemented by plugins. Ea
 | `@sandclaw/telegram-plugin`    | Telegram bot integration                     |
 | `@sandclaw/obsidian-plugin`    | Search, read, and write Obsidian vault notes |
 | `@sandclaw/google-maps-plugin` | Google Maps lookups                          |
-| `@sandclaw/builder-plugin`     | Code generation and deployment               |
+| `@sandclaw/builder-plugin`     | Code generation for your sandclaw            |
 
 Plugins are configured in `plugins.ts`. Enable or disable them by adding or removing them from the array.
 
