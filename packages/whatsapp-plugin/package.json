@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/whatsapp-plugin",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Sandclaw WhatsApp plugin — connects to WhatsApp via Baileys",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,9 +14,9 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@sandclaw/gatekeeper-plugin-api": "^0.0.5",
-    "@sandclaw/muteworker-plugin-api": "^0.0.5",
-    "@sandclaw/ui": "^0.0.5",
+    "@sandclaw/gatekeeper-plugin-api": "^0.0.6",
+    "@sandclaw/muteworker-plugin-api": "^0.0.6",
+    "@sandclaw/ui": "^0.0.6",
     "@whiskeysockets/baileys": "^6.7.16",
     "qrcode": "^1.5.4",
     "pino": "^9.6.0"
