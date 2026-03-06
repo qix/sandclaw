@@ -20,6 +20,8 @@ import { logger } from "./logger";
 import { registerCoreRoutes, registerVerificationFormRoutes } from "./routes";
 
 export interface GatekeeperOptions {
+  /** External url */
+  gatekeeperExternalUrl: string;
   /** Plugins to load into the gatekeeper. */
   plugins: GatekeeperPlugin[];
   /** Path to the SQLite database file. Parent directory is created if absent. */
@@ -292,15 +294,21 @@ export async function startGatekeeper(
   const yellow = "\x1b[33m";
   const bold = "\x1b[1m";
   const reset = "\x1b[0m";
-  console.log(`${cyan}
-  ╔══╗     /\\_/\\     ╔══╗
-  ║  ║    ( o.o )    ║  ║
-  ║  ╠════╡ > < ╞════╣  ║
-  ║  ║     \\_^_/     ║  ║
-  ╚══╝               ╚══╝${reset}
-  ${bold}${yellow}Gatekeeper listening on port ${port}${reset}
-  ${cyan}http://localhost:${port}${reset}
-`);
+
+  const externalUrl =
+    options.gatekeeperExternalUrl || `http://localhost:${port}`;
+  console.log(
+    [
+      `${cyan}`,
+      "╔══╗     /\\_/\\     ╔══╗",
+      "║  ║    ( o.o )    ║  ║",
+      "║  ╠════╡ > < ╞════╣  ║",
+      "║  ║     \\_^_/     ║  ║",
+      `╚══╝               ╚══╝${reset}`,
+      `${bold}${yellow}Gatekeeper listening on port ${port}${reset}`,
+      `${cyan}${externalUrl}${reset}`,
+    ].join("\n"),
+  );
 
   // Attach WebSocket upgrade dispatcher (always — core WS is always available)
   (server as any).on("upgrade", (req: any, socket: any, head: Buffer) => {
