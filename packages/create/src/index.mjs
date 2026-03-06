@@ -2,7 +2,10 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execAsync = promisify(exec);
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
 
@@ -369,7 +372,7 @@ async function main() {
   const s = p.spinner();
   s.start('Installing dependencies');
   try {
-    execSync('npm install', { cwd: projectDir, stdio: 'pipe' });
+    await execAsync('npm install', { cwd: projectDir });
     s.stop('Dependencies installed');
   } catch {
     s.stop('npm install failed — you can run it manually later');
