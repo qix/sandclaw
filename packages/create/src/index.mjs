@@ -1,67 +1,76 @@
 #!/usr/bin/env node
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
+import fs from "node:fs";
+import path from "node:path";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
 
 const execAsync = promisify(exec);
-import * as p from '@clack/prompts';
-import pc from 'picocolors';
-import { MODELS } from './models.mjs';
+import * as p from "@clack/prompts";
+import pc from "picocolors";
+import { MODELS } from "./models.mjs";
 
 function getSystemTimezone() {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   } catch {
-    return 'UTC';
+    return "UTC";
   }
 }
 
-function buildTemplates({ projectName, userName, botName, timezone, modelProvider, modelId }) {
+function buildTemplates({
+  projectName,
+  userName,
+  botName,
+  timezone,
+  modelProvider,
+  modelId,
+}) {
   return {
-    'package.json': JSON.stringify(
+    "package.json": JSON.stringify(
       {
         name: projectName,
-        version: '0.1.0',
+        version: "0.1.0",
         private: true,
         scripts: {
-          gatekeeper: 'tsx gatekeeper.ts',
-          muteworker: 'tsx muteworker.ts',
-          confidante: 'tsx confidante.ts',
-          start: 'concurrently --names muteworker,gatekeeper,confidante "npm run muteworker" "npm run gatekeeper" "npm run confidante"',
+          gatekeeper: "tsx gatekeeper.ts",
+          muteworker: "tsx muteworker.ts",
+          confidante: "tsx confidante.ts",
+          start:
+            "concurrently --names gatekeeper,muteworker,confidante " +
+            '"npm run gatekeeper" "sleep 1; npm run muteworker" "sleep 1; npm run confidante"',
         },
         dependencies: {
-          '@sandclaw/browser-plugin': 'latest',
-          '@sandclaw/builder-plugin': 'latest',
-          '@sandclaw/chat-plugin': 'latest',
-          '@sandclaw/confidante': 'latest',
-          '@sandclaw/confidante-plugin-api': 'latest',
-          '@sandclaw/gatekeeper': 'latest',
-          '@sandclaw/gatekeeper-plugin-api': 'latest',
-          '@sandclaw/github-plugin': 'latest',
-          '@sandclaw/gmail-plugin': 'latest',
-          '@sandclaw/google-maps-plugin': 'latest',
-          '@sandclaw/memory-plugin': 'latest',
-          '@sandclaw/muteworker': 'latest',
-          '@sandclaw/muteworker-plugin-api': 'latest',
-          '@sandclaw/obsidian-plugin': 'latest',
-          '@sandclaw/prompts-plugin': 'latest',
-          '@sandclaw/telegram-plugin': 'latest',
-          '@sandclaw/web-search-plugin': 'latest',
-          '@sandclaw/whatsapp-plugin': 'latest',
-          concurrently: '^9.2.1',
+          "@sandclaw/browser-plugin": "latest",
+          "@sandclaw/builder-plugin": "latest",
+          "@sandclaw/chat-plugin": "latest",
+          "@sandclaw/confidante": "latest",
+          "@sandclaw/confidante-plugin-api": "latest",
+          "@sandclaw/gatekeeper": "latest",
+          "@sandclaw/gatekeeper-plugin-api": "latest",
+          "@sandclaw/github-plugin": "latest",
+          "@sandclaw/gmail-plugin": "latest",
+          "@sandclaw/google-maps-plugin": "latest",
+          "@sandclaw/memory-plugin": "latest",
+          "@sandclaw/muteworker": "latest",
+          "@sandclaw/muteworker-plugin-api": "latest",
+          "@sandclaw/obsidian-plugin": "latest",
+          "@sandclaw/prompts-plugin": "latest",
+          "@sandclaw/telegram-plugin": "latest",
+          "@sandclaw/web-search-plugin": "latest",
+          "@sandclaw/whatsapp-plugin": "latest",
+          concurrently: "^9.2.1",
         },
         devDependencies: {
-          tsx: 'latest',
-          typescript: 'latest',
+          tsx: "latest",
+          typescript: "latest",
         },
       },
       null,
       2,
     ),
 
-    'gatekeeper.ts': `\
+    "gatekeeper.ts": `\
 import { startGatekeeper } from "@sandclaw/gatekeeper";
 import { plugins } from "./plugins";
 import { config } from "./config";
@@ -73,7 +82,7 @@ startGatekeeper({
 });
 `,
 
-    'muteworker.ts': `\
+    "muteworker.ts": `\
 import { startMuteworker } from "@sandclaw/muteworker";
 import { config } from "./config";
 import { plugins } from "./plugins";
@@ -89,7 +98,7 @@ startMuteworker({
 });
 `,
 
-    'confidante.ts': `\
+    "confidante.ts": `\
 import { parseArgs } from "node:util";
 import { confidanteScript } from "@sandclaw/confidante";
 import { plugins } from "./plugins";
@@ -118,12 +127,19 @@ confidanteScript({
 });
 `,
 
-    'config.ts': `\
+    "config.ts": `\
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const gatekeeperPort = 3000;
 
 export const config = {
   /* Local storage paths */
   dbPath: __dirname + "/data/db.sqlite",
+  memoryDir: path.join(__dirname, 'memory'),
+  promptsDir: path.join(__dirname, 'prompts'),
 
   /* Pi agent model configuration */
   modelProvider: "${modelProvider}",
@@ -140,9 +156,7 @@ export const config = {
 };
 `,
 
-    'plugins.ts': `\
-import path from 'path';
-import { fileURLToPath } from 'url';
+    "plugins.ts": `\
 import type { GatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
 import type { MuteworkerPlugin } from '@sandclaw/muteworker-plugin-api';
 import type { ConfidantePlugin } from '@sandclaw/confidante-plugin-api';
@@ -158,16 +172,16 @@ import { createGoogleMapsPlugin } from '@sandclaw/google-maps-plugin';
 // import { createObsidianPlugin } from '@sandclaw/obsidian-plugin';
 // import { createGmailPlugin } from '@sandclaw/gmail-plugin';
 // import { createBuilderPlugin } from '@sandclaw/builder-plugin';
+import { config } from './config';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export type SandclawPlugin = GatekeeperPlugin & MuteworkerPlugin & Partial<ConfidantePlugin>;
 
 export const plugins: SandclawPlugin[] = [
   // Core plugins (work out of the box)
   buildChatPlugin(),
-  createPromptsPlugin({ promptsDir: path.join(__dirname, 'prompts') }),
-  createMemoryPlugin({ memoryDir: path.join(__dirname, 'memory') }),
+  createPromptsPlugin({ promptsDir: config.promptsDir }),
+  createMemoryPlugin({ memoryDir: config.memoryDir }),
   createBrowserPlugin(),
   createGithubPlugin(),
   createGoogleMapsPlugin(),
@@ -205,7 +219,7 @@ export const plugins: SandclawPlugin[] = [
 ];
 `,
 
-    '.gitignore': `\
+    ".gitignore": `\
 node_modules/
 data/
 memory/
@@ -214,7 +228,7 @@ memory/
 *.map
 `,
 
-    '.env': `\
+    ".env": `\
 # Anthropic API key (required for the AI agent)
 ANTHROPIC_API_KEY=
 
@@ -239,26 +253,26 @@ BRAVE_API_KEY=
 # BUILDER_BRANCH=main
 `,
 
-    'tsconfig.json': JSON.stringify(
+    "tsconfig.json": JSON.stringify(
       {
         compilerOptions: {
-          target: 'ES2022',
-          module: 'ES2022',
-          moduleResolution: 'bundler',
+          target: "ES2022",
+          module: "ES2022",
+          moduleResolution: "bundler",
           esModuleInterop: true,
           strict: true,
           skipLibCheck: true,
-          outDir: 'dist',
+          outDir: "dist",
           declaration: true,
-          jsx: 'react-jsx',
+          jsx: "react-jsx",
         },
-        include: ['*.ts'],
+        include: ["*.ts"],
       },
       null,
       2,
     ),
 
-    'prompts/SYSTEM.md': `\
+    "prompts/SYSTEM.md": `\
 # SYSTEM.md - Core system behaviours
 
 ## Tools
@@ -268,14 +282,14 @@ If any tool responds with a verification url, that verification url should be ad
 Make sure you are clear that no change has been made yet if it still requires verification.
 `,
 
-    'prompts/IDENTITY.md': `\
+    "prompts/IDENTITY.md": `\
 # IDENTITY.md - Who Am I?
 
 - **Name:** ${botName}
 - **Creature:** A helpful AI assistant
 `,
 
-    'prompts/SOUL.md': `\
+    "prompts/SOUL.md": `\
 # SOUL.md - Who You Are
 
 You are a helpful assistant.
@@ -298,14 +312,14 @@ You are a helpful assistant.
 - Keep information tight.
 `,
 
-    'prompts/USER.md': `\
+    "prompts/USER.md": `\
 # USER.md - About Your Human
 
 - **Name:** ${userName}
 - **Timezone:** ${timezone}
 `,
 
-    'prompts/HEARTBEAT.md': `\
+    "prompts/HEARTBEAT.md": `\
 # HEARTBEAT.md
 
 ## Reporting
@@ -320,7 +334,7 @@ Heartbeat turns should usually end with NO_REPLY.
 }
 
 async function main() {
-  p.intro(pc.bgCyan(pc.black(' create-sandclaw ')));
+  p.intro(pc.bgCyan(pc.black(" create-sandclaw ")));
 
   const detectedTimezone = getSystemTimezone();
 
@@ -328,11 +342,11 @@ async function main() {
     {
       projectName: () =>
         p.text({
-          message: 'Project name',
-          placeholder: 'sandclaw',
-          defaultValue: 'sandclaw',
+          message: "Project name",
+          placeholder: "sandclaw",
+          defaultValue: "sandclaw",
           validate: (value) => {
-            if (!value) return 'Project name is required';
+            if (!value) return "Project name is required";
             if (fs.existsSync(path.resolve(value)))
               return `Directory "${value}" already exists`;
           },
@@ -340,16 +354,16 @@ async function main() {
       userName: () =>
         p.text({
           message: "What's your name?",
-          placeholder: 'Your name',
+          placeholder: "Your name",
           validate: (value) => {
-            if (!value) return 'Your name is required';
+            if (!value) return "Your name is required";
           },
         }),
       botName: () =>
         p.text({
           message: "What should your bot be called?",
-          placeholder: 'Sandclaw',
-          defaultValue: 'Sandclaw',
+          placeholder: "Sandclaw",
+          defaultValue: "Sandclaw",
         }),
       timezone: () =>
         p.confirm({
@@ -359,16 +373,16 @@ async function main() {
       timezoneCustom: ({ results }) => {
         if (results.timezone === true) return;
         return p.text({
-          message: 'Enter your timezone',
-          placeholder: 'America/New_York',
+          message: "Enter your timezone",
+          placeholder: "America/New_York",
           validate: (value) => {
-            if (!value) return 'Timezone is required';
+            if (!value) return "Timezone is required";
           },
         });
       },
       modelProvider: () =>
         p.select({
-          message: 'Select a model provider',
+          message: "Select a model provider",
           options: Object.keys(MODELS).map((provider) => ({
             value: provider,
             label: provider,
@@ -377,7 +391,7 @@ async function main() {
       modelId: ({ results }) => {
         const models = MODELS[results.modelProvider] || [];
         return p.select({
-          message: 'Select a model',
+          message: "Select a model",
           options: models.map((model) => ({
             value: model,
             label: model,
@@ -387,7 +401,7 @@ async function main() {
     },
     {
       onCancel: () => {
-        p.cancel('Setup cancelled.');
+        p.cancel("Setup cancelled.");
         process.exit(0);
       },
     },
@@ -408,9 +422,9 @@ async function main() {
 
   // Create directories
   fs.mkdirSync(projectDir, { recursive: true });
-  fs.mkdirSync(path.join(projectDir, 'prompts'), { recursive: true });
-  fs.mkdirSync(path.join(projectDir, 'memory'), { recursive: true });
-  fs.mkdirSync(path.join(projectDir, 'data'), { recursive: true });
+  fs.mkdirSync(path.join(projectDir, "prompts"), { recursive: true });
+  fs.mkdirSync(path.join(projectDir, "memory"), { recursive: true });
+  fs.mkdirSync(path.join(projectDir, "data"), { recursive: true });
 
   // Write template files
   for (const [filePath, content] of Object.entries(templates)) {
@@ -419,32 +433,32 @@ async function main() {
 
   // Install dependencies
   const s = p.spinner();
-  s.start('Installing dependencies');
+  s.start("Installing dependencies");
   try {
-    await execAsync('npm install', { cwd: projectDir });
-    s.stop('Dependencies installed');
+    await execAsync("npm install", { cwd: projectDir });
+    s.stop("Dependencies installed");
   } catch {
-    s.stop('npm install failed — you can run it manually later');
+    s.stop("npm install failed — you can run it manually later");
   }
 
   p.note(
     [
       `cd ${answers.projectName}`,
-      '',
-      '# Edit .env with your API keys and config.ts as needed, then:',
-      'npm start                # Start all services',
-      '',
-      '# Or run individually:',
-      'npx tsx gatekeeper.ts    # Web UI on port 3000',
-      'npx tsx muteworker.ts    # Safe agent',
-      'npx tsx confidante.ts    # Dangerous agent',
-      '',
-      '# Customize your agent in prompts/ and plugins.ts',
-    ].join('\n'),
-    'Next steps',
+      "",
+      "# Edit .env with your API keys and config.ts as needed, then:",
+      "npm start                # Start all services",
+      "",
+      "# Or run individually:",
+      "npx tsx gatekeeper.ts    # Web UI on port 3000",
+      "npx tsx muteworker.ts    # Safe agent",
+      "npx tsx confidante.ts    # Dangerous agent",
+      "",
+      "# Customize your agent in prompts/ and plugins.ts",
+    ].join("\n"),
+    "Next steps",
   );
 
-  p.outro(pc.green('Your Sandclaw project is ready!'));
+  p.outro(pc.green("Your Sandclaw project is ready!"));
 }
 
 main();
