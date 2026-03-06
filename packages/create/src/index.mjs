@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 const execAsync = promisify(exec);
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
+import { MODELS } from './models.mjs';
 
 function getSystemTimezone() {
   try {
@@ -17,7 +18,7 @@ function getSystemTimezone() {
   }
 }
 
-function buildTemplates({ projectName, userName, botName, timezone }) {
+function buildTemplates({ projectName, userName, botName, timezone, modelProvider, modelId }) {
   return {
     'package.json': JSON.stringify(
       {
@@ -28,26 +29,28 @@ function buildTemplates({ projectName, userName, botName, timezone }) {
           gatekeeper: 'tsx gatekeeper.ts',
           muteworker: 'tsx muteworker.ts',
           confidante: 'tsx confidante.ts',
+          start: 'concurrently --names muteworker,gatekeeper,confidante "npm run muteworker" "npm run gatekeeper" "npm run confidante"',
         },
         dependencies: {
-          '@sandclaw/gatekeeper': 'latest',
-          '@sandclaw/muteworker': 'latest',
-          '@sandclaw/confidante': 'latest',
-          '@sandclaw/gatekeeper-plugin-api': 'latest',
-          '@sandclaw/muteworker-plugin-api': 'latest',
-          '@sandclaw/confidante-plugin-api': 'latest',
+          '@sandclaw/browser-plugin': 'latest',
+          '@sandclaw/builder-plugin': 'latest',
           '@sandclaw/chat-plugin': 'latest',
-          '@sandclaw/prompts-plugin': 'latest',
+          '@sandclaw/confidante': 'latest',
+          '@sandclaw/confidante-plugin-api': 'latest',
+          '@sandclaw/gatekeeper': 'latest',
+          '@sandclaw/gatekeeper-plugin-api': 'latest',
+          '@sandclaw/github-plugin': 'latest',
+          '@sandclaw/gmail-plugin': 'latest',
+          '@sandclaw/google-maps-plugin': 'latest',
           '@sandclaw/memory-plugin': 'latest',
+          '@sandclaw/muteworker': 'latest',
+          '@sandclaw/muteworker-plugin-api': 'latest',
+          '@sandclaw/obsidian-plugin': 'latest',
+          '@sandclaw/prompts-plugin': 'latest',
+          '@sandclaw/telegram-plugin': 'latest',
           '@sandclaw/web-search-plugin': 'latest',
           '@sandclaw/whatsapp-plugin': 'latest',
-          '@sandclaw/telegram-plugin': 'latest',
-          '@sandclaw/obsidian-plugin': 'latest',
-          '@sandclaw/gmail-plugin': 'latest',
-          '@sandclaw/browser-plugin': 'latest',
-          '@sandclaw/google-maps-plugin': 'latest',
-          '@sandclaw/github-plugin': 'latest',
-          '@sandclaw/builder-plugin': 'latest',
+          concurrently: '^9.2.1',
         },
         devDependencies: {
           tsx: 'latest',
@@ -59,56 +62,82 @@ function buildTemplates({ projectName, userName, botName, timezone }) {
     ),
 
     'gatekeeper.ts': `\
-import { startGatekeeper } from '@sandclaw/gatekeeper';
-import { plugins } from './plugins';
+import { startGatekeeper } from "@sandclaw/gatekeeper";
+import { plugins } from "./plugins";
+import { config } from "./config";
 
 startGatekeeper({
   plugins,
-  dbPath: './data/db.sqlite',
-  port: 3000,
+  dbPath: config.dbPath,
+  port: config.gatekeeperPort,
 });
 `,
 
     'muteworker.ts': `\
-import { startMuteworker } from '@sandclaw/muteworker';
-import { plugins } from './plugins';
+import { startMuteworker } from "@sandclaw/muteworker";
+import { config } from "./config";
+import { plugins } from "./plugins";
 
 startMuteworker({
   plugins,
   config: {
-    apiBaseUrl: 'http://localhost:3000',
-    modelProvider: 'anthropic',
-    modelId: 'claude-sonnet-4-6',
-    verificationUiUrl: 'http://localhost:3000',
+    modelId: config.modelId,
+    modelProvider: config.modelProvider,
+    gatekeeperInternalUrl: config.gatekeeperInternalUrl,
+    gatekeeperExternalUrl: config.gatekeeperExternalUrl,
   },
 });
 `,
 
     'confidante.ts': `\
-import { parseArgs } from 'node:util';
-import { confidanteScript } from '@sandclaw/confidante';
-import { plugins } from './plugins';
+import { parseArgs } from "node:util";
+import { confidanteScript } from "@sandclaw/confidante";
+import { plugins } from "./plugins";
+import { config } from "./config";
 
 const { values } = parseArgs({
   options: {
-    replay: { type: 'string' },
+    replay: { type: "string" },
   },
   strict: false,
 });
 
-const replay = values.replay ? parseInt(values.replay, 10) : undefined;
+const replay =
+  typeof values.replay === "string" ? parseInt(values.replay, 10) : undefined;
 if (values.replay !== undefined && (replay == null || isNaN(replay))) {
-  console.error('Error: --replay requires a numeric job ID.');
+  console.error("Error: --replay requires a numeric job ID.");
   process.exit(1);
 }
 
 confidanteScript({
   plugins,
   config: {
-    apiBaseUrl: 'http://localhost:3000',
+    gatekeeperInternalUrl: config.gatekeeperInternalUrl,
   },
   replayJobId: replay,
 });
+`,
+
+    'config.ts': `\
+const gatekeeperPort = 3000;
+
+export const config = {
+  /* Local storage paths */
+  dbPath: __dirname + "/data/db.sqlite",
+
+  /* Pi agent model configuration */
+  modelProvider: "${modelProvider}",
+  modelId: "${modelId}",
+
+  /* Port to run gatekeep on */
+  gatekeeperPort,
+
+  /* Address that the muteworker and confidante instances use to talk to gatekeeper. Should be localhost if running on the same machine. */
+  gatekeeperInternalUrl: \`http://localhost:\${gatekeeperPort}\`,
+
+  /* Address that the gatekeeper instance is available from remote. Recommend using tailscale, etc. */
+  gatekeeperExternalUrl: \`http://localhost:\${gatekeeperPort}\`,
+};
 `,
 
     'plugins.ts': `\
@@ -337,6 +366,24 @@ async function main() {
           },
         });
       },
+      modelProvider: () =>
+        p.select({
+          message: 'Select a model provider',
+          options: Object.keys(MODELS).map((provider) => ({
+            value: provider,
+            label: provider,
+          })),
+        }),
+      modelId: ({ results }) => {
+        const models = MODELS[results.modelProvider] || [];
+        return p.select({
+          message: 'Select a model',
+          options: models.map((model) => ({
+            value: model,
+            label: model,
+          })),
+        });
+      },
     },
     {
       onCancel: () => {
@@ -355,6 +402,8 @@ async function main() {
     userName: answers.userName,
     botName: answers.botName,
     timezone,
+    modelProvider: answers.modelProvider,
+    modelId: answers.modelId,
   });
 
   // Create directories
@@ -382,7 +431,10 @@ async function main() {
     [
       `cd ${answers.projectName}`,
       '',
-      '# Edit .env with your API keys, then:',
+      '# Edit .env with your API keys and config.ts as needed, then:',
+      'npm start                # Start all services',
+      '',
+      '# Or run individually:',
       'npx tsx gatekeeper.ts    # Web UI on port 3000',
       'npx tsx muteworker.ts    # Safe agent',
       'npx tsx confidante.ts    # Dangerous agent',
