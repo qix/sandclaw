@@ -287,7 +287,20 @@ export async function startGatekeeper(
   });
 
   const server = serve({ fetch: app.fetch, port });
-  logger.info({ port }, "Gatekeeper listening");
+
+  const cyan = "\x1b[36m";
+  const yellow = "\x1b[33m";
+  const bold = "\x1b[1m";
+  const reset = "\x1b[0m";
+  console.log(`${cyan}
+  ╔══╗     /\\_/\\     ╔══╗
+  ║  ║    ( o.o )    ║  ║
+  ║  ╠════╡ > < ╞════╣  ║
+  ║  ║     \\_^_/     ║  ║
+  ╚══╝               ╚══╝${reset}
+  ${bold}${yellow}Gatekeeper listening on port ${port}${reset}
+  ${cyan}http://localhost:${port}${reset}
+`);
 
   // Attach WebSocket upgrade dispatcher (always — core WS is always available)
   (server as any).on("upgrade", (req: any, socket: any, head: Buffer) => {
