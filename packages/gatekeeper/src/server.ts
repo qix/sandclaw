@@ -293,22 +293,50 @@ export async function startGatekeeper(
   const cyan = "\x1b[36m";
   const yellow = "\x1b[33m";
   const bold = "\x1b[1m";
+  const dim = "\x1b[2m";
   const reset = "\x1b[0m";
 
   const externalUrl =
     options.gatekeeperExternalUrl || `http://localhost:${port}`;
-  console.log(
-    [
-      `${cyan}`,
-      "╔══╗     /\\_/\\     ╔══╗",
-      "║  ║    ( o.o )    ║  ║",
-      "║  ╠════╡ > < ╞════╣  ║",
-      "║  ║     \\_^_/     ║  ║",
-      `╚══╝               ╚══╝${reset}`,
-      `${bold}${yellow}Gatekeeper listening on port ${port}${reset}`,
-      `${cyan}${externalUrl}${reset}`,
-    ].join("\n"),
-  );
+
+  const logoLines = [
+    "╔══╗     /\\_/\\     ╔══╗",
+    "║  ║    ( o.o )    ║  ║",
+    "║  ╠════╡ > < ╞════╣  ║",
+    "║  ║     \\_^_/     ║  ║",
+    "╚══╝               ╚══╝",
+  ];
+  const infoLines = [
+    "Gatekeeper",
+    "",
+    `Port ${port}`,
+    externalUrl,
+    "",
+  ];
+  const formatInfo = (line: string, i: number) => {
+    if (i === 0) return `${bold}${yellow}${line}${reset}`;
+    if (line) return `${dim}${line}${reset}`;
+    return line;
+  };
+
+  const logoWidth = 23;
+  const gap = "    ";
+  const gapWidth = gap.length;
+  const pad = 2;
+  const infoWidth = Math.max(...infoLines.map((l) => l.length));
+  const innerWidth = pad + logoWidth + gapWidth + infoWidth + pad;
+
+  const top = `${dim}╭${"─".repeat(innerWidth)}╮${reset}`;
+  const bot = `${dim}╰${"─".repeat(innerWidth)}╯${reset}`;
+  const empty = `${dim}│${reset}${" ".repeat(innerWidth)}${dim}│${reset}`;
+
+  const rows = logoLines.map((logo, i) => {
+    const info = infoLines[i] ?? "";
+    const infoPad = " ".repeat(infoWidth - info.length);
+    return `${dim}│${reset}${" ".repeat(pad)}${bold}${cyan}${logo}${reset}${gap}${formatInfo(info, i)}${infoPad}${" ".repeat(pad)}${dim}│${reset}`;
+  });
+
+  console.log([top, empty, ...rows, empty, bot].join("\n"));
 
   // Attach WebSocket upgrade dispatcher (always — core WS is always available)
   (server as any).on("upgrade", (req: any, socket: any, head: Buffer) => {
