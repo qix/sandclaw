@@ -408,7 +408,7 @@ async function main() {
         });
       },
       modelId: ({ results }) => {
-        if (results.modelProvider === "") return "";
+        if (results.modelProvider === "") return;
         if (results.modelProvider === "__other__") {
           return p.text({
             message: "Enter model ID",
@@ -458,7 +458,7 @@ async function main() {
   const modelId =
     answers.modelId === "__other__"
       ? answers.modelIdCustom
-      : answers.modelId;
+      : answers.modelId || "";
 
   const projectDir = path.resolve(answers.projectName);
   const templates = buildTemplates({
