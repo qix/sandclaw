@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/confidante-util",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Shared utilities for Sandclaw Confidante plugins — Docker-based pi orchestration and event parsing",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

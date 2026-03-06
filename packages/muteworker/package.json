@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/muteworker",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Sandclaw Muteworker — safe agent",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +17,7 @@
   "dependencies": {
     "@mariozechner/pi-agent-core": "^0.55.1",
     "@mariozechner/pi-ai": "^0.55.1",
-    "@sandclaw/muteworker-plugin-api": "^0.0.6",
+    "@sandclaw/muteworker-plugin-api": "^0.0.7",
     "pino": "^9.14.0",
     "pino-pretty": "^13.1.3"
   },

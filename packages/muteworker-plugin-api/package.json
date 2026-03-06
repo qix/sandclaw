@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/muteworker-plugin-api",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Sandclaw muteworker plugin API contract",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
