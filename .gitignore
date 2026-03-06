@@ -1,8 +1,9 @@
 # Local environment setup
 .direnv
 .envrc
-default.nix
 .claude/
+.devcontainer
+default.nix
 
 # Packages
 node_modules/
