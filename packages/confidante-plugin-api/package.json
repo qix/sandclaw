@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/confidante-plugin-api",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Sandclaw Confidante plugin API — contract for plugins targeting the Confidante",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
