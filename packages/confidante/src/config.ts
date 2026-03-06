@@ -1,6 +1,6 @@
 export interface ConfidanteConfig {
   /** Gatekeeper base URL. */
-  apiBaseUrl: string;
+  gatekeeperInternalUrl: string;
   /** Poll interval in ms when long polling is disabled. */
   pollIntervalMs: number;
   /** Long-poll timeout in ms sent to the Gatekeeper. */
@@ -14,7 +14,7 @@ export interface ConfidanteConfig {
 }
 
 export const DEFAULT_CONFIG: ConfidanteConfig = {
-  apiBaseUrl: "http://localhost:3000",
+  gatekeeperInternalUrl: "http://localhost:3000",
   pollIntervalMs: 3000,
   longPollTimeoutMs: 25000,
   jobTimeoutMs: 120000,

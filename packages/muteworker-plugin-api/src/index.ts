@@ -28,9 +28,9 @@ export interface MuteworkerPluginJob {
  */
 export interface MuteworkerPluginContext {
   /** Gatekeeper base URL (e.g. "http://localhost:3000"). */
-  apiBaseUrl: string;
+  gatekeeperInternalUrl: string;
   /** URL shown to users inside verification prompts. */
-  verificationUiUrl: string;
+  gatekeeperExternalUrl: string;
   logger: MuteworkerPluginLogger;
   job: MuteworkerPluginJob;
   artifacts: MuteworkerPluginArtifact[];

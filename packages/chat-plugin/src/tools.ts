@@ -56,7 +56,7 @@ export function createSendChatTool(ctx: MuteworkerPluginContext) {
     } as any,
     execute: async (_toolCallId: string, params: any) => {
       const { text } = params;
-      const response = await fetch(`${ctx.apiBaseUrl}/api/chat/send`, {
+      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/chat/send`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text }),

@@ -60,7 +60,7 @@ export function createSendEmailTool(ctx: MuteworkerPluginContext) {
     execute: async (_toolCallId: string, params: any) => {
       const { to, subject, text } = params;
 
-      const response = await fetch(`${ctx.apiBaseUrl}/api/gmail/send`, {
+      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/gmail/send`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ to, subject, text }),
@@ -88,7 +88,7 @@ export function createSendEmailTool(ctx: MuteworkerPluginContext) {
       const replyText = needsVerification
         ? [
             `Email send request queued for ${to} (subject: "${subject}") and pending verification.`,
-            `Open ${ctx.verificationUiUrl} to approve request #${result.verificationRequestId}.`,
+            `Open ${ctx.gatekeeperExternalUrl} to approve request #${result.verificationRequestId}.`,
           ].join("\n")
         : `Email sent to ${to}.`;
 

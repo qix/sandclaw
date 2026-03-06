@@ -109,7 +109,7 @@ import { createBrowserPlugin } from '@sandclaw/browser-plugin';
 
 startConfidante({
   plugins: [createBrowserPlugin()],
-  config: { apiBaseUrl: 'http://localhost:3000' },
+  config: { gatekeeperInternalUrl: 'http://localhost:3000' },
 });
 ```
 

@@ -85,7 +85,7 @@ export function createSendTelegramTool(ctx: MuteworkerPluginContext) {
     } as any,
     execute: async (_toolCallId: string, params: any) => {
       const { chatId, text } = params;
-      const response = await fetch(`${ctx.apiBaseUrl}/api/telegram/send`, {
+      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/telegram/send`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ chatId, text }),
@@ -113,7 +113,7 @@ export function createSendTelegramTool(ctx: MuteworkerPluginContext) {
       const replyText = needsVerification
         ? [
             `Telegram send request queued for chat ${chatId} and pending verification.`,
-            `Open ${ctx.verificationUiUrl} to approve request #${result.verificationRequestId}.`,
+            `Open ${ctx.gatekeeperExternalUrl} to approve request #${result.verificationRequestId}.`,
           ].join("\n")
         : `Telegram message sent to chat ${chatId}.`;
 

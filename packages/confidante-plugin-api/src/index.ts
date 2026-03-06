@@ -44,7 +44,7 @@ export interface DockerService {
  */
 export interface ConfidantePluginContext {
   /** Gatekeeper base URL (e.g. "http://localhost:3000"). */
-  apiBaseUrl: string;
+  gatekeeperInternalUrl: string;
   logger: ConfidantePluginLogger;
   job: ConfidantePluginJob;
   /** Built-in Docker service for running work inside containers. */

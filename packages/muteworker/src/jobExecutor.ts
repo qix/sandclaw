@@ -49,8 +49,8 @@ export async function executeMuteworkerJob(
 
   try {
     const pluginCtx: MuteworkerPluginContext = {
-      apiBaseUrl: config.apiBaseUrl,
-      verificationUiUrl: config.verificationUiUrl,
+      gatekeeperInternalUrl: config.gatekeeperInternalUrl,
+      gatekeeperExternalUrl: config.gatekeeperExternalUrl,
       logger,
       job,
       artifacts,

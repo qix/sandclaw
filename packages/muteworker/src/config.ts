@@ -1,6 +1,6 @@
 export interface MuteworkerConfig {
   /** Gatekeeper base URL. */
-  apiBaseUrl: string;
+  gatekeeperInternalUrl: string;
   /** LLM model provider (e.g. 'anthropic'). */
   modelProvider: string;
   /** LLM model ID (e.g. 'claude-sonnet-4-6'). */
@@ -20,7 +20,7 @@ export interface MuteworkerConfig {
    */
   maxToolCalls?: number;
   /** Human-facing URL included in verification prompts. */
-  verificationUiUrl: string;
+  gatekeeperExternalUrl: string;
   /** Minimum log level to emit. */
   logLevel: "debug" | "info" | "warn" | "error";
   /** Tool-loop detection settings. */
@@ -28,13 +28,13 @@ export interface MuteworkerConfig {
 }
 
 export const DEFAULT_CONFIG: MuteworkerConfig = {
-  apiBaseUrl: "http://localhost:3000",
+  gatekeeperInternalUrl: "http://localhost:3000",
   modelProvider: "anthropic",
   modelId: "claude-sonnet-4-6",
   pollIntervalMs: 3000,
   longPollTimeoutMs: 25000,
   jobTimeoutMs: 120000,
   maxSteps: 8,
-  verificationUiUrl: "http://localhost:3000",
+  gatekeeperExternalUrl: "http://localhost:3000",
   logLevel: "info",
 };

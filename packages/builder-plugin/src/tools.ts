@@ -20,7 +20,7 @@ export function createRequestBuildTool(ctx: MuteworkerPluginContext) {
       const prompt = String(params.prompt ?? "").trim();
       if (!prompt) throw new Error("prompt is required");
 
-      const response = await fetch(`${ctx.apiBaseUrl}/api/builder/request`, {
+      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/builder/request`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -54,7 +54,7 @@ export function createRequestBuildTool(ctx: MuteworkerPluginContext) {
             type: "text",
             text: [
               "Build request queued and pending verification.",
-              `Open ${ctx.verificationUiUrl} to approve the request.`,
+              `Open ${ctx.gatekeeperExternalUrl} to approve the request.`,
               "The system will handle the result asynchronously after approval.",
             ].join("\n"),
           },

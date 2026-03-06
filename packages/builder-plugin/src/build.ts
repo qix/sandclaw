@@ -141,7 +141,7 @@ export async function executeBuild(
     const ghRepo = extractGitHubRepo(repo);
     if (ghRepo) {
       const prResponse = await fetch(
-        `${ctx.apiBaseUrl}/api/github/create-pr`,
+        `${ctx.gatekeeperInternalUrl}/api/github/create-pr`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -191,7 +191,7 @@ export async function executeBuild(
   }
   const result = resultParts.join("\n");
 
-  const response = await fetch(`${ctx.apiBaseUrl}/api/builder/result`, {
+  const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/builder/result`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({

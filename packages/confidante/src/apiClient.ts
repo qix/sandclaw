@@ -81,7 +81,7 @@ export class ConfidanteApiClient {
     const startedAt = Date.now();
     const headers = new Headers(init.headers ?? {});
     headers.set("content-type", "application/json");
-    return fetch(new URL(path, this.config.apiBaseUrl), {
+    return fetch(new URL(path, this.config.gatekeeperInternalUrl), {
       ...init,
       headers,
       signal,

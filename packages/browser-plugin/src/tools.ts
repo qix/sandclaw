@@ -19,7 +19,7 @@ export function createRequestBrowserTool(ctx: MuteworkerPluginContext) {
       const query = String(params.query ?? "").trim();
       if (!query) throw new Error("query is required");
 
-      const response = await fetch(`${ctx.apiBaseUrl}/api/browser/request`, {
+      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/browser/request`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -53,7 +53,7 @@ export function createRequestBrowserTool(ctx: MuteworkerPluginContext) {
             type: "text",
             text: [
               "Browser research request queued and pending verification.",
-              `Open ${ctx.verificationUiUrl} to approve the request.`,
+              `Open ${ctx.gatekeeperExternalUrl} to approve the request.`,
               "The system will handle the result asynchronously after approval.",
             ].join("\n"),
           },

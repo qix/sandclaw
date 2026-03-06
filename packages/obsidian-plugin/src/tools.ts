@@ -23,7 +23,7 @@ export function createSearchTool(ctx: MuteworkerPluginContext) {
           ? Math.max(1, Math.min(20, Math.floor(Number(params.limit))))
           : 5;
 
-      const response = await fetch(`${ctx.apiBaseUrl}/api/obsidian/search`, {
+      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/obsidian/search`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ query, limit }),
@@ -93,7 +93,7 @@ export function createReadTool(ctx: MuteworkerPluginContext) {
       if (params.maxChars != null)
         payload.maxChars = Math.floor(Number(params.maxChars));
 
-      const response = await fetch(`${ctx.apiBaseUrl}/api/obsidian/read`, {
+      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/obsidian/read`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -144,7 +144,7 @@ export function createWriteTool(ctx: MuteworkerPluginContext) {
       if (typeof params.content !== "string")
         throw new Error("content must be a string");
 
-      const response = await fetch(`${ctx.apiBaseUrl}/api/obsidian/write`, {
+      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/obsidian/write`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -178,7 +178,7 @@ export function createWriteTool(ctx: MuteworkerPluginContext) {
               `Path: ${data.path}`,
               `Mode: ${data.mode}`,
               `Diff: +${data.diff.added} -${data.diff.removed} =${data.diff.unchanged}`,
-              `Open ${ctx.verificationUiUrl} to review and approve this change.`,
+              `Open ${ctx.gatekeeperExternalUrl} to review and approve this change.`,
             ].join("\n"),
           },
         ],

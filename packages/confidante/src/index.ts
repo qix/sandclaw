@@ -39,7 +39,7 @@ export interface ConfidanteScriptOptions extends ConfidanteOptions {
  *
  * startConfidante({
  *   plugins: [createBrowserPlugin()],
- *   config: { apiBaseUrl: 'http://localhost:3000' },
+ *   config: { gatekeeperInternalUrl: 'http://localhost:3000' },
  * });
  * ```
  */
@@ -101,7 +101,7 @@ export async function startConfidante(
   process.on("SIGTERM", shutdown);
 
   logger.info("confidante.startup", {
-    apiBaseUrl: config.apiBaseUrl,
+    gatekeeperInternalUrl: config.gatekeeperInternalUrl,
     dockerImage: config.dockerImage,
     plugins: plugins.map((p) => p.id),
   });

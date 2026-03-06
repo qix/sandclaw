@@ -35,7 +35,7 @@ export interface MuteworkerOptions {
  *     createPromptsPlugin({ promptsDir: './prompts' }),
  *     createMemoryPlugin({ memoryDir: './memory' }),
  *   ],
- *   config: { apiBaseUrl: 'http://localhost:3000' },
+ *   config: { gatekeeperInternalUrl: 'http://localhost:3000' },
  * });
  * ```
  */
@@ -128,7 +128,7 @@ export async function startMuteworker(
   process.on("SIGTERM", shutdown);
 
   logger.info("muteworker.startup", {
-    apiBaseUrl: config.apiBaseUrl,
+    gatekeeperInternalUrl: config.gatekeeperInternalUrl,
     modelProvider: config.modelProvider,
     modelId: config.modelId,
     plugins: plugins.map((p) => p.id),

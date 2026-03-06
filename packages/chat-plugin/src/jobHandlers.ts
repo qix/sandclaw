@@ -26,7 +26,7 @@ export function createChatJobHandlers() {
       if (result.reply) {
         try {
           const reply = clampReply(result.reply);
-          await fetch(`${ctx.apiBaseUrl}/api/chat/send`, {
+          await fetch(`${ctx.gatekeeperInternalUrl}/api/chat/send`, {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ text: reply }),

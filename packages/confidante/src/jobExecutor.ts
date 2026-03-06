@@ -45,7 +45,7 @@ export async function executeConfidanteJob(
 
   try {
     const ctx: ConfidantePluginContext = {
-      apiBaseUrl: config.apiBaseUrl,
+      gatekeeperInternalUrl: config.gatekeeperInternalUrl,
       logger,
       job,
       docker: args.docker,

@@ -85,7 +85,7 @@ The browser plugin's confidante handler (`browser:research_request`):
 
 | Option              | Default                 | Description                                 |
 | ------------------- | ----------------------- | ------------------------------------------- |
-| `apiBaseUrl`        | `http://localhost:3000` | Gatekeeper base URL                         |
+| `gatekeeperInternalUrl`        | `http://localhost:3000` | Gatekeeper base URL                         |
 | `pollIntervalMs`    | `3000`                  | Poll interval when long polling is disabled |
 | `longPollTimeoutMs` | `25000`                 | Long-poll timeout sent to Gatekeeper        |
 | `jobTimeoutMs`      | `120000`                | Max job execution time                      |

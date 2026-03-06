@@ -29,7 +29,7 @@ export function createPullRequestTool(ctx: MuteworkerPluginContext) {
     execute: async (_toolCallId: string, params: any) => {
       const { repo, head, title, body } = params;
 
-      const response = await fetch(`${ctx.apiBaseUrl}/api/github/create-pr`, {
+      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/github/create-pr`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ repo, head, title, body }),
@@ -58,7 +58,7 @@ export function createPullRequestTool(ctx: MuteworkerPluginContext) {
       const replyText = [
         `Pull request #${result.prNumber} created and pending human verification.`,
         `PR: ${result.prUrl}`,
-        `Open ${ctx.verificationUiUrl} to approve request #${result.verificationRequestId}.`,
+        `Open ${ctx.gatekeeperExternalUrl} to approve request #${result.verificationRequestId}.`,
       ].join("\n");
 
       return {

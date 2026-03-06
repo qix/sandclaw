@@ -56,8 +56,8 @@ export function toPluginContext(
   args: ToolArgs,
 ): MuteworkerPluginContext {
   return {
-    apiBaseUrl: args.config.apiBaseUrl,
-    verificationUiUrl: args.config.verificationUiUrl,
+    gatekeeperInternalUrl: args.config.gatekeeperInternalUrl,
+    gatekeeperExternalUrl: args.config.gatekeeperExternalUrl,
     logger: args.logger,
     job: args.job,
     artifacts,

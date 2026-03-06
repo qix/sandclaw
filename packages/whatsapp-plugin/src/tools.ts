@@ -79,7 +79,7 @@ export function createSendWhatsappTool(ctx: MuteworkerPluginContext) {
     } as any,
     execute: async (_toolCallId: string, params: any) => {
       const { jid, text } = params;
-      const response = await fetch(`${ctx.apiBaseUrl}/api/whatsapp/send`, {
+      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/whatsapp/send`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ jid, text }),
@@ -107,7 +107,7 @@ export function createSendWhatsappTool(ctx: MuteworkerPluginContext) {
       const replyText = needsVerification
         ? [
             `WhatsApp send request queued for ${jid} and pending verification.`,
-            `Open ${ctx.verificationUiUrl} to approve request #${result.verificationRequestId}.`,
+            `Open ${ctx.gatekeeperExternalUrl} to approve request #${result.verificationRequestId}.`,
           ].join("\n")
         : `WhatsApp message sent to ${jid}.`;
 

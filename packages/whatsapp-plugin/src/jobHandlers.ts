@@ -33,7 +33,7 @@ export function createWhatsappJobHandlers(operatorJids: ReadonlySet<string>) {
           const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
           if (jobCtx.channel === "whatsapp" && typeof jobCtx.jid === "string") {
             const reply = clampReply(result.reply);
-            await fetch(`${ctx.apiBaseUrl}/api/whatsapp/send`, {
+            await fetch(`${ctx.gatekeeperInternalUrl}/api/whatsapp/send`, {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({ jid: jobCtx.jid, text: reply }),

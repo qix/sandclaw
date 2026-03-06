@@ -28,7 +28,7 @@ export function createTelegramJobHandlers(
 
       // Send typing indicator while the agent works
       const sendTyping = () =>
-        fetch(`${ctx.apiBaseUrl}/api/telegram/typing`, {
+        fetch(`${ctx.gatekeeperInternalUrl}/api/telegram/typing`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ chatId: payload.chatId }),
@@ -53,7 +53,7 @@ export function createTelegramJobHandlers(
             typeof jobCtx.chatId === "string"
           ) {
             const reply = clampReply(result.reply);
-            await fetch(`${ctx.apiBaseUrl}/api/telegram/send`, {
+            await fetch(`${ctx.gatekeeperInternalUrl}/api/telegram/send`, {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({ chatId: jobCtx.chatId, text: reply }),
