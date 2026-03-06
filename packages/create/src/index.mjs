@@ -389,19 +389,54 @@ async function main() {
       modelProvider: () =>
         p.select({
           message: "Select a model provider",
-          options: Object.keys(MODELS).map((provider) => ({
-            value: provider,
-            label: provider,
-          })),
+          options: [
+            ...Object.keys(MODELS).map((provider) => ({
+              value: provider,
+              label: provider,
+            })),
+            { value: "__other__", label: "Other" },
+            { value: "", label: "Skip" },
+          ],
         }),
+      modelProviderCustom: ({ results }) => {
+        if (results.modelProvider !== "__other__") return;
+        return p.text({
+          message: "Enter model provider name",
+          validate: (value) => {
+            if (!value) return "Provider name is required";
+          },
+        });
+      },
       modelId: ({ results }) => {
+        if (results.modelProvider === "") return "";
+        if (results.modelProvider === "__other__") {
+          return p.text({
+            message: "Enter model ID",
+            validate: (value) => {
+              if (!value) return "Model ID is required";
+            },
+          });
+        }
         const models = MODELS[results.modelProvider] || [];
         return p.select({
           message: "Select a model",
-          options: models.map((model) => ({
-            value: model,
-            label: model,
-          })),
+          options: [
+            ...models.map((model) => ({
+              value: model,
+              label: model,
+            })),
+            { value: "__other__", label: "Other" },
+            { value: "", label: "Skip" },
+          ],
+        });
+      },
+      modelIdCustom: ({ results }) => {
+        if (results.modelId !== "__other__") return;
+        return p.text({
+          message: "Enter model ID",
+          validate: (value) => {
+            if (!value) return "Model ID is required";
+          },
         });
       },
     },
@@ -416,14 +451,23 @@ async function main() {
   const timezone =
     answers.timezone === true ? detectedTimezone : answers.timezoneCustom;
 
+  const modelProvider =
+    answers.modelProvider === "__other__"
+      ? answers.modelProviderCustom
+      : answers.modelProvider;
+  const modelId =
+    answers.modelId === "__other__"
+      ? answers.modelIdCustom
+      : answers.modelId;
+
   const projectDir = path.resolve(answers.projectName);
   const templates = buildTemplates({
     projectName: answers.projectName,
     userName: answers.userName,
     botName: answers.botName,
     timezone,
-    modelProvider: answers.modelProvider,
-    modelId: answers.modelId,
+    modelProvider,
+    modelId,
   });
 
   // Create directories
