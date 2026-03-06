@@ -305,7 +305,7 @@ export async function startGatekeeper(
   const reset = "\x1b[0m";
 
   const externalUrl =
-    options.gatekeeperExternalUrl || `http://localhost:${port}`;
+    config.gatekeeperExternalUrl || `http://localhost:${port}`;
 
   const logoLines = [
     "╔══╗     /\\_/\\     ╔══╗",
