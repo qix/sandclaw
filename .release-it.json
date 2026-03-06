@@ -9,7 +9,8 @@
   "npm": false,
   "github": {
     "release": true,
-    "releaseName": "v${version}"
+    "releaseName": "v${version}",
+    "releaseNotes": "git log --pretty=format:'* %s (%h)' ${latestTag}...HEAD"
   },
   "hooks": {
     "after:bump": "node scripts/fix-star-deps.mjs && npm run build"
