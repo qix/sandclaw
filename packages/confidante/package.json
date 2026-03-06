@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/confidante",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Sandclaw Confidante — sandboxed agent with Docker and credentials",
   "repository": {
     "type": "git",
@@ -20,7 +20,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@sandclaw/confidante-plugin-api": "^0.0.10",
+    "@sandclaw/confidante-plugin-api": "^0.0.11",
     "pino": "^9.14.0",
     "pino-pretty": "^13.1.3"
   },

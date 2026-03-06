@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/create",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Create a new Sandclaw project",
   "repository": {
     "type": "git",

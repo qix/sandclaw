@@ -1,6 +1,6 @@
 {
   "name": "@sandclaw/prompts-plugin",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Sandclaw Prompts plugin — agent prompt file tools and system prompt hook",
   "repository": {
     "type": "git",
@@ -19,7 +19,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@sandclaw/gatekeeper-plugin-api": "^0.0.10",
-    "@sandclaw/muteworker-plugin-api": "^0.0.10"
+    "@sandclaw/gatekeeper-plugin-api": "^0.0.11",
+    "@sandclaw/muteworker-plugin-api": "^0.0.11"
   }
 }
