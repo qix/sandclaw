@@ -25,7 +25,9 @@ export interface GatekeeperConfig {
   /** Path to the SQLite database file. Parent directory is created if absent. */
   dbPath: string;
   /** TCP port to listen on. Defaults to 3000. */
-  port?: number;
+  gatekeeperPort?: number;
+  /** Host/IP to bind to. Defaults to "127.0.0.1". */
+  gatekeeperHost?: string;
 }
 
 export interface GatekeeperOptions {
@@ -39,7 +41,11 @@ export async function startGatekeeper(
   options: GatekeeperOptions,
 ): Promise<void> {
   const { plugins, config } = options;
-  const { dbPath, port = 3000 } = config;
+  const {
+    dbPath,
+    gatekeeperPort = 3000,
+    gatekeeperHost = "127.0.0.1",
+  } = config;
   const app = new Hono();
 
   // Request logging middleware
@@ -294,7 +300,11 @@ export async function startGatekeeper(
     return c.html(`<!DOCTYPE html>${html}`);
   });
 
-  const server = serve({ fetch: app.fetch, port });
+  const server = serve({
+    fetch: app.fetch,
+    port: gatekeeperPort,
+    hostname: gatekeeperHost,
+  });
 
   const cyan = "\x1b[36m";
   const yellow = "\x1b[33m";
@@ -305,7 +315,7 @@ export async function startGatekeeper(
   const reset = "\x1b[0m";
 
   const externalUrl =
-    config.gatekeeperExternalUrl || `http://localhost:${port}`;
+    config.gatekeeperExternalUrl || `http://localhost:${gatekeeperPort}`;
 
   const logoLines = [
     "╔══╗     /\\_/\\     ╔══╗",

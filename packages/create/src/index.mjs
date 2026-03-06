@@ -33,9 +33,9 @@ function buildTemplates({
         version: "0.1.0",
         private: true,
         scripts: {
-          gatekeeper: "tsx gatekeeper.ts",
-          muteworker: "tsx muteworker.ts",
-          confidante: "tsx confidante.ts",
+          gatekeeper: "tsx --env-file .env gatekeeper.ts",
+          muteworker: "tsx --env-file .env muteworker.ts",
+          confidante: "tsx --env-file .env confidante.ts",
           start:
             "concurrently --names gatekeeper,muteworker,confidante " +
             '"npm run gatekeeper" "sleep 1; npm run muteworker" "sleep 1; npm run confidante"',
@@ -142,7 +142,8 @@ const shared = {
 export const gatekeeperConfig = {
   ...shared,
 
-  /* Port to run gatekeeper on */
+  /* Host/port to run gatekeeper on */
+  gatekeeperHost: "127.0.0.1",
   gatekeeperPort,
 
   /* Local storage paths */
