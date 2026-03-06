@@ -13,7 +13,7 @@
     "releaseNotes": "git log --pretty=format:'* %s (%h)' ${latestTag}...HEAD"
   },
   "hooks": {
-    "after:bump": "node scripts/fix-star-deps.mjs && npm run build"
+    "after:bump": "node scripts/fix-star-deps.mjs"
   },
   "plugins": {
     "@release-it-plugins/workspaces": {
