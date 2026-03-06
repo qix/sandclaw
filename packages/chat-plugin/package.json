@@ -4,7 +4,9 @@
   "description": "Sandclaw Chat plugin — direct browser chat with the AI agent",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -12,9 +14,9 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@sandclaw/gatekeeper-plugin-api": "*",
-    "@sandclaw/muteworker-plugin-api": "*",
-    "@sandclaw/ui": "*",
+    "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0",
     "ws": "*"
   },
   "peerDependencies": {

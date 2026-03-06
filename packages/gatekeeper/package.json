@@ -4,7 +4,9 @@
   "description": "Sandclaw Gatekeeper — control-centre web app",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -14,8 +16,8 @@
   },
   "dependencies": {
     "@hono/node-server": "*",
-    "@sandclaw/gatekeeper-plugin-api": "*",
-    "@sandclaw/ui": "*",
+    "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0",
     "better-sqlite3": "^11.0.0",
     "hono": "*",
     "knex": "^3.0.0",

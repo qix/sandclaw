@@ -4,7 +4,9 @@
   "description": "Sandclaw Builder plugin — Docker-based code builds via Confidante with human approval",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -14,11 +16,11 @@
     "run": "tsx scripts/run-build.ts"
   },
   "dependencies": {
-    "@sandclaw/gatekeeper-plugin-api": "*",
-    "@sandclaw/muteworker-plugin-api": "*",
-    "@sandclaw/confidante-plugin-api": "*",
-    "@sandclaw/confidante-util": "*",
-    "@sandclaw/ui": "*",
+    "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "@sandclaw/confidante-plugin-api": "^0.1.0",
+    "@sandclaw/confidante-util": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0",
     "cac": "^7.0.0"
   },
   "peerDependencies": {

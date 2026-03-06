@@ -6,12 +6,12 @@
     "start": "tsx gatekeeper.ts"
   },
   "dependencies": {
-    "@sandclaw/gatekeeper": "*",
-    "@sandclaw/muteworker": "*",
-    "@sandclaw/whatsapp-plugin": "*",
-    "@sandclaw/obsidian-plugin": "*",
-    "@sandclaw/gmail-plugin": "*",
-    "@sandclaw/browser-plugin": "*"
+    "@sandclaw/gatekeeper": "^0.1.0",
+    "@sandclaw/muteworker": "^0.1.0",
+    "@sandclaw/whatsapp-plugin": "^0.1.0",
+    "@sandclaw/obsidian-plugin": "^0.1.0",
+    "@sandclaw/gmail-plugin": "^0.1.0",
+    "@sandclaw/browser-plugin": "^0.1.0"
   },
   "devDependencies": {
     "tsx": "*",
