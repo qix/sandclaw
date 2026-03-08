@@ -1,0 +1,40 @@
+{
+  "name": "@sandclaw/pi-builder-plugin",
+  "version": "0.1.0",
+  "description": "Sandclaw Pi Builder plugin — Docker-based code builds via Confidante with human approval (pi-coding-agent)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/pi-builder-plugin"
+  },
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "build-docker": "docker build -t builder-plugin docker/",
+    "run": "tsx scripts/run-build.ts"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "@sandclaw/confidante-plugin-api": "^0.1.0",
+    "@sandclaw/confidante-util": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0",
+    "cac": "^7.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "typescript": "*"
+  }
+}

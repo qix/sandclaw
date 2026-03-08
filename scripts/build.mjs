@@ -14,7 +14,8 @@ const layer1 = [
 // Layer 2: packages that depend on layer 1
 const layer2 = [
   "@sandclaw/browser-plugin",
-  "@sandclaw/builder-plugin",
+  "@sandclaw/pi-builder-plugin",
+  "@sandclaw/claude-builder-plugin",
   "@sandclaw/chat-plugin",
   "@sandclaw/confidante",
   "@sandclaw/gatekeeper",

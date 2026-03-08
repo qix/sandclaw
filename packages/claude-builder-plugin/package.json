@@ -1,11 +1,11 @@
 {
-  "name": "@sandclaw/builder-plugin",
+  "name": "@sandclaw/claude-builder-plugin",
   "version": "0.1.0",
-  "description": "Sandclaw Builder plugin — Docker-based code builds via Confidante with human approval",
+  "description": "Sandclaw Claude Builder plugin — Docker-based code builds via Confidante with human approval (Claude Code)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/qix/sandclaw.git",
-    "directory": "packages/builder-plugin"
+    "directory": "packages/claude-builder-plugin"
   },
   "main": "src/index.tsx",
   "types": "src/index.tsx",
@@ -19,8 +19,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "build-docker": "docker build -t builder-plugin docker/",
-    "run": "tsx scripts/run-build.ts"
+    "build-docker": "docker build -t claude-builder-plugin docker/"
   },
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
@@ -28,13 +27,14 @@
     "@sandclaw/confidante-plugin-api": "^0.1.0",
     "@sandclaw/confidante-util": "^0.1.0",
     "@sandclaw/ui": "^0.1.0",
-    "cac": "^7.0.0"
+    "shell-quote": "^1.8.3"
   },
   "peerDependencies": {
     "react": "^18.0.0"
   },
   "devDependencies": {
     "@types/react": "*",
+    "@types/shell-quote": "^1.7.5",
     "typescript": "*"
   }
 }
