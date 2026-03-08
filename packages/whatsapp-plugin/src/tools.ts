@@ -79,11 +79,14 @@ export function createSendWhatsappTool(ctx: MuteworkerPluginContext) {
     } as any,
     execute: async (_toolCallId: string, params: any) => {
       const { jid, text } = params;
-      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/whatsapp/send`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ jid, text }),
-      });
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/whatsapp/send`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ jid, text }),
+        },
+      );
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");

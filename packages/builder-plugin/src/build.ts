@@ -1,11 +1,7 @@
 import type { ConfidantePluginContext } from "@sandclaw/confidante-plugin-api";
 import { runDockerPi, runDockerCommand } from "@sandclaw/confidante-util";
 import { DEFAULT_BUILDER_RESULT_JOB_TYPE } from "./constants";
-import {
-  prepareWorkDir,
-  detectAndCommitChanges,
-  pushBranch,
-} from "./workdir";
+import { prepareWorkDir, detectAndCommitChanges, pushBranch } from "./workdir";
 
 interface BuildRequestPayload {
   requestId: string;
@@ -69,7 +65,12 @@ export async function executeBuild(
 
   // Step 1: Prepare working directory — fetch origin/main, create builder branch
   const outputBranch = `builder-${ctx.job.id}`;
-  await prepareWorkDir({ repo, workDir, branchName: outputBranch, baseBranch: branch });
+  await prepareWorkDir({
+    repo,
+    workDir,
+    branchName: outputBranch,
+    baseBranch: branch,
+  });
 
   // Step 2: npm install in Docker
   ctx.logger.info("builder.build.npm_install", {
@@ -83,9 +84,7 @@ export async function executeBuild(
   });
 
   if (npmResult.exitCode !== 0) {
-    throw new Error(
-      `npm install failed with exit code ${npmResult.exitCode}`,
-    );
+    throw new Error(`npm install failed with exit code ${npmResult.exitCode}`);
   }
 
   // Step 3: Run pi in Docker with firewall + prompt
@@ -103,11 +102,7 @@ export async function executeBuild(
       "-e",
       `PI_PROMPT=${prompt}`,
     ],
-    command: [
-      "bash",
-      "-c",
-      'pi --mode json --print "$PI_PROMPT"',
-    ],
+    command: ["bash", "-c", 'pi --mode json --print "$PI_PROMPT"'],
   });
 
   ctx.logger.info("builder.build.pi_completed", {
@@ -191,15 +186,18 @@ export async function executeBuild(
   }
   const result = resultParts.join("\n");
 
-  const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/builder/result`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      responseJobType,
-      result,
-    }),
-  });
+  const response = await fetch(
+    `${ctx.gatekeeperInternalUrl}/api/builder/result`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId,
+        responseJobType,
+        result,
+      }),
+    },
+  );
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");

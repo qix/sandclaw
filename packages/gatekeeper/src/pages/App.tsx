@@ -42,10 +42,7 @@ export function App({
       <html lang="en">
         <head>
           <meta charSet="utf-8" />
-          <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1"
-          />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
           <title>Sandclaw Gatekeeper</title>
           <style dangerouslySetInnerHTML={{ __html: getGlobalStyles() }} />
         </head>
@@ -64,16 +61,14 @@ export function App({
                 id="sc-sidebar-verification-dot"
                 color="yellow"
                 style={{
-                  display:
-                    pendingVerificationCount > 0 ? undefined : "none",
+                  display: pendingVerificationCount > 0 ? undefined : "none",
                   marginLeft: "0.4rem",
                 }}
               />
               <span
                 id="sc-sidebar-verification-badge"
                 style={{
-                  display:
-                    pendingVerificationCount > 0 ? undefined : "none",
+                  display: pendingVerificationCount > 0 ? undefined : "none",
                 }}
               >
                 <Badge

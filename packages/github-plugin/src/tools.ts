@@ -29,11 +29,14 @@ export function createPullRequestTool(ctx: MuteworkerPluginContext) {
     execute: async (_toolCallId: string, params: any) => {
       const { repo, head, title, body } = params;
 
-      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/github/create-pr`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ repo, head, title, body }),
-      });
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/github/create-pr`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ repo, head, title, body }),
+        },
+      );
 
       if (!response.ok) {
         const text = await response.text().catch(() => "");

@@ -34,9 +34,7 @@ function run(
     });
     child.on("close", (code) => {
       if (code !== 0) {
-        reject(
-          new Error(`${quote([cmd, ...args])} failed with code ${code}`),
-        );
+        reject(new Error(`${quote([cmd, ...args])} failed with code ${code}`));
       } else {
         resolve(Buffer.concat(chunks).toString("utf-8"));
       }
@@ -89,11 +87,9 @@ export async function prepareWorkDir(
   }
 
   muted(`Creating branch ${branchName} from origin/${baseBranch}...`);
-  await run(
-    "git",
-    ["checkout", "-b", branchName, `origin/${baseBranch}`],
-    { cwd: workDir },
-  );
+  await run("git", ["checkout", "-b", branchName, `origin/${baseBranch}`], {
+    cwd: workDir,
+  });
 
   const headBefore = (
     await run("git", ["rev-parse", "HEAD"], { cwd: workDir, capture: true })

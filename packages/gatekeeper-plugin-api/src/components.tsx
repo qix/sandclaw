@@ -41,10 +41,7 @@ export function TabLink({ href, title, statusColor }: TabLinkProps) {
   }
 
   return (
-    <a
-      href={href}
-      className={`sc-nav-link ${isActive ? "active" : ""}`}
-    >
+    <a href={href} className={`sc-nav-link ${isActive ? "active" : ""}`}>
       {statusColor && (
         <span className={`sc-status-dot sc-status-dot-${statusColor}`} />
       )}

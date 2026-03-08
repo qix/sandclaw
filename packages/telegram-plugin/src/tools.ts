@@ -85,11 +85,14 @@ export function createSendTelegramTool(ctx: MuteworkerPluginContext) {
     } as any,
     execute: async (_toolCallId: string, params: any) => {
       const { chatId, text } = params;
-      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/telegram/send`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ chatId, text }),
-      });
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/telegram/send`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ chatId, text }),
+        },
+      );
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");

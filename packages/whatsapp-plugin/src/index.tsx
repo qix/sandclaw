@@ -14,10 +14,7 @@ import { registerRoutes } from "./routes";
 import { migrations } from "./migrations";
 import { createSendWhatsappTool } from "./tools";
 import { createWhatsappJobHandlers } from "./jobHandlers";
-import {
-  WhatsAppStatusContext,
-  useWhatsAppStatus,
-} from "./statusContext";
+import { WhatsAppStatusContext, useWhatsAppStatus } from "./statusContext";
 
 export type { WhatsAppState, ConnectionStatus } from "./state";
 export { WhatsAppPanel, WhatsAppVerificationRenderer } from "./components";
@@ -58,10 +55,20 @@ export function buildWhatsappPlugin(
         async init({ db, hooks, components, routes }) {
           function WhatsAppTab() {
             const { statusColor } = useWhatsAppStatus();
-            return <TabLink href="?page=whatsapp" title="WhatsApp" statusColor={statusColor} />;
+            return (
+              <TabLink
+                href="?page=whatsapp"
+                title="WhatsApp"
+                statusColor={statusColor}
+              />
+            );
           }
 
-          function WhatsAppProvider({ children }: { children: React.ReactNode }) {
+          function WhatsAppProvider({
+            children,
+          }: {
+            children: React.ReactNode;
+          }) {
             const statusColor = (() => {
               switch (waState.connectionStatus) {
                 case "connected":

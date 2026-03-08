@@ -1,6 +1,9 @@
 import type { MuteworkerConfig } from "./config.js";
 import type { Logger } from "./logger.js";
-import type { MuteworkerQueueJob, MuteworkerQueueNextResponse } from "./types.js";
+import type {
+  MuteworkerQueueJob,
+  MuteworkerQueueNextResponse,
+} from "./types.js";
 
 export class ApiError extends Error {
   constructor(

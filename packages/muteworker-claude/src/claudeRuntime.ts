@@ -69,9 +69,10 @@ export async function runWithClaude(
         allowDangerouslySkipPermissions:
           config.permissionMode === "bypassPermissions",
         mcpServers,
-        tools: config.allowedBuiltInTools.length > 0
-          ? config.allowedBuiltInTools
-          : [],
+        tools:
+          config.allowedBuiltInTools.length > 0
+            ? config.allowedBuiltInTools
+            : [],
         abortController,
       },
     });

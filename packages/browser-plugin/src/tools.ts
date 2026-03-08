@@ -19,14 +19,17 @@ export function createRequestBrowserTool(ctx: MuteworkerPluginContext) {
       const query = String(params.query ?? "").trim();
       if (!query) throw new Error("query is required");
 
-      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/browser/request`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          prompt: query,
-          responseJobType: DEFAULT_BROWSER_RESULT_JOB_TYPE,
-        }),
-      });
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/browser/request`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            prompt: query,
+            responseJobType: DEFAULT_BROWSER_RESULT_JOB_TYPE,
+          }),
+        },
+      );
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");

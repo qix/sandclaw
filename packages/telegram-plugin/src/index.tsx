@@ -14,10 +14,7 @@ import { registerRoutes } from "./routes";
 import { migrations } from "./migrations";
 import { createSendTelegramTool } from "./tools";
 import { createTelegramJobHandlers } from "./jobHandlers";
-import {
-  TelegramStatusContext,
-  useTelegramStatus,
-} from "./statusContext";
+import { TelegramStatusContext, useTelegramStatus } from "./statusContext";
 
 export type { TelegramState, ConnectionStatus } from "./state";
 export { TelegramPanel, TelegramVerificationRenderer } from "./components";
@@ -57,10 +54,20 @@ export function buildTelegramPlugin(
         async init({ db, hooks, components, routes }) {
           function TelegramTab() {
             const { statusColor } = useTelegramStatus();
-            return <TabLink href="?page=telegram" title="Telegram" statusColor={statusColor} />;
+            return (
+              <TabLink
+                href="?page=telegram"
+                title="Telegram"
+                statusColor={statusColor}
+              />
+            );
           }
 
-          function TelegramProvider({ children }: { children: React.ReactNode }) {
+          function TelegramProvider({
+            children,
+          }: {
+            children: React.ReactNode;
+          }) {
             const statusColor = (() => {
               switch (tgState.connectionStatus) {
                 case "connected":

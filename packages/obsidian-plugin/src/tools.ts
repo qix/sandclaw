@@ -23,11 +23,14 @@ export function createSearchTool(ctx: MuteworkerPluginContext) {
           ? Math.max(1, Math.min(20, Math.floor(Number(params.limit))))
           : 5;
 
-      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/obsidian/search`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query, limit }),
-      });
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/obsidian/search`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ query, limit }),
+        },
+      );
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");
@@ -93,11 +96,14 @@ export function createReadTool(ctx: MuteworkerPluginContext) {
       if (params.maxChars != null)
         payload.maxChars = Math.floor(Number(params.maxChars));
 
-      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/obsidian/read`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/obsidian/read`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");
@@ -144,15 +150,18 @@ export function createWriteTool(ctx: MuteworkerPluginContext) {
       if (typeof params.content !== "string")
         throw new Error("content must be a string");
 
-      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/obsidian/write`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          path: notePath,
-          content: params.content,
-          append: params.append === true,
-        }),
-      });
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/obsidian/write`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            path: notePath,
+            content: params.content,
+            append: params.append === true,
+          }),
+        },
+      );
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");

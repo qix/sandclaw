@@ -60,11 +60,14 @@ export function createSendEmailTool(ctx: MuteworkerPluginContext) {
     execute: async (_toolCallId: string, params: any) => {
       const { to, subject, text } = params;
 
-      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/gmail/send`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ to, subject, text }),
-      });
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/gmail/send`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ to, subject, text }),
+        },
+      );
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");

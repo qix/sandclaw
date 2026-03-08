@@ -49,15 +49,18 @@ export const browserConfidanteHandlers = {
     // which enqueues it on the safe_queue as a browser:result job
     const responseJobType =
       payload.responseJobType || DEFAULT_BROWSER_RESULT_JOB_TYPE;
-    const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/browser/result`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        requestId: payload.requestId,
-        responseJobType,
-        result: output,
-      }),
-    });
+    const response = await fetch(
+      `${ctx.gatekeeperInternalUrl}/api/browser/result`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          requestId: payload.requestId,
+          responseJobType,
+          result: output,
+        }),
+      },
+    );
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");

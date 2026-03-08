@@ -20,14 +20,17 @@ export function createRequestBuildTool(ctx: MuteworkerPluginContext) {
       const prompt = String(params.prompt ?? "").trim();
       if (!prompt) throw new Error("prompt is required");
 
-      const response = await fetch(`${ctx.gatekeeperInternalUrl}/api/builder/request`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          responseJobType: DEFAULT_BUILDER_RESULT_JOB_TYPE,
-        }),
-      });
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/builder/request`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            prompt,
+            responseJobType: DEFAULT_BUILDER_RESULT_JOB_TYPE,
+          }),
+        },
+      );
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");

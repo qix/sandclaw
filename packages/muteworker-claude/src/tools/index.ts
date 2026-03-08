@@ -127,7 +127,10 @@ export interface McpToolDef {
   zodShape: Record<string, z.ZodTypeAny>;
   handler: (
     args: Record<string, unknown>,
-  ) => Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }>;
+  ) => Promise<{
+    content: Array<{ type: "text"; text: string }>;
+    isError?: boolean;
+  }>;
 }
 
 /**
@@ -157,9 +160,7 @@ export function getMcpToolDefs(
   // Per-job loop detection state shared across all tools
   const loopState = createLoopDetectionState();
 
-  return rawTools.map((tool: any) =>
-    convertToMcpTool(tool, args, loopState),
-  );
+  return rawTools.map((tool: any) => convertToMcpTool(tool, args, loopState));
 }
 
 /**
@@ -181,7 +182,10 @@ function convertToMcpTool(
 
   const handler = async (
     params: Record<string, unknown>,
-  ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> => {
+  ): Promise<{
+    content: Array<{ type: "text"; text: string }>;
+    isError?: boolean;
+  }> => {
     args.logger.info("tool.called", {
       jobId: args.job.id,
       tool: name,
@@ -209,9 +213,7 @@ function convertToMcpTool(
 
     let warningMessage: string | undefined;
     if (detection.stuck && detection.level === "warning") {
-      if (
-        shouldEmitWarning(loopState, detection.warningKey, detection.count)
-      ) {
+      if (shouldEmitWarning(loopState, detection.warningKey, detection.count)) {
         args.logger.warn("tool.loop.warning", {
           jobId: args.job.id,
           tool: name,
@@ -228,10 +230,7 @@ function convertToMcpTool(
     try {
       // Call the pi-agent tool's execute function.
       // Pi tools accept (toolCallId, params) but MCP tools just have params.
-      const result = await piTool.execute(
-        `mcp_call_${Date.now()}`,
-        params,
-      );
+      const result = await piTool.execute(`mcp_call_${Date.now()}`, params);
 
       // Record outcome for no-progress detection
       recordToolCallOutcome(
@@ -265,8 +264,7 @@ function convertToMcpTool(
         loopConfig,
       );
 
-      const message =
-        error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
       return {
         content: [{ type: "text" as const, text: `Error: ${message}` }],
         isError: true,

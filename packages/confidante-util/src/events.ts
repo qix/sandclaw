@@ -80,7 +80,11 @@ function defaultTitle(name: string): string {
   return name
     .replace(/_/g, " ")
     .split(/\s+/)
-    .map((w) => (w.length <= 2 && w === w.toUpperCase() ? w : w[0].toUpperCase() + w.slice(1)))
+    .map((w) =>
+      w.length <= 2 && w === w.toUpperCase()
+        ? w
+        : w[0].toUpperCase() + w.slice(1),
+    )
     .join(" ");
 }
 
@@ -123,7 +127,9 @@ function formatToolArgs(name: string, args: unknown): string {
     const patch = str(record.patch);
     if (patch) {
       // Extract file paths from patch
-      const files = [...patch.matchAll(/^[-+]{3}\s+[ab]\/(.+)$/gm)].map((m) => m[1]);
+      const files = [...patch.matchAll(/^[-+]{3}\s+[ab]\/(.+)$/gm)].map(
+        (m) => m[1],
+      );
       const unique = [...new Set(files)];
       if (unique.length > 0) return unique.join(", ");
     }
@@ -132,7 +138,9 @@ function formatToolArgs(name: string, args: unknown): string {
   if (key === "sessions_spawn") {
     const label = str(record.label);
     const agent = str(record.agentId);
-    const parts = [label, agent ? `agent: ${agent}` : undefined].filter(Boolean);
+    const parts = [label, agent ? `agent: ${agent}` : undefined].filter(
+      Boolean,
+    );
     return parts.join(", ");
   }
   if (key === "message") {
@@ -155,7 +163,8 @@ function str(v: unknown): string | undefined {
 }
 
 function formatPath(record: Record<string, unknown>): string | undefined {
-  const path = str(record.path) ?? str(record.file_path) ?? str(record.filePath);
+  const path =
+    str(record.path) ?? str(record.file_path) ?? str(record.filePath);
   if (!path) return undefined;
 
   const offset =
@@ -167,16 +176,19 @@ function formatPath(record: Record<string, unknown>): string | undefined {
       ? Math.max(1, Math.floor(record.limit))
       : undefined;
 
-  if (offset && limit) return `lines ${offset}-${offset + limit - 1} from ${path}`;
+  if (offset && limit)
+    return `lines ${offset}-${offset + limit - 1} from ${path}`;
   if (offset) return `from line ${offset} in ${path}`;
   if (limit) return `first ${limit} lines of ${path}`;
   return path;
 }
 
 function formatWriteArgs(record: Record<string, unknown>): string | undefined {
-  const path = str(record.path) ?? str(record.file_path) ?? str(record.filePath);
+  const path =
+    str(record.path) ?? str(record.file_path) ?? str(record.filePath);
   if (!path) return undefined;
-  const content = str(record.content) ?? str(record.newText) ?? str(record.new_string);
+  const content =
+    str(record.content) ?? str(record.newText) ?? str(record.new_string);
   if (content) return `${path} (${content.length} chars)`;
   return path;
 }
@@ -185,7 +197,10 @@ function formatExecArgs(record: Record<string, unknown>): string | undefined {
   const command = str(record.command);
   if (!command) return undefined;
   // Collapse whitespace, truncate
-  const compact = command.replace(/\s*\n\s*/g, " ").replace(/\s{2,}/g, " ").trim();
+  const compact = command
+    .replace(/\s*\n\s*/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
   if (compact.length > 120) return compact.slice(0, 119) + "\u2026";
   return compact;
 }
@@ -226,7 +241,10 @@ function formatToolResult(
 
   const allLines = text.split("\n");
   if (allLines.length <= PREVIEW_LINES) return text;
-  return allLines.slice(0, PREVIEW_LINES).join("\n") + `\n${styled(`... (${allLines.length - PREVIEW_LINES} more lines)`, DIM)}`;
+  return (
+    allLines.slice(0, PREVIEW_LINES).join("\n") +
+    `\n${styled(`... (${allLines.length - PREVIEW_LINES} more lines)`, DIM)}`
+  );
 }
 
 // --- Thinking formatting ---
@@ -272,15 +290,19 @@ export class PiEventPrinter {
         this.ensureNewline();
         this.turnCount++;
         write("");
-        write(styled(`\u2500\u2500\u2500 Turn ${this.turnCount} \u2500\u2500\u2500`, CYAN));
+        write(
+          styled(
+            `\u2500\u2500\u2500 Turn ${this.turnCount} \u2500\u2500\u2500`,
+            CYAN,
+          ),
+        );
         break;
 
       case "message_start": {
         const msg = event.message;
         if (msg?.role === "user") {
           const text = msg.content?.[0]?.text ?? "";
-          const preview =
-            text.length > 200 ? text.slice(0, 197) + "..." : text;
+          const preview = text.length > 200 ? text.slice(0, 197) + "..." : text;
           write(styled(`> ${preview}`, BOLD));
         }
         break;
@@ -331,10 +353,7 @@ export class PiEventPrinter {
             if (tc) {
               const header = toolHeader(tc.name);
               const detail = formatToolArgs(tc.name, tc.arguments);
-              write(
-                `  ${header}` +
-                  (detail ? ` ${styled(detail, DIM)}` : ""),
-              );
+              write(`  ${header}` + (detail ? ` ${styled(detail, DIM)}` : ""));
             }
             break;
           }
@@ -361,9 +380,7 @@ export class PiEventPrinter {
             .split("\n")
             .map((line: string) => indent + styled(line, DIM))
             .join("\n");
-          write(
-            `  ${styled(statusIcon, statusColor)} ${indented.trimStart()}`,
-          );
+          write(`  ${styled(statusIcon, statusColor)} ${indented.trimStart()}`);
         } else if (event.isError) {
           write(`  ${styled("\u2718 (error, no output)", RED)}`);
         }

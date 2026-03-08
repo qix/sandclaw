@@ -34,9 +34,7 @@ function run(
     });
     child.on("close", (code) => {
       if (code !== 0) {
-        reject(
-          new Error(`${quote([cmd, ...args])} failed with code ${code}`),
-        );
+        reject(new Error(`${quote([cmd, ...args])} failed with code ${code}`));
       } else {
         resolve(Buffer.concat(chunks).toString("utf-8"));
       }
@@ -77,7 +75,9 @@ export async function prepareWorkDir(
     if (status.trim()) {
       throw new Error(`Working directory ${workDir} has uncommitted changes`);
     }
-    muted(`Working directory ${workDir} exists and is clean, pulling latest...`);
+    muted(
+      `Working directory ${workDir} exists and is clean, pulling latest...`,
+    );
     await run("git", ["-C", workDir, "pull", "origin", branch]);
   } else {
     muted(`Cloning ${repo} (branch: ${branch}) into ${workDir}...`);
