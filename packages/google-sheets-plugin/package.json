@@ -1,0 +1,33 @@
+{
+  "name": "@sandclaw/google-sheets-plugin",
+  "version": "0.1.0",
+  "description": "Sandclaw Google Sheets plugin — read/write access to Google Sheets spreadsheets",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/google-sheets-plugin"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "googleapis": "^144.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "typescript": "*"
+  }
+}

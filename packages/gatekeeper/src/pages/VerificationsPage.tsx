@@ -40,6 +40,7 @@ const pluginColors: Record<string, { bg: string; fg: string }> = {
   obsidian: { bg: "oklch(0.47 0.23 290)", fg: "oklch(1 0 0)" },
   gmail: { bg: "oklch(0.68 0.17 60)", fg: "oklch(1 0 0)" },
   browser: { bg: "oklch(0.60 0.20 40)", fg: "oklch(1 0 0)" },
+  "google-sheets": { bg: "oklch(0.60 0.19 155)", fg: "oklch(1 0 0)" },
 };
 
 function DefaultRenderer({ data }: VerificationRendererProps) {
