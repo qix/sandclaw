@@ -50,6 +50,25 @@ export function registerCoreRoutes(
     return c.body(null, 204);
   });
 
+  // GET /api/muteworker-queue/:id — fetch a specific muteworker job by ID
+  app.get("/api/muteworker-queue/:id", async (c) => {
+    const id = parseInt(c.req.param("id"), 10);
+    if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
+
+    const job = await db("safe_queue").where("id", id).first();
+    if (!job) return c.json({ error: "Job not found" }, 404);
+
+    return c.json({
+      job: {
+        id: job.id,
+        jobType: job.job_type,
+        data: job.data,
+        context: job.context ?? null,
+        status: job.status,
+      },
+    });
+  });
+
   // POST /api/muteworker-queue/complete — mark a job as complete
   app.post("/api/muteworker-queue/complete", async (c) => {
     const body = await c.req.json<{ id: number }>();

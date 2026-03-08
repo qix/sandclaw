@@ -39,6 +39,19 @@ export class MuteworkerApiClient {
     return body.job ?? null;
   }
 
+  async getJob(jobId: number): Promise<MuteworkerQueueJob | null> {
+    const response = await this.request(
+      `/api/muteworker-queue/${encodeURIComponent(String(jobId))}`,
+      { method: "GET" },
+    );
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw await this.createError("Failed to fetch muteworker job", response);
+    }
+    const body = (await response.json()) as MuteworkerQueueNextResponse;
+    return body.job ?? null;
+  }
+
   async markComplete(jobId: number): Promise<void> {
     const response = await this.request("/api/muteworker-queue/complete", {
       method: "POST",
