@@ -324,21 +324,21 @@ export async function startGatekeeper(
     "║  ║     \\_^_/     ║  ║",
     "╚══╝               ╚══╝",
   ];
-  const infoLines = ["", "Sandclaw Gatekeeper", "", externalUrl, ""];
-  const formatInfo = (line: string, i: number) => {
-    if (i === 1)
-      return `${bold}${whiteBright}Sand${cyan}claw ${white}Gatekeeper${reset}`;
-    if (i === 3) return `${white}${line}${reset}`;
-    else if (line) return `${dim}${line}${reset}`;
+  const infoLines = [
+    `${bold}${whiteBright}Sand${cyan}claw ${white}Gatekeeper${reset}`,
+    "",
+    `${dim}Listening on ${gatekeeperHost}:${gatekeeperPort}${reset}`,
+    `${white}${externalUrl}${reset}`,
+    "",
+  ];
 
-    return line;
-  };
+  const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 
   const logoWidth = 23;
   const gap = "    ";
   const gapWidth = gap.length;
   const pad = 2;
-  const infoWidth = Math.max(...infoLines.map((l) => l.length));
+  const infoWidth = Math.max(...infoLines.map((l) => stripAnsi(l).length));
   const innerWidth = pad + logoWidth + gapWidth + infoWidth + pad;
 
   const top = `${dim}╭${"─".repeat(innerWidth)}╮${reset}`;
@@ -347,8 +347,8 @@ export async function startGatekeeper(
 
   const rows = logoLines.map((logo, i) => {
     const info = infoLines[i] ?? "";
-    const infoPad = " ".repeat(infoWidth - info.length);
-    return `${dim}│${reset}${" ".repeat(pad)}${bold}${cyan}${logo}${reset}${gap}${formatInfo(info, i)}${infoPad}${" ".repeat(pad)}${dim}│${reset}`;
+    const infoPad = " ".repeat(infoWidth - stripAnsi(info).length);
+    return `${dim}│${reset}${" ".repeat(pad)}${bold}${cyan}${logo}${reset}${gap}${info}${infoPad}${" ".repeat(pad)}${dim}│${reset}`;
   });
 
   console.log([top, empty, ...rows, empty, bot].join("\n"));
