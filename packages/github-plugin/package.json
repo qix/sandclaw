@@ -7,12 +7,14 @@
     "url": "git+https://github.com/qix/sandclaw.git",
     "directory": "packages/github-plugin"
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
   "files": [
     "dist"
   ],
   "publishConfig": {
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
     "access": "public"
   },
   "scripts": {
