@@ -14,20 +14,20 @@ export { BuilderPanel, BuilderVerificationRenderer } from "./components";
 export { createRequestBuildTool } from "./tools";
 export type { BuildConfig } from "./build";
 
-export interface ClaudeBuilderPluginOptions {
+export interface BuilderPluginOptions {
   /** Git repo URL to clone/build against. */
   repo: string;
   /** Absolute path for the working directory. */
   workDir: string;
   /** Branch to checkout. @default "main" */
   branch?: string;
-  /** Docker image name. @default "claude-builder-plugin" */
+  /** Docker image name. @default "builder-plugin" */
   image?: string;
   /** Override for docker mount arguments  */
   dockerArgsOverride?: string[];
 }
 
-export function createClaudeBuilderPlugin(options: ClaudeBuilderPluginOptions) {
+export function createBuilderPlugin(options: BuilderPluginOptions) {
   const config: BuilderPluginConfig = {
     repo: options.repo,
     workDir: options.workDir,

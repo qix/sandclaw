@@ -43,7 +43,7 @@ function buildTemplates({
         dependencies: {
           "@sandclaw/browser-plugin": "latest",
           "@sandclaw/pi-builder-plugin": "latest",
-          "@sandclaw/claude-builder-plugin": "latest",
+          "@sandclaw/builder-plugin": "latest",
           "@sandclaw/chat-plugin": "latest",
           "@sandclaw/confidante": "latest",
           "@sandclaw/confidante-plugin-api": "latest",
@@ -180,7 +180,7 @@ import { createGoogleMapsPlugin } from '@sandclaw/google-maps-plugin';
 // import { createObsidianPlugin } from '@sandclaw/obsidian-plugin';
 // import { createGmailPlugin } from '@sandclaw/gmail-plugin';
 // import { createBuilderPlugin } from '@sandclaw/pi-builder-plugin';
-// import { createClaudeBuilderPlugin } from '@sandclaw/claude-builder-plugin';
+// import { createBuilderPlugin } from '@sandclaw/builder-plugin';
 import { config } from './config';
 
 

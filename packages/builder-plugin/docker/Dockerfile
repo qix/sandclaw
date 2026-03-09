@@ -29,8 +29,8 @@ RUN mkdir -p /usr/local/share/npm-global && \
 ARG USERNAME=node
 
 # Create workspace and config directories and set permissions
-RUN mkdir -p /workspace /home/node/.claude && \
-  chown -R node:node /workspace /home/node/.claude
+RUN mkdir -p /workspace /home/node/.claude /opt/builder && \
+  chown -R node:node /workspace /home/node/.claude /opt/builder
 
 WORKDIR /workspace
 
@@ -44,6 +44,12 @@ ENV PATH=$PATH:/usr/local/share/npm-global/bin
 # Install Claude Code CLI
 RUN npm install -g @anthropic-ai/claude-code
 
+# Copy container entry point source
+COPY --chown=node:node package.json tsconfig.json entry.ts proxy.ts /opt/builder/
+
+# Install dependencies and compile
+RUN cd /opt/builder && npm install && npx tsc
+
 # Copy and set up firewall script
 COPY init-firewall.sh /usr/local/bin/
 USER root
@@ -51,3 +57,6 @@ RUN chmod +x /usr/local/bin/init-firewall.sh && \
   echo "node ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/node-firewall && \
   chmod 0440 /etc/sudoers.d/node-firewall
 USER node
+
+# Default entrypoint: run the builder entry point (proxy + claude)
+CMD ["node", "/opt/builder/dist/entry.js"]

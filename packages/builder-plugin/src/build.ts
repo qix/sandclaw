@@ -52,7 +52,7 @@ export async function executeBuild(
     requestId,
     prompt,
     branch = "main",
-    image = "claude-builder-plugin",
+    image = "builder-plugin",
     responseJobType = DEFAULT_BUILDER_RESULT_JOB_TYPE,
   } = payload;
 
@@ -88,25 +88,22 @@ export async function executeBuild(
     throw new Error(`npm install failed with exit code ${npmResult.exitCode}`);
   }
 
-  // Step 3: Run claude in Docker with firewall + prompt
+  // Step 3: Run claude in Docker with proxy (cm-style prompt interception)
   ctx.logger.info("builder.build.running_claude", {
     jobId: ctx.job.id,
     requestId,
   });
-  const { finalReply, exitCode: claudeExitCode } = await runDockerClaude({
+  const {
+    finalReply,
+    exitCode: claudeExitCode,
+    prompts: collectedPrompts,
+  } = await runDockerClaude({
     image,
     prompt,
     dockerArgs: [
       "--cap-add=NET_ADMIN",
       "--cap-add=NET_RAW",
       ...dockerMountArgs,
-      "-e",
-      `CLAUDE_PROMPT=${prompt}`,
-    ],
-    command: [
-      "bash",
-      "-c",
-      'claude -p "$CLAUDE_PROMPT" --dangerously-skip-permissions',
     ],
   });
 
@@ -117,7 +114,13 @@ export async function executeBuild(
   });
 
   // Step 4: Detect and commit changes
-  const commitResult = await detectAndCommitChanges(workDir, prompt);
+  // Use proxy-collected prompts as the commit message for better traceability
+  // (these are the actual user prompts extracted from API calls, not the raw input)
+  const commitMessage =
+    collectedPrompts.length > 0
+      ? collectedPrompts.join("\n\n")
+      : prompt;
+  const commitResult = await detectAndCommitChanges(workDir, commitMessage);
 
   ctx.logger.info("builder.build.commit_result", {
     jobId: ctx.job.id,

@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "@sandclaw/browser-plugin": "^0.1.0",
-    "@sandclaw/claude-builder-plugin": "^0.1.0",
+    "@sandclaw/builder-plugin": "^0.1.0",
     "@sandclaw/chat-plugin": "^0.1.0",
     "@sandclaw/confidante": "^0.1.0",
     "@sandclaw/confidante-plugin-api": "^0.1.0",

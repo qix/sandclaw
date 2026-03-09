@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { createInterface } from "node:readline";
 import { quote } from "shell-quote";
 
 const DIM = "\x1b[2m";
@@ -10,9 +11,9 @@ function logCmd(cmd: string, args: string[]) {
 }
 
 export interface RunDockerClaudeOptions {
-  /** Docker image name (e.g. "claude-builder-plugin"). */
+  /** Docker image name (e.g. "builder-plugin"). */
   image: string;
-  /** Prompt to pass to claude. */
+  /** Prompt to pass to claude (set as CLAUDE_PROMPT env var). */
   prompt: string;
   /**
    * Environment variable names to forward from the host into the container.
@@ -25,12 +26,6 @@ export interface RunDockerClaudeOptions {
    * (e.g. ["-v", "/host:/container", "--cap-add=NET_ADMIN"]).
    */
   dockerArgs?: string[];
-  /**
-   * Override the container command entirely.
-   * When set, `prompt` is NOT used to build the command —
-   * the caller is responsible for embedding it (e.g. via an env var).
-   */
-  command?: string[];
 }
 
 export interface RunDockerClaudeResult {
@@ -38,11 +33,16 @@ export interface RunDockerClaudeResult {
   finalReply: string;
   /** The child process exit code. */
   exitCode: number;
+  /** User prompts collected by the transparent API proxy. */
+  prompts: string[];
+  /** Status messages collected during execution. */
+  statusMessages: string[];
 }
 
 /**
- * Spawn a Docker container running `claude` in print mode, stream stderr
- * output to the host, and resolve with the final assistant reply from stdout.
+ * Spawn a Docker container running the builder entry point (proxy + claude).
+ * The container writes JSON blobs to stdout (status + result) and
+ * human-readable logs to stderr.
  */
 export function runDockerClaude(
   options: RunDockerClaudeOptions,
@@ -52,7 +52,6 @@ export function runDockerClaude(
     prompt,
     envKeys = ["ANTHROPIC_API_KEY"],
     dockerArgs = [],
-    command,
   } = options;
 
   const envFlags: string[] = [];
@@ -62,12 +61,8 @@ export function runDockerClaude(
     }
   }
 
-  const containerCommand = command ?? [
-    "claude",
-    "-p",
-    prompt,
-    "--dangerously-skip-permissions",
-  ];
+  // Pass prompt via environment variable for the entry point
+  envFlags.push("-e", `CLAUDE_PROMPT=${prompt}`);
 
   const fullArgs = [
     "run",
@@ -75,7 +70,6 @@ export function runDockerClaude(
     ...envFlags,
     ...dockerArgs,
     image,
-    ...containerCommand,
   ];
   logCmd("docker", fullArgs);
 
@@ -83,9 +77,26 @@ export function runDockerClaude(
     stdio: ["ignore", "pipe", "pipe"],
   });
 
-  const stdoutChunks: Buffer[] = [];
-  child.stdout.on("data", (chunk: Buffer) => {
-    stdoutChunks.push(chunk);
+  const statusMessages: string[] = [];
+  let finalReply = "";
+  let prompts: string[] = [];
+
+  const rl = createInterface({ input: child.stdout });
+
+  rl.on("line", (line) => {
+    if (!line.trim()) return;
+    try {
+      const blob = JSON.parse(line);
+      if (blob.type === "status") {
+        statusMessages.push(blob.message);
+        process.stderr.write(`${DIM}[builder] ${blob.message}${RESET}\n`);
+      } else if (blob.type === "result") {
+        finalReply = blob.data ?? "";
+        prompts = blob.prompts ?? [];
+      }
+    } catch {
+      process.stderr.write(`${DIM}${line}${RESET}\n`);
+    }
   });
 
   child.stderr.on("data", (chunk: Buffer) => {
@@ -94,8 +105,7 @@ export function runDockerClaude(
 
   return new Promise<RunDockerClaudeResult>((resolve) => {
     child.on("close", (code) => {
-      const finalReply = Buffer.concat(stdoutChunks).toString("utf-8").trim();
-      resolve({ finalReply, exitCode: code ?? 1 });
+      resolve({ finalReply, statusMessages, prompts, exitCode: code ?? 1 });
     });
   });
 }

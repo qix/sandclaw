@@ -1,11 +1,11 @@
 {
-  "name": "@sandclaw/claude-builder-plugin",
+  "name": "@sandclaw/builder-plugin",
   "version": "0.1.0",
-  "description": "Sandclaw Claude Builder plugin — Docker-based code builds via Confidante with human approval (Claude Code)",
+  "description": "Sandclaw Builder plugin — Docker-based code builds via Confidante with human approval (Claude Code)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/qix/sandclaw.git",
-    "directory": "packages/claude-builder-plugin"
+    "directory": "packages/builder-plugin"
   },
   "main": "src/index.tsx",
   "types": "src/index.tsx",
@@ -19,7 +19,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "build-docker": "docker build -t claude-builder-plugin docker/"
+    "build-docker": "docker build -t builder-plugin docker/"
   },
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "^0.1.0",

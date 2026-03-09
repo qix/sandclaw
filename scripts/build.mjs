@@ -15,7 +15,7 @@ const layer1 = [
 const layer2 = [
   "@sandclaw/browser-plugin",
   "@sandclaw/pi-builder-plugin",
-  "@sandclaw/claude-builder-plugin",
+  "@sandclaw/builder-plugin",
   "@sandclaw/chat-plugin",
   "@sandclaw/confidante",
   "@sandclaw/gatekeeper",

@@ -1,0 +1,9 @@
+{
+  "name": "builder-plugin-container",
+  "version": "0.1.0",
+  "private": true,
+  "devDependencies": {
+    "@types/node": "*",
+    "typescript": "*"
+  }
+}

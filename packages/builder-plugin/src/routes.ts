@@ -31,7 +31,7 @@ export function registerRoutes(
       // Include config values for display in the verification UI
       repo: pluginConfig.repo,
       branch: pluginConfig.branch ?? "main",
-      image: pluginConfig.image ?? "claude-builder-plugin",
+      image: pluginConfig.image ?? "builder-plugin",
       createdAt: new Date(now).toISOString(),
     };
 

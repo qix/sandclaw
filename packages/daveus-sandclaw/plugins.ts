@@ -9,7 +9,7 @@ import { createBrowserPlugin } from "@sandclaw/browser-plugin";
 import { createGithubPlugin } from "@sandclaw/github-plugin";
 //import { createGoogleSheetsPlugin } from "@sandclaw/google-sheets-plugin";
 import { createGoogleMapsPlugin } from "@sandclaw/google-maps-plugin";
-import { createClaudeBuilderPlugin } from "@sandclaw/claude-builder-plugin";
+import { createBuilderPlugin } from "@sandclaw/builder-plugin";
 import { config } from "./config";
 import { buildTelegramPlugin } from "@sandclaw/telegram-plugin";
 import { createObsidianPlugin } from "@sandclaw/obsidian-plugin";
@@ -60,7 +60,7 @@ export const plugins: SandclawPlugin[] = [
     clientSecret: "",
     refreshToken: "",
   }),*/
-  createClaudeBuilderPlugin({
+  createBuilderPlugin({
     repo: "git@github.com:qix/daveus-sandclaw.git",
     workDir,
     branch: process.env.BUILDER_BRANCH || "main",
