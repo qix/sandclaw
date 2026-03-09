@@ -9,11 +9,12 @@ import { createBrowserPlugin } from "@sandclaw/browser-plugin";
 import { createGithubPlugin } from "@sandclaw/github-plugin";
 //import { createGoogleSheetsPlugin } from "@sandclaw/google-sheets-plugin";
 import { createGoogleMapsPlugin } from "@sandclaw/google-maps-plugin";
-import { createBuilderPlugin } from "@sandclaw/builder-plugin";
 import { config } from "./config";
 import { buildTelegramPlugin } from "@sandclaw/telegram-plugin";
 import { createObsidianPlugin } from "@sandclaw/obsidian-plugin";
 import { createGmailPlugin } from "@sandclaw/gmail-plugin";
+import { createGoogleSheetsPlugin } from "@sandclaw/google-sheets-plugin";
+import { createBuilderPlugin } from "@sandclaw/builder-plugin";
 
 export type SandclawPlugin = GatekeeperPlugin &
   MuteworkerPlugin &
@@ -54,12 +55,11 @@ export const plugins: SandclawPlugin[] = [
     autoPullPath: "/home/josh/code/daveus-sandclaw",
     autoPullRepo: "qix/daveus-sandclaw",
   }),
-  /*
   createGoogleSheetsPlugin({
     clientId: "",
     clientSecret: "",
     refreshToken: "",
-  }),*/
+  }),
   createBuilderPlugin({
     repo: "git@github.com:qix/daveus-sandclaw.git",
     workDir,

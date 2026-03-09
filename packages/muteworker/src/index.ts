@@ -1,5 +1,6 @@
 import * as readline from "node:readline";
-import { inspect, parseArgs } from "node:util";
+import { inspect } from "node:util";
+import cac from "cac";
 import type {
   MuteworkerPlugin,
   MuteworkerHooks,
@@ -165,43 +166,39 @@ function initializePlugins(plugins: MuteworkerPlugin[]) {
 /**
  * Muteworker CLI script entry point.
  *
- * Parses `process.argv` for subcommands and flags:
- *   - `tools`          — List all available tools and exit.
- *   - `--replay <id>`  — Replay a specific job by ID.
- *   - (default)        — Start the queue loop.
+ * Uses `cac` for subcommand parsing:
+ *   - (default)          — Start the queue loop.
+ *   - `tools`            — List all available tools and exit.
+ *   - `replay <id>`      — Replay a specific job by ID.
  */
 export async function muteworkerScript(
   options: MuteworkerOptions,
 ): Promise<void> {
-  const { values, positionals } = parseArgs({
-    options: {
-      replay: { type: "string" },
-    },
-    strict: false,
-    allowPositionals: true,
-    args: process.argv.slice(2),
+  const cli = cac("muteworker");
+
+  cli.command("", "Start the queue loop").action(async () => {
+    await startMuteworker(options);
   });
 
-  const subcommand = positionals[0];
+  cli
+    .command("tools", "List all available tools and exit")
+    .action(async () => {
+      await handleToolsCommand(options);
+    });
 
-  if (subcommand === "tools") {
-    return handleToolsCommand(options);
-  }
+  cli
+    .command("replay <id>", "Replay a specific job by ID")
+    .action(async (id: string) => {
+      const jobId = parseInt(id, 10);
+      if (isNaN(jobId)) {
+        console.error("Error: replay requires a numeric job ID.");
+        process.exit(1);
+      }
+      await handleReplayCommand(options, jobId);
+    });
 
-  const replay =
-    typeof values.replay === "string"
-      ? parseInt(values.replay, 10)
-      : undefined;
-  if (values.replay !== undefined && (replay == null || isNaN(replay))) {
-    console.error("Error: --replay requires a numeric job ID.");
-    process.exit(1);
-  }
-
-  if (replay == null) {
-    return startMuteworker(options);
-  }
-
-  return handleReplayCommand(options, replay);
+  cli.help();
+  cli.parse();
 }
 
 /**
