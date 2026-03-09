@@ -1,0 +1,12 @@
+{
+  "name": "browser-plugin-container",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "*",
+    "agent-browser-mcp": "*"
+  },
+  "devDependencies": {
+    "typescript": "*"
+  }
+}
