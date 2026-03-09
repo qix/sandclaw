@@ -1,7 +1,8 @@
-import type {
-  MuteworkerPlugin,
-  MuteworkerPluginContext,
-  RunAgentFn,
+import {
+  createMuteworkerPluginContext,
+  type MuteworkerPlugin,
+  type MuteworkerPluginContext,
+  type RunAgentFn,
 } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerApiClient } from "./apiClient.js";
 import type { MuteworkerConfig } from "./config.js";
@@ -48,13 +49,13 @@ export async function executeMuteworkerJob(
   });
 
   try {
-    const pluginCtx: MuteworkerPluginContext = {
+    const pluginCtx = createMuteworkerPluginContext({
       gatekeeperInternalUrl: config.gatekeeperInternalUrl,
       gatekeeperExternalUrl: config.gatekeeperExternalUrl,
       logger,
       job,
       artifacts,
-    };
+    });
 
     const toolArgs: ToolArgs = {
       config: args.config,

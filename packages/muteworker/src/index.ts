@@ -1,11 +1,13 @@
 import * as readline from "node:readline";
 import { inspect } from "node:util";
 import cac from "cac";
-import type {
-  MuteworkerPlugin,
-  MuteworkerHooks,
-  MuteworkerPluginContext,
-  ToolsService,
+import {
+  createMuteworkerPluginContext,
+  consoleLogger,
+  type MuteworkerPlugin,
+  type MuteworkerHooks,
+  type MuteworkerPluginContext,
+  type ToolsService,
 } from "@sandclaw/muteworker-plugin-api";
 import { MuteworkerApiClient } from "./apiClient.js";
 import { DEFAULT_CONFIG, MuteworkerConfig } from "./config.js";
@@ -219,18 +221,12 @@ async function handleToolsCommand(options: MuteworkerOptions): Promise<void> {
   await runInit();
 
   // Create a dummy context to collect tool definitions
-  const dummyCtx: MuteworkerPluginContext = {
+  const dummyCtx = createMuteworkerPluginContext({
     gatekeeperInternalUrl: "",
     gatekeeperExternalUrl: "",
-    logger: {
-      debug() {},
-      info() {},
-      warn() {},
-      error() {},
-    },
+    logger: consoleLogger,
     job: { id: 0, jobType: "", data: "{}" },
-    artifacts: [],
-  };
+  });
 
   const allTools: { name: string; description: string; plugin: string }[] = [];
   for (const factory of toolFactories) {

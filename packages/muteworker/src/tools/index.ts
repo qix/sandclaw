@@ -1,5 +1,8 @@
 import { z } from "zod";
-import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
+import {
+  createMuteworkerPluginContext,
+  type MuteworkerPluginContext,
+} from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerConfig } from "../config.js";
 import type { Logger } from "../logger.js";
 import {
@@ -32,13 +35,13 @@ export function toPluginContext(
   artifacts: Artifact[],
   args: ToolArgs,
 ): MuteworkerPluginContext {
-  return {
+  return createMuteworkerPluginContext({
     gatekeeperInternalUrl: args.config.gatekeeperInternalUrl,
     gatekeeperExternalUrl: args.config.gatekeeperExternalUrl,
     logger: args.logger,
     job: args.job,
     artifacts,
-  };
+  });
 }
 
 /**
