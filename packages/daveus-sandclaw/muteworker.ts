@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { muteworkerScript } from "@sandclaw/muteworker-claude";
+import { muteworkerScript } from "@sandclaw/muteworker";
 import { plugins } from "./plugins";
 import { muteworkerConfig } from "./config";
 

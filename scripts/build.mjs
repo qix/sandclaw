@@ -24,7 +24,6 @@ const layer2 = [
   "@sandclaw/google-maps-plugin",
   "@sandclaw/memory-plugin",
   "@sandclaw/muteworker",
-  "@sandclaw/muteworker-claude",
   "@sandclaw/obsidian-plugin",
   "@sandclaw/prompts-plugin",
   "@sandclaw/telegram-plugin",

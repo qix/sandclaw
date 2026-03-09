@@ -19,7 +19,6 @@
     "@sandclaw/google-sheets-plugin": "^0.1.0",
     "@sandclaw/memory-plugin": "^0.1.0",
     "@sandclaw/muteworker": "^0.1.0",
-    "@sandclaw/muteworker-claude": "^0.1.0",
     "@sandclaw/muteworker-plugin-api": "^0.1.0",
     "@sandclaw/obsidian-plugin": "^0.1.0",
     "@sandclaw/prompts-plugin": "^0.1.0",
