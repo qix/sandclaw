@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "*",
+    "agent-browser": "^0.17.0",
     "agent-browser-mcp": "*"
   },
   "devDependencies": {

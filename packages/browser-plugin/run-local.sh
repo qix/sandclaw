@@ -16,6 +16,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DOCKER_DIR="$SCRIPT_DIR/docker"
 
+# This script might be triggered by claude and needs recursive access
+unset CLAUDECODE
+
 # ── Xvfb ──────────────────────────────────────────────────────────────
 export DISPLAY="${DISPLAY:-:99}"
 export CHROME_PATH="${CHROME_PATH:-/usr/bin/chromium}"
