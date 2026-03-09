@@ -2,7 +2,6 @@
 .direnv
 .envrc
 .claude/
-.devcontainer
 default.nix
 
 # Packages
