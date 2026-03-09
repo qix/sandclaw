@@ -1,4 +1,3 @@
-import * as readline from "node:readline";
 import { inspect } from "node:util";
 import type {
   ConfidantePlugin,
@@ -243,14 +242,16 @@ export async function confidanteScript(
 }
 
 function confirm(question: string): Promise<boolean> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
   return new Promise((resolve) => {
-    rl.question(`${question} [y/N] `, (answer) => {
-      rl.close();
-      resolve(answer.trim().toLowerCase() === "y");
+    process.stdout.write(`${question} [y/N] `);
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.once("data", (data) => {
+      const key = data.toString().toLowerCase();
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+      process.stdout.write(key === "y" ? "y\n" : "n\n");
+      resolve(key === "y");
     });
   });
 }
