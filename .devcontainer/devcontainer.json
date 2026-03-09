@@ -44,6 +44,7 @@
   "mounts": [
     "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
     "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    "source=/home/josh/.config/daveus-sandclaw,target=/home/node/.config/daveus-sandclaw,type=bind,readonly",
     "source=/home/josh/code/cm,target=/home/node/cm,type=bind,readonly"
   ],
   "containerEnv": {

@@ -61,11 +61,11 @@ export function createGoogleSheetsPlugin(config: GoogleSheetsPluginConfig) {
         deps: { tools: muteworkerDeps.tools },
         init({ tools }) {
           tools.registerTools((ctx) => [
-            createListTool(ctx),
-            createReadTool(ctx),
-            createInfoTool(ctx),
-            createUpdateTool(ctx),
-            createInsertRowsTool(ctx),
+            createListTool(ctx, config),
+            createReadTool(ctx, config),
+            createInfoTool(ctx, config),
+            createUpdateTool(ctx, config),
+            createInsertRowsTool(ctx, config),
           ]);
         },
       });

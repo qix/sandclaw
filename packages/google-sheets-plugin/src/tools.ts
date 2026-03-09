@@ -1,6 +1,15 @@
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
+import {
+  listSpreadsheets,
+  getSpreadsheet,
+  readRange,
+  type GoogleSheetsPluginConfig,
+} from "./sheetsClient";
 
-export function createListTool(ctx: MuteworkerPluginContext) {
+export function createListTool(
+  ctx: MuteworkerPluginContext,
+  config: GoogleSheetsPluginConfig,
+) {
   return {
     name: "google_sheets_list",
     label: "List Google Sheets",
@@ -13,44 +22,35 @@ export function createListTool(ctx: MuteworkerPluginContext) {
       additionalProperties: false,
     } as any,
     execute: async (_toolCallId: string, _params: any) => {
-      const response = await fetch(
-        `${ctx.gatekeeperInternalUrl}/api/google-sheets/list`,
-      );
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        throw new Error(
-          `Google Sheets list failed (${response.status}): ${body.slice(0, 200)}`,
-        );
-      }
-
-      const data = (await response.json()) as any;
+      const spreadsheets = await listSpreadsheets(config);
       ctx.artifacts.push({
         type: "text",
         label: "Google Sheets List",
-        value: `${data.spreadsheets?.length ?? 0} spreadsheets`,
+        value: `${spreadsheets.length} spreadsheets`,
       });
 
-      if (!data.spreadsheets?.length) {
+      if (!spreadsheets.length) {
         return {
           content: [{ type: "text", text: "No spreadsheets found." }],
-          details: data,
         };
       }
 
-      const rendered = data.spreadsheets
+      const rendered = spreadsheets
         .map(
           (s: any, i: number) =>
             `${i + 1}. ${s.name} (id: ${s.id})${s.modifiedTime ? `\n   Modified: ${s.modifiedTime}` : ""}`,
         )
         .join("\n\n");
 
-      return { content: [{ type: "text", text: rendered }], details: data };
+      return { content: [{ type: "text", text: rendered }] };
     },
   };
 }
 
-export function createReadTool(ctx: MuteworkerPluginContext) {
+export function createReadTool(
+  ctx: MuteworkerPluginContext,
+  config: GoogleSheetsPluginConfig,
+) {
   return {
     name: "google_sheets_read",
     label: "Read Google Sheet Range",
@@ -71,36 +71,21 @@ export function createReadTool(ctx: MuteworkerPluginContext) {
       const range = String(params.range ?? "").trim();
       if (!range) throw new Error("range is required");
 
-      const response = await fetch(
-        `${ctx.gatekeeperInternalUrl}/api/google-sheets/read`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ spreadsheetId, range }),
-        },
-      );
+      const meta = await getSpreadsheet(config, spreadsheetId);
+      const result = await readRange(config, spreadsheetId, range);
 
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        throw new Error(
-          `Google Sheets read failed (${response.status}): ${body.slice(0, 200)}`,
-        );
-      }
-
-      const data = (await response.json()) as any;
       ctx.artifacts.push({
         type: "text",
         label: "Google Sheets Read",
-        value: `${data.spreadsheetTitle}: ${data.range}`,
+        value: `${meta.title}: ${result.range}`,
       });
 
-      const values: string[][] = data.values ?? [];
+      const values: string[][] = result.values ?? [];
       if (!values.length) {
         return {
           content: [
-            { type: "text", text: `No data found in range ${data.range}.` },
+            { type: "text", text: `No data found in range ${result.range}.` },
           ],
-          details: data,
         };
       }
 
@@ -113,16 +98,18 @@ export function createReadTool(ctx: MuteworkerPluginContext) {
         content: [
           {
             type: "text",
-            text: `${data.spreadsheetTitle} — ${data.range}\n\n${rendered}`,
+            text: `${meta.title} — ${result.range}\n\n${rendered}`,
           },
         ],
-        details: data,
       };
     },
   };
 }
 
-export function createInfoTool(ctx: MuteworkerPluginContext) {
+export function createInfoTool(
+  ctx: MuteworkerPluginContext,
+  config: GoogleSheetsPluginConfig,
+) {
   return {
     name: "google_sheets_info",
     label: "Google Sheet Info",
@@ -140,23 +127,7 @@ export function createInfoTool(ctx: MuteworkerPluginContext) {
       const spreadsheetId = String(params.spreadsheetId ?? "").trim();
       if (!spreadsheetId) throw new Error("spreadsheetId is required");
 
-      const response = await fetch(
-        `${ctx.gatekeeperInternalUrl}/api/google-sheets/info`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ spreadsheetId }),
-        },
-      );
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        throw new Error(
-          `Google Sheets info failed (${response.status}): ${body.slice(0, 200)}`,
-        );
-      }
-
-      const data = (await response.json()) as any;
+      const data = await getSpreadsheet(config, spreadsheetId);
       ctx.artifacts.push({
         type: "text",
         label: "Google Sheets Info",
@@ -177,13 +148,15 @@ export function createInfoTool(ctx: MuteworkerPluginContext) {
             text: `Spreadsheet: ${data.title}\nID: ${data.spreadsheetId}\n\nSheets:\n${sheetsInfo}`,
           },
         ],
-        details: data,
       };
     },
   };
 }
 
-export function createUpdateTool(ctx: MuteworkerPluginContext) {
+export function createUpdateTool(
+  ctx: MuteworkerPluginContext,
+  _config: GoogleSheetsPluginConfig,
+) {
   return {
     name: "google_sheets_update",
     label: "Update Google Sheet Cells",
@@ -207,7 +180,8 @@ export function createUpdateTool(ctx: MuteworkerPluginContext) {
       if (!spreadsheetId) throw new Error("spreadsheetId is required");
       const range = String(params.range ?? "").trim();
       if (!range) throw new Error("range is required");
-      if (!Array.isArray(params.values)) throw new Error("values must be a 2D array");
+      if (!Array.isArray(params.values))
+        throw new Error("values must be a 2D array");
 
       const response = await fetch(
         `${ctx.gatekeeperInternalUrl}/api/google-sheets/update`,
@@ -249,13 +223,15 @@ export function createUpdateTool(ctx: MuteworkerPluginContext) {
             ].join("\n"),
           },
         ],
-        details: data,
       };
     },
   };
 }
 
-export function createInsertRowsTool(ctx: MuteworkerPluginContext) {
+export function createInsertRowsTool(
+  ctx: MuteworkerPluginContext,
+  _config: GoogleSheetsPluginConfig,
+) {
   return {
     name: "google_sheets_insert_rows",
     label: "Insert Rows into Google Sheet",
@@ -281,8 +257,8 @@ export function createInsertRowsTool(ctx: MuteworkerPluginContext) {
       const sheetName = String(params.sheetName ?? "").trim();
       if (!sheetName) throw new Error("sheetName is required");
       if (params.afterRow == null) throw new Error("afterRow is required");
-      const afterRow = Math.floor(Number(params.afterRow));
-      if (!Array.isArray(params.values)) throw new Error("values must be a 2D array");
+      if (!Array.isArray(params.values))
+        throw new Error("values must be a 2D array");
 
       const response = await fetch(
         `${ctx.gatekeeperInternalUrl}/api/google-sheets/insert-rows`,
@@ -292,7 +268,7 @@ export function createInsertRowsTool(ctx: MuteworkerPluginContext) {
           body: JSON.stringify({
             spreadsheetId,
             sheetName,
-            afterRow,
+            afterRow: Math.floor(Number(params.afterRow)),
             values: params.values,
           }),
         },
@@ -309,7 +285,7 @@ export function createInsertRowsTool(ctx: MuteworkerPluginContext) {
       ctx.artifacts.push({
         type: "text",
         label: "Google Sheets Insert Rows Request",
-        value: `${sheetName} row ${afterRow} (#${data.verificationRequestId})`,
+        value: `${sheetName} row ${params.afterRow} (#${data.verificationRequestId})`,
       });
 
       return {
@@ -320,14 +296,13 @@ export function createInsertRowsTool(ctx: MuteworkerPluginContext) {
               `Queued Google Sheets insert rows verification #${data.verificationRequestId}.`,
               "No rows have been inserted yet.",
               `Sheet: ${sheetName}`,
-              `After row: ${afterRow}`,
+              `After row: ${params.afterRow}`,
               `Rows to insert: ${params.values.length}`,
               `Status: ${data.status}`,
               `Open ${ctx.gatekeeperExternalUrl} to review and approve this change.`,
             ].join("\n"),
           },
         ],
-        details: data,
       };
     },
   };

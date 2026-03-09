@@ -187,6 +187,15 @@ export async function muteworkerScript(
     });
 
   cli
+    .command(
+      "tool <name> [options]",
+      "Invoke a single tool by name with JSON options",
+    )
+    .action(async (name: string, optionsJson: string | undefined) => {
+      await handleToolCommand(options, name, optionsJson);
+    });
+
+  cli
     .command("replay <id>", "Replay a specific job by ID")
     .action(async (id: string) => {
       const jobId = parseInt(id, 10);
@@ -248,6 +257,85 @@ async function handleToolsCommand(options: MuteworkerOptions): Promise<void> {
     }
   }
   console.log();
+}
+
+/**
+ * Invoke a single tool by name with optional JSON params.
+ */
+async function handleToolCommand(
+  options: MuteworkerOptions,
+  toolName: string,
+  optionsJson: string | undefined,
+): Promise<void> {
+  const config: MuteworkerConfig = { ...DEFAULT_CONFIG, ...options.config };
+  const plugins = options.plugins ?? [];
+  const { toolFactories, runInit } = initializePlugins(plugins);
+  await runInit();
+
+  let params: Record<string, unknown> = {};
+  if (optionsJson) {
+    try {
+      params = JSON.parse(optionsJson);
+    } catch (e) {
+      console.error(
+        `Error: invalid JSON options: ${(e as Error).message}`,
+      );
+      process.exit(1);
+    }
+  }
+
+  // Create a context with real gatekeeper URL for tools that call the API
+  const ctx: MuteworkerPluginContext = {
+    gatekeeperInternalUrl: config.gatekeeperInternalUrl,
+    gatekeeperExternalUrl: config.gatekeeperExternalUrl,
+    logger: {
+      debug() {},
+      info() {},
+      warn() {},
+      error() {},
+    },
+    job: { id: 0, jobType: "tool-cli", data: "{}" },
+    artifacts: [],
+  };
+
+  // Collect all tools across plugin factories
+  let matchedTool: any = null;
+  for (const factory of toolFactories) {
+    const tools = factory(ctx);
+    for (const tool of tools) {
+      if (tool.name === toolName) {
+        matchedTool = tool;
+        break;
+      }
+    }
+    if (matchedTool) break;
+  }
+
+  if (!matchedTool) {
+    console.error(`Error: tool "${toolName}" not found.`);
+    console.error("Run `muteworker tools` to see available tools.");
+    process.exit(1);
+  }
+
+  try {
+    const result = await matchedTool.execute(`cli_${Date.now()}`, params);
+
+    if (result && result.content && Array.isArray(result.content)) {
+      for (const part of result.content) {
+        if (part && typeof part === "object" && "text" in part) {
+          console.log(part.text);
+        }
+      }
+    } else if (typeof result === "string") {
+      console.log(result);
+    } else {
+      console.log(inspect(result, { colors: true, depth: null }));
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Tool error: ${message}`);
+    process.exitCode = 1;
+  }
 }
 
 /**

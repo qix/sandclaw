@@ -56,9 +56,9 @@ export const plugins: SandclawPlugin[] = [
     autoPullRepo: "qix/daveus-sandclaw",
   }),
   createGoogleSheetsPlugin({
-    clientId: "",
-    clientSecret: "",
-    refreshToken: "",
+    clientId: process.env.GOOGLE_CLIENT_ID || "",
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    refreshToken: process.env.GOOGLE_REFRESH_TOKEN || "",
   }),
   createBuilderPlugin({
     repo: "git@github.com:qix/daveus-sandclaw.git",
