@@ -1,0 +1,6 @@
+.envrc
+.direnv
+data/
+node_modules/
+logs/
+workdir/

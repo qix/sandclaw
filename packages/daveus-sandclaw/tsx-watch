@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+exec tsx watch --clear-screen=false \
+	--include=../sandclaw/packages \
+	--exclude=../sandclaw/packages/cm/node_modules \
+	--include=*.ts \
+	"$@"

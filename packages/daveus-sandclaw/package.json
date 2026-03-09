@@ -1,0 +1,40 @@
+{
+  "name": "sample-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "tsx --tsconfig tsconfig.json gatekeeper.ts"
+  },
+  "dependencies": {
+    "@sandclaw/browser-plugin": "^0.1.0",
+    "@sandclaw/claude-builder-plugin": "^0.1.0",
+    "@sandclaw/chat-plugin": "^0.1.0",
+    "@sandclaw/confidante": "^0.1.0",
+    "@sandclaw/confidante-plugin-api": "^0.1.0",
+    "@sandclaw/gatekeeper": "^0.1.0",
+    "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/github-plugin": "^0.1.0",
+    "@sandclaw/gmail-plugin": "^0.1.0",
+    "@sandclaw/google-maps-plugin": "^0.1.0",
+    "@sandclaw/google-sheets-plugin": "^0.1.0",
+    "@sandclaw/memory-plugin": "^0.1.0",
+    "@sandclaw/muteworker": "^0.1.0",
+    "@sandclaw/muteworker-claude": "^0.1.0",
+    "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "@sandclaw/obsidian-plugin": "^0.1.0",
+    "@sandclaw/prompts-plugin": "^0.1.0",
+    "@sandclaw/telegram-plugin": "^0.1.0",
+    "@sandclaw/web-search-plugin": "^0.1.0",
+    "@sandclaw/whatsapp-plugin": "^0.1.0"
+  },
+  "devDependencies": {
+    "@devcontainers/cli": "^0.83.3",
+    "@types/react": "*",
+    "@types/react-dom": "*",
+    "prettier": "^3.8.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tsx": "*",
+    "typescript": "*"
+  }
+}

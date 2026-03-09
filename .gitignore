@@ -12,8 +12,11 @@ node_modules/
 dist/
 
 # Previous iteration and local testing
+logs/
 example-src/
 prev-source/
-daveus-app/
-logs/
-packages/daveus-sandclaw
+tmux-dev
+
+confidante
+gatekeeper
+muteworker

@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@sandclaw/confidante": ["./sandclaw/packages/confidante/src/index.ts"],
+      "@sandclaw/confidante-plugin-api": ["./sandclaw/packages/confidante-plugin-api/src/index.ts"],
+      "@sandclaw/confidante-util": ["./sandclaw/packages/confidante-util/src/index.ts"],
+      "@sandclaw/gatekeeper": ["./sandclaw/packages/gatekeeper/src/index.ts"],
+      "@sandclaw/gatekeeper-plugin-api": ["./sandclaw/packages/gatekeeper-plugin-api/src/index.ts"],
+      "@sandclaw/muteworker": ["./sandclaw/packages/muteworker/src/index.ts"],
+      "@sandclaw/muteworker-plugin-api": ["./sandclaw/packages/muteworker-plugin-api/src/index.ts"],
+      "@sandclaw/ui": ["./sandclaw/packages/ui/src/index.ts"]
+    }
+  }
+}
