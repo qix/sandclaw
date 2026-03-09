@@ -1,8 +1,8 @@
 # Local environment setup
-.direnv
-.envrc
-.claude/
-default.nix
+/.direnv
+/.envrc
+/.claude/
+/default.nix
 
 # Packages
 node_modules/
@@ -11,11 +11,11 @@ node_modules/
 dist/
 
 # Previous iteration and local testing
-logs/
-example-src/
-prev-source/
-tmux-dev
+/logs/
+/example-src/
+/prev-source/
+/tmux-dev
 
-confidante
-gatekeeper
-muteworker
+/confidante
+/gatekeeper
+/muteworker

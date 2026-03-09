@@ -1,0 +1,358 @@
+import * as readline from "node:readline";
+import { inspect, parseArgs } from "node:util";
+import type {
+  MuteworkerPlugin,
+  MuteworkerHooks,
+  MuteworkerPluginContext,
+  ToolsService,
+} from "@sandclaw/muteworker-plugin-api";
+import { MuteworkerApiClient } from "./apiClient.js";
+import { DEFAULT_CONFIG, MuteworkerConfig } from "./config.js";
+import { executeMuteworkerJob } from "./jobExecutor.js";
+import { createLogger } from "./logger.js";
+import { MuteworkerQueueLoop } from "./queueLoop.js";
+
+export type { MuteworkerConfig } from "./config.js";
+
+export interface MuteworkerOptions {
+  /** Plugins to load into the muteworker. */
+  plugins?: MuteworkerPlugin[];
+  /** Config overrides (merged with defaults). */
+  config?: Partial<MuteworkerConfig>;
+}
+
+/**
+ * Starts the Sandclaw Muteworker queue loop using the Claude Agent SDK.
+ *
+ * Polls the Gatekeeper for jobs, executes them with Claude, and marks
+ * them complete.  Runs until SIGINT/SIGTERM.
+ *
+ * @example
+ * ```ts
+ * import { startMuteworker } from '@sandclaw/muteworker';
+ * import { createPromptsPlugin } from '@sandclaw/prompts-plugin';
+ *
+ * startMuteworker({
+ *   plugins: [createPromptsPlugin({ promptsDir: './prompts' })],
+ *   config: { gatekeeperInternalUrl: 'http://localhost:3000' },
+ * });
+ * ```
+ */
+export async function startMuteworker(
+  options: MuteworkerOptions,
+): Promise<void> {
+  const config: MuteworkerConfig = {
+    ...DEFAULT_CONFIG,
+    ...options.config,
+  };
+  const plugins = options.plugins ?? [];
+
+  const logger = createLogger(config.logLevel);
+  const client = new MuteworkerApiClient(config, logger);
+
+  const { startHooks, stopHooks, toolFactories, buildSystemPrompt, runInit } =
+    initializePlugins(plugins);
+  await runInit();
+
+  const loop = new MuteworkerQueueLoop(
+    client,
+    config,
+    logger,
+    plugins,
+    toolFactories,
+    buildSystemPrompt,
+  );
+
+  const shutdown = async () => {
+    logger.info("muteworker.shutdown.requested");
+    loop.stop();
+    for (const fn of stopHooks) {
+      await fn();
+    }
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+
+  logger.info("muteworker.startup", {
+    gatekeeperInternalUrl: config.gatekeeperInternalUrl,
+    modelId: config.modelId,
+    permissionMode: config.permissionMode,
+    plugins: plugins.map((p) => p.id),
+  });
+
+  // Fire start hooks
+  for (const fn of startHooks) {
+    await fn();
+  }
+
+  await loop.start();
+}
+
+/**
+ * Initialize plugins and return the collected services.
+ * Shared between the queue loop, replay, and tools listing.
+ */
+function initializePlugins(plugins: MuteworkerPlugin[]) {
+  const startHooks: Array<() => Promise<void>> = [];
+  const stopHooks: Array<() => Promise<void>> = [];
+  const buildSystemPromptHooks: Array<
+    (prev: string) => string | Promise<string>
+  > = [];
+  const hooksService: MuteworkerHooks = {
+    register(hooks) {
+      if (hooks["muteworker:start"])
+        startHooks.push(async () => hooks["muteworker:start"]!());
+      if (hooks["muteworker:stop"])
+        stopHooks.push(async () => hooks["muteworker:stop"]!());
+      if (hooks["muteworker:build-system-prompt"])
+        buildSystemPromptHooks.push(hooks["muteworker:build-system-prompt"]);
+    },
+  };
+
+  const toolFactories: Array<(ctx: MuteworkerPluginContext) => any[]> = [];
+  const toolsService: ToolsService = {
+    registerTools(factory) {
+      toolFactories.push(factory);
+    },
+  };
+
+  const services = new Map<string, any>();
+  services.set("core.hooks", hooksService);
+  services.set("core.tools", toolsService);
+
+  const initFns: Array<() => void | Promise<void>> = [];
+  for (const plugin of plugins) {
+    if (!plugin.registerMuteworker) {
+      throw new Error(
+        `Plugin "${plugin.id}" is missing required registerMuteworker method`,
+      );
+    }
+    plugin.registerMuteworker({
+      registerInit({ deps, init }) {
+        const resolved: Record<string, any> = {};
+        for (const [key, ref] of Object.entries(deps)) {
+          resolved[key] = services.get(ref.id);
+        }
+        initFns.push(() => init(resolved as any));
+      },
+    });
+  }
+
+  const runInit = async () => {
+    for (const fn of initFns) {
+      await fn();
+    }
+  };
+
+  const buildSystemPrompt = async (): Promise<string> => {
+    let prompt = "";
+    for (const hook of buildSystemPromptHooks) {
+      prompt = await hook(prompt);
+    }
+    return prompt;
+  };
+
+  return {
+    startHooks,
+    stopHooks,
+    toolFactories,
+    buildSystemPrompt,
+    runInit,
+  };
+}
+
+/**
+ * Muteworker CLI script entry point.
+ *
+ * Parses `process.argv` for subcommands and flags:
+ *   - `tools`          — List all available tools and exit.
+ *   - `--replay <id>`  — Replay a specific job by ID.
+ *   - (default)        — Start the queue loop.
+ */
+export async function muteworkerScript(
+  options: MuteworkerOptions,
+): Promise<void> {
+  const { values, positionals } = parseArgs({
+    options: {
+      replay: { type: "string" },
+    },
+    strict: false,
+    allowPositionals: true,
+    args: process.argv.slice(2),
+  });
+
+  const subcommand = positionals[0];
+
+  if (subcommand === "tools") {
+    return handleToolsCommand(options);
+  }
+
+  const replay =
+    typeof values.replay === "string"
+      ? parseInt(values.replay, 10)
+      : undefined;
+  if (values.replay !== undefined && (replay == null || isNaN(replay))) {
+    console.error("Error: --replay requires a numeric job ID.");
+    process.exit(1);
+  }
+
+  if (replay == null) {
+    return startMuteworker(options);
+  }
+
+  return handleReplayCommand(options, replay);
+}
+
+/**
+ * List all available tools from plugins and exit.
+ */
+async function handleToolsCommand(options: MuteworkerOptions): Promise<void> {
+  const plugins = options.plugins ?? [];
+  const { toolFactories, runInit } = initializePlugins(plugins);
+  await runInit();
+
+  // Create a dummy context to collect tool definitions
+  const dummyCtx: MuteworkerPluginContext = {
+    gatekeeperInternalUrl: "",
+    gatekeeperExternalUrl: "",
+    logger: {
+      debug() {},
+      info() {},
+      warn() {},
+      error() {},
+    },
+    job: { id: 0, jobType: "", data: "{}" },
+    artifacts: [],
+  };
+
+  const allTools: { name: string; description: string; plugin: string }[] = [];
+  for (const factory of toolFactories) {
+    const tools = factory(dummyCtx);
+    for (const tool of tools) {
+      allTools.push({
+        name: tool.name,
+        description: tool.description ?? "",
+        plugin: "",
+      });
+    }
+  }
+
+  if (allTools.length === 0) {
+    console.log("No tools registered.");
+    return;
+  }
+
+  console.log(`\nAvailable tools (${allTools.length}):\n`);
+  for (const tool of allTools) {
+    console.log(`  ${tool.name}`);
+    if (tool.description) {
+      console.log(`    ${tool.description}`);
+    }
+  }
+  console.log();
+}
+
+/**
+ * Replay a specific job by ID.
+ */
+async function handleReplayCommand(
+  options: MuteworkerOptions,
+  replayJobId: number,
+): Promise<void> {
+  const config: MuteworkerConfig = { ...DEFAULT_CONFIG, ...options.config };
+  const plugins = options.plugins ?? [];
+  const logger = createLogger(config.logLevel);
+  const client = new MuteworkerApiClient(config, logger);
+
+  const { startHooks, stopHooks, toolFactories, buildSystemPrompt, runInit } =
+    initializePlugins(plugins);
+  await runInit();
+
+  for (const fn of startHooks) {
+    await fn();
+  }
+
+  // Fetch the job
+  const job = await client.getJob(replayJobId);
+  if (!job) {
+    logger.error("replay.job.not_found", { jobId: replayJobId });
+    console.error(`Job ${replayJobId} not found.`);
+    process.exitCode = 1;
+    for (const fn of stopHooks) {
+      await fn();
+    }
+    return;
+  }
+
+  // Display job details
+  console.log("\n--- Job Details ---");
+  console.log(`  ID:      ${job.id}`);
+  console.log(`  Type:    ${job.jobType}`);
+  console.log(`  Status:  ${job.status}`);
+  console.log(
+    `  Data:    ${inspect(JSON.parse(job.data), { colors: true, depth: null }).replace(/\n/g, "\n           ")}`,
+  );
+  console.log("-------------------\n");
+
+  // Prompt for confirmation
+  const confirmed = await confirm("Proceed with executing this job?");
+  if (!confirmed) {
+    console.log("Aborted.");
+    for (const fn of stopHooks) {
+      await fn();
+    }
+    return;
+  }
+
+  // Execute the job using the same path as the queue loop
+  logger.info("replay.job.started", { jobId: job.id, jobType: job.jobType });
+  const result = await executeMuteworkerJob({
+    client,
+    config,
+    logger,
+    job,
+    plugins,
+    toolFactories,
+    buildSystemPrompt,
+  });
+
+  await client.markComplete(job.id);
+
+  if (result.status === "success") {
+    logger.info("replay.job.completed", {
+      jobId: job.id,
+      durationMs: result.logs.durationMs,
+    });
+    console.log(
+      `Job ${job.id} completed successfully (${result.logs.durationMs}ms).`,
+    );
+  } else {
+    logger.warn("replay.job.failed", {
+      jobId: job.id,
+      errorKind: result.error?.kind ?? "unknown",
+      error: result.error?.message ?? "no error message",
+    });
+    console.error(
+      `Job ${job.id} failed: ${result.error?.message ?? "unknown error"}`,
+    );
+    process.exitCode = 1;
+  }
+
+  for (const fn of stopHooks) {
+    await fn();
+  }
+}
+
+function confirm(question: string): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  return new Promise((resolve) => {
+    rl.question(`${question} [y/N] `, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase() === "y");
+    });
+  });
+}
