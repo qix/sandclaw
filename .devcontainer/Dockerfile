@@ -42,6 +42,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libpango-1.0-0 \
   libasound2 \
   xvfb \
+  # Google Cloud SDK
+  apt-transport-https \
+  ca-certificates \
+  curl \
+  && curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
+  && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" > /etc/apt/sources.list.d/google-cloud-sdk.list \
+  && apt-get update && apt-get install -y --no-install-recommends google-cloud-cli \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Ensure default node user has access to /usr/local/share
@@ -76,7 +83,7 @@ USER node
 
 # Install global packages
 ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
-ENV PATH=$PATH:/usr/local/share/npm-global/bin
+ENV PATH=/workspace/node_modules/.bin:$PATH:/usr/local/share/npm-global/bin
 
 # Set the default shell to zsh rather than sh
 ENV SHELL=/bin/zsh
@@ -96,7 +103,10 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
   -x
 
 # Install Claude
-RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
+RUN npm install -g \
+  "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
+  "@anthropic-ai/claude-code-mcp-proxy@${CLAUDE_CODE_VERSION}" \
+  @googleworkspace/cli
 
 # Install agent-browser globally (for browser-plugin dev)
 ENV CHROME_PATH=/usr/bin/chromium
