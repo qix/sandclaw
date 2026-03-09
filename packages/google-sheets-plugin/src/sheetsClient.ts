@@ -1,42 +1,98 @@
+import { execFile } from "node:child_process";
+import { writeFileSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 export interface GoogleSheetsPluginConfig {
-  /** Google OAuth2 client ID. */
-  clientId: string;
-  /** Google OAuth2 client secret. */
-  clientSecret: string;
-  /** OAuth2 refresh token. */
-  refreshToken: string;
+  /** Google OAuth2 client ID. If omitted, gws uses its own auth. */
+  clientId?: string;
+  /** Google OAuth2 client secret. If omitted, gws uses its own auth. */
+  clientSecret?: string;
+  /** OAuth2 refresh token. If omitted, gws uses its own auth. */
+  refreshToken?: string;
 }
 
-async function createOAuth2Client(config: GoogleSheetsPluginConfig) {
-  const { google } = await import("googleapis");
-  const oauth2Client = new google.auth.OAuth2(
-    config.clientId,
-    config.clientSecret,
-  );
-  oauth2Client.setCredentials({ refresh_token: config.refreshToken });
-  return { google, oauth2Client };
+/** Path to the temporary credentials file written for gws. */
+let credentialsFilePath: string | null = null;
+
+/**
+ * Write an authorized_user credentials file for gws if config has OAuth creds.
+ * Returns env overrides to pass to gws.
+ */
+function getGwsEnv(config: GoogleSheetsPluginConfig): Record<string, string> {
+  if (!config.clientId || !config.clientSecret || !config.refreshToken) {
+    return {};
+  }
+
+  if (!credentialsFilePath) {
+    const dir = join(tmpdir(), "gws-sandclaw");
+    mkdirSync(dir, { recursive: true });
+    credentialsFilePath = join(dir, "credentials.json");
+    writeFileSync(
+      credentialsFilePath,
+      JSON.stringify({
+        type: "authorized_user",
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        refresh_token: config.refreshToken,
+      }),
+    );
+  }
+
+  return {
+    GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE: credentialsFilePath,
+    // Use a separate config dir so gws doesn't try to read the broken host credentials
+    GOOGLE_WORKSPACE_CLI_CONFIG_DIR: join(tmpdir(), "gws-sandclaw"),
+  };
 }
 
-export async function createSheetsClient(config: GoogleSheetsPluginConfig) {
-  const { google, oauth2Client } = await createOAuth2Client(config);
-  return google.sheets({ version: "v4", auth: oauth2Client });
-}
+/** Run a gws CLI command and return parsed JSON output. */
+async function gws(
+  config: GoogleSheetsPluginConfig,
+  args: string[],
+): Promise<any> {
+  const envOverrides = getGwsEnv(config);
 
-export async function createDriveClient(config: GoogleSheetsPluginConfig) {
-  const { google, oauth2Client } = await createOAuth2Client(config);
-  return google.drive({ version: "v3", auth: oauth2Client });
+  return new Promise((resolve, reject) => {
+    execFile("gws", args, {
+      env: { ...process.env, ...envOverrides },
+      maxBuffer: 10 * 1024 * 1024,
+    }, (error, stdout, stderr) => {
+      if (error) {
+        // gws outputs JSON errors on failure
+        const output = stdout || stderr || error.message;
+        try {
+          const parsed = JSON.parse(output);
+          if (parsed.error?.message) {
+            reject(new Error(`gws: ${parsed.error.message}`));
+            return;
+          }
+        } catch {}
+        reject(new Error(`gws failed: ${output.slice(0, 500)}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch {
+        reject(new Error(`gws returned non-JSON: ${stdout.slice(0, 500)}`));
+      }
+    });
+  });
 }
 
 /** List spreadsheet files accessible to the user via Google Drive. */
 export async function listSpreadsheets(config: GoogleSheetsPluginConfig) {
-  const drive = await createDriveClient(config);
-  const response = await drive.files.list({
-    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
-    fields: "files(id, name, modifiedTime, webViewLink)",
-    orderBy: "modifiedTime desc",
-    pageSize: 50,
-  });
-  return (response.data.files ?? []).map((f) => ({
+  const data = await gws(config, [
+    "drive", "files", "list",
+    "--params", JSON.stringify({
+      q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
+      fields: "files(id,name,modifiedTime,webViewLink)",
+      orderBy: "modifiedTime desc",
+      pageSize: 50,
+    }),
+  ]);
+
+  return (data.files ?? []).map((f: any) => ({
     id: f.id ?? "",
     name: f.name ?? "",
     modifiedTime: f.modifiedTime ?? "",
@@ -49,21 +105,24 @@ export async function getSpreadsheet(
   config: GoogleSheetsPluginConfig,
   spreadsheetId: string,
 ) {
-  const sheets = await createSheetsClient(config);
-  const response = await sheets.spreadsheets.get({
-    spreadsheetId,
-    fields:
-      "spreadsheetId,properties.title,sheets.properties(sheetId,title,gridProperties)",
-  });
-  const props = response.data.properties;
-  const sheetList = (response.data.sheets ?? []).map((s) => ({
+  const data = await gws(config, [
+    "sheets", "spreadsheets", "get",
+    "--params", JSON.stringify({
+      spreadsheetId,
+      fields: "spreadsheetId,properties.title,sheets.properties(sheetId,title,gridProperties)",
+    }),
+  ]);
+
+  const props = data.properties;
+  const sheetList = (data.sheets ?? []).map((s: any) => ({
     sheetId: s.properties?.sheetId ?? 0,
     title: s.properties?.title ?? "",
     rowCount: s.properties?.gridProperties?.rowCount ?? 0,
     columnCount: s.properties?.gridProperties?.columnCount ?? 0,
   }));
+
   return {
-    spreadsheetId: response.data.spreadsheetId ?? spreadsheetId,
+    spreadsheetId: data.spreadsheetId ?? spreadsheetId,
     title: props?.title ?? "",
     sheets: sheetList,
   };
@@ -75,15 +134,18 @@ export async function readRange(
   spreadsheetId: string,
   range: string,
 ) {
-  const sheets = await createSheetsClient(config);
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range,
-    valueRenderOption: "FORMATTED_VALUE",
-  });
+  const data = await gws(config, [
+    "sheets", "spreadsheets", "values", "get",
+    "--params", JSON.stringify({
+      spreadsheetId,
+      range,
+      valueRenderOption: "FORMATTED_VALUE",
+    }),
+  ]);
+
   return {
-    range: response.data.range ?? range,
-    values: (response.data.values as string[][]) ?? [],
+    range: data.range ?? range,
+    values: (data.values as string[][]) ?? [],
   };
 }
 
@@ -94,18 +156,21 @@ export async function updateCells(
   range: string,
   values: string[][],
 ) {
-  const sheets = await createSheetsClient(config);
-  const response = await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values },
-  });
+  const data = await gws(config, [
+    "sheets", "spreadsheets", "values", "update",
+    "--params", JSON.stringify({
+      spreadsheetId,
+      range,
+      valueInputOption: "USER_ENTERED",
+    }),
+    "--json", JSON.stringify({ values }),
+  ]);
+
   return {
-    updatedRange: response.data.updatedRange ?? range,
-    updatedRows: response.data.updatedRows ?? 0,
-    updatedColumns: response.data.updatedColumns ?? 0,
-    updatedCells: response.data.updatedCells ?? 0,
+    updatedRange: data.updatedRange ?? range,
+    updatedRows: data.updatedRows ?? 0,
+    updatedColumns: data.updatedColumns ?? 0,
+    updatedCells: data.updatedCells ?? 0,
   };
 }
 
@@ -117,17 +182,16 @@ export async function insertRows(
   afterRow: number,
   values: string[][],
 ) {
-  const sheets = await createSheetsClient(config);
-
   // First, get the sheetId from the sheet name
   const meta = await getSpreadsheet(config, spreadsheetId);
-  const sheet = meta.sheets.find((s) => s.title === sheetName);
+  const sheet = meta.sheets.find((s: any) => s.title === sheetName);
   if (!sheet) throw new Error(`Sheet "${sheetName}" not found`);
 
-  // Insert empty rows
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId,
-    requestBody: {
+  // Insert empty rows via batchUpdate
+  await gws(config, [
+    "sheets", "spreadsheets", "batchUpdate",
+    "--params", JSON.stringify({ spreadsheetId }),
+    "--json", JSON.stringify({
       requests: [
         {
           insertDimension: {
@@ -141,17 +205,20 @@ export async function insertRows(
           },
         },
       ],
-    },
-  });
+    }),
+  ]);
 
   // Write values into the newly inserted rows
   const rangeNotation = `${sheetName}!A${afterRow + 1}`;
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: rangeNotation,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values },
-  });
+  await gws(config, [
+    "sheets", "spreadsheets", "values", "update",
+    "--params", JSON.stringify({
+      spreadsheetId,
+      range: rangeNotation,
+      valueInputOption: "USER_ENTERED",
+    }),
+    "--json", JSON.stringify({ values }),
+  ]);
 
   return {
     sheetName,
@@ -168,10 +235,10 @@ export async function deleteRows(
   startIndex: number,
   endIndex: number,
 ) {
-  const sheets = await createSheetsClient(config);
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId,
-    requestBody: {
+  await gws(config, [
+    "sheets", "spreadsheets", "batchUpdate",
+    "--params", JSON.stringify({ spreadsheetId }),
+    "--json", JSON.stringify({
       requests: [
         {
           deleteDimension: {
@@ -184,7 +251,8 @@ export async function deleteRows(
           },
         },
       ],
-    },
-  });
+    }),
+  ]);
+
   return { sheetId, deletedRows: endIndex - startIndex };
 }

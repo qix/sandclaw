@@ -105,7 +105,6 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
 # Install Claude
 RUN npm install -g \
   "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
-  "@anthropic-ai/claude-code-mcp-proxy@${CLAUDE_CODE_VERSION}" \
   @googleworkspace/cli
 
 # Install agent-browser globally (for browser-plugin dev)

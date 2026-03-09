@@ -6,6 +6,7 @@
     "start": "tsx --tsconfig tsconfig.json gatekeeper.ts"
   },
   "dependencies": {
+    "@googleworkspace/cli": "^0.9.1",
     "@sandclaw/browser-plugin": "^0.1.0",
     "@sandclaw/builder-plugin": "^0.1.0",
     "@sandclaw/chat-plugin": "^0.1.0",

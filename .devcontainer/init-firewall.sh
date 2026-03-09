@@ -107,6 +107,12 @@ echo "Host network detected as: $HOST_NETWORK"
 iptables -A INPUT -s "$HOST_NETWORK" -j ACCEPT
 iptables -A OUTPUT -d "$HOST_NETWORK" -j ACCEPT
 
+# Block all IPv6 traffic (no IPv6 route in container; prevents tools like gws
+# from trying AAAA records and hanging before falling back to IPv4)
+ip6tables -P INPUT DROP 2>/dev/null || true
+ip6tables -P FORWARD DROP 2>/dev/null || true
+ip6tables -P OUTPUT DROP 2>/dev/null || true
+
 # Set default policies to DROP first
 iptables -P INPUT DROP
 iptables -P FORWARD DROP

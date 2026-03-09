@@ -20,8 +20,7 @@
   },
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
-    "@sandclaw/muteworker-plugin-api": "^0.1.0",
-    "googleapis": "^144.0.0"
+    "@sandclaw/muteworker-plugin-api": "^0.1.0"
   },
   "peerDependencies": {
     "react": "^18.0.0"

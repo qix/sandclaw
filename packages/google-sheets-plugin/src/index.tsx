@@ -30,7 +30,7 @@ export {
   createInsertRowsTool,
 } from "./tools";
 
-export function createGoogleSheetsPlugin(config: GoogleSheetsPluginConfig) {
+export function createGoogleSheetsPlugin(config: GoogleSheetsPluginConfig = {}) {
   return {
     id: "google-sheets" as const,
     verificationRenderer: GoogleSheetsVerificationRenderer,
