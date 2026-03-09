@@ -3,9 +3,11 @@
 # Run the browser-plugin entry.ts directly (no Docker).
 # Starts Xvfb, installs deps, compiles, and runs the entry point.
 #
-# Required env vars:
-#   ANTHROPIC_API_KEY   — API key for Claude
-#   BROWSER_PROMPT      — the browsing task
+# Usage:
+#   ./run-local.sh "Summarise https://api.github.com"
+#
+# Required:
+#   ANTHROPIC_API_KEY env var — API key for Claude
 #
 # Optional env vars:
 #   BROWSER_START_URL   — URL to navigate to first
@@ -16,8 +18,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DOCKER_DIR="$SCRIPT_DIR/docker"
 
+# Pass the prompt as an env var for simplicity
+export BROWSER_PROMPT="$1"
+
 # This script might be triggered by claude and needs recursive access
 unset CLAUDECODE
+unset CLAUDE_CODE_ENTRYPOINT
 
 # ── Xvfb ──────────────────────────────────────────────────────────────
 export DISPLAY="${DISPLAY:-:99}"

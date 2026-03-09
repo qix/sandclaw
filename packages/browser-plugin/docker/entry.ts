@@ -1,4 +1,12 @@
-import { query, type SDKResultSuccess, type SDKResultError } from "@anthropic-ai/claude-agent-sdk";
+import {
+  query,
+  type SDKResultSuccess,
+  type SDKResultError,
+} from "@anthropic-ai/claude-agent-sdk";
+
+// Prevent nested Claude Code detection
+delete process.env.CLAUDECODE;
+delete process.env.CLAUDE_CODE_ENTRYPOINT;
 
 // ── helpers ──────────────────────────────────────────────────────────
 
@@ -55,6 +63,7 @@ async function main() {
 
   let finalReply = "";
   let exitCode = 0;
+  let gotResult = false;
 
   try {
     const conversation = query({
@@ -74,6 +83,7 @@ async function main() {
       }
 
       if (message.type === "result") {
+        gotResult = true;
         if (message.subtype === "success") {
           const success = message as SDKResultSuccess;
           finalReply = success.result ?? "";
@@ -87,9 +97,15 @@ async function main() {
       }
     }
   } catch (err: any) {
-    exitCode = 1;
-    finalReply = `Agent error: ${err.message ?? String(err)}`;
-    log(`ERROR: ${finalReply}`);
+    // The SDK may throw "process exited with code 1" after yielding the
+    // result message. Only treat this as an error if we never got a result.
+    if (gotResult) {
+      finalReply = `Agent error: ${finalReply}`;
+    } else {
+      exitCode = 1;
+      finalReply = `Agent error: ${err.message ?? String(err)}`;
+      log(`ERROR: ${finalReply}`);
+    }
   }
 
   writeResult(finalReply, exitCode);
