@@ -139,24 +139,32 @@ export function createMuteworkerPlugin(
 
 /** A simple console logger for contexts without a dedicated logger (e.g. tool listing). */
 export const consoleLogger: MuteworkerPluginLogger = {
-  debug(message, data) { console.debug(message, ...(data ? [data] : [])); },
-  info(message, data) { console.info(message, ...(data ? [data] : [])); },
-  warn(message, data) { console.warn(message, ...(data ? [data] : [])); },
-  error(message, data) { console.error(message, ...(data ? [data] : [])); },
+  debug(message, data) {
+    console.debug(message, ...(data ? [data] : []));
+  },
+  info(message, data) {
+    console.info(message, ...(data ? [data] : []));
+  },
+  warn(message, data) {
+    console.warn(message, ...(data ? [data] : []));
+  },
+  error(message, data) {
+    console.error(message, ...(data ? [data] : []));
+  },
 };
 
 /** Create a {@link MuteworkerPluginContext}. `logger` is required to prevent accidental omission. */
 export function createMuteworkerPluginContext(opts: {
   gatekeeperInternalUrl: string;
   gatekeeperExternalUrl: string;
-  logger: MuteworkerPluginLogger;
+  logger?: MuteworkerPluginLogger;
   job: MuteworkerPluginJob;
   artifacts?: MuteworkerPluginArtifact[];
 }): MuteworkerPluginContext {
   return {
     gatekeeperInternalUrl: opts.gatekeeperInternalUrl,
     gatekeeperExternalUrl: opts.gatekeeperExternalUrl,
-    logger: opts.logger,
+    logger: opts.logger ?? consoleLogger,
     job: opts.job,
     artifacts: opts.artifacts ?? [],
   };

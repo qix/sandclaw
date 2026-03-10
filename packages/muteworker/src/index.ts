@@ -182,11 +182,9 @@ export async function muteworkerScript(
     await startMuteworker(options);
   });
 
-  cli
-    .command("tools", "List all available tools and exit")
-    .action(async () => {
-      await handleToolsCommand(options);
-    });
+  cli.command("tools", "List all available tools and exit").action(async () => {
+    await handleToolsCommand(options);
+  });
 
   cli
     .command(
@@ -224,7 +222,6 @@ async function handleToolsCommand(options: MuteworkerOptions): Promise<void> {
   const dummyCtx = createMuteworkerPluginContext({
     gatekeeperInternalUrl: "",
     gatekeeperExternalUrl: "",
-    logger: consoleLogger,
     job: { id: 0, jobType: "", data: "{}" },
   });
 
@@ -273,26 +270,18 @@ async function handleToolCommand(
     try {
       params = JSON.parse(optionsJson);
     } catch (e) {
-      console.error(
-        `Error: invalid JSON options: ${(e as Error).message}`,
-      );
+      console.error(`Error: invalid JSON options: ${(e as Error).message}`);
       process.exit(1);
     }
   }
 
   // Create a context with real gatekeeper URL for tools that call the API
-  const ctx: MuteworkerPluginContext = {
+  const ctx: MuteworkerPluginContext = createMuteworkerPluginContext({
     gatekeeperInternalUrl: config.gatekeeperInternalUrl,
     gatekeeperExternalUrl: config.gatekeeperExternalUrl,
-    logger: {
-      debug() {},
-      info() {},
-      warn() {},
-      error() {},
-    },
     job: { id: 0, jobType: "tool-cli", data: "{}" },
     artifacts: [],
-  };
+  });
 
   // Collect all tools across plugin factories
   let matchedTool: any = null;
