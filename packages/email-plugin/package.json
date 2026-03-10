@@ -1,0 +1,34 @@
+{
+  "name": "@sandclaw/email-plugin",
+  "version": "0.1.0",
+  "description": "Sandclaw Email plugin — send and receive emails via JMAP (Fastmail)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/email-plugin"
+  },
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/muteworker-plugin-api": "^0.1.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "typescript": "*"
+  }
+}

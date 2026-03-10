@@ -14,6 +14,7 @@ import { buildTelegramPlugin } from "@sandclaw/telegram-plugin";
 import { createObsidianPlugin } from "@sandclaw/obsidian-plugin";
 import { createGmailPlugin } from "@sandclaw/gmail-plugin";
 import { createBuilderPlugin } from "@sandclaw/builder-plugin";
+import { createEmailPlugin } from "@sandclaw/email-plugin";
 
 export type SandclawPlugin = GatekeeperPlugin &
   MuteworkerPlugin &
@@ -71,6 +72,11 @@ export const plugins: SandclawPlugin[] = [
       "-v",
       "/home/josh/code/sandclaw:/workspace/sandclaw",
     ],
+  }),
+  createEmailPlugin({
+    jmapHost: "api.fastmail.com",
+    apiToken: process.env.FASTMAIL_READ_API_TOKEN || "",
+    userEmail: process.env.FASTMAIL_EMAIL || "",
   }),
   createBrowserPlugin(),
 ];

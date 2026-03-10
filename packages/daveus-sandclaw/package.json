@@ -15,6 +15,7 @@
     "@sandclaw/gatekeeper": "^0.1.0",
     "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
     "@sandclaw/github-plugin": "^0.1.0",
+    "@sandclaw/email-plugin": "^0.1.0",
     "@sandclaw/gmail-plugin": "^0.1.0",
     "@sandclaw/google-maps-plugin": "^0.1.0",
     "@sandclaw/google-workspace-plugin": "^0.1.0",
