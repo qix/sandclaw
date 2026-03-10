@@ -17,7 +17,7 @@
     "@sandclaw/github-plugin": "^0.1.0",
     "@sandclaw/gmail-plugin": "^0.1.0",
     "@sandclaw/google-maps-plugin": "^0.1.0",
-    "@sandclaw/google-sheets-plugin": "^0.1.0",
+    "@sandclaw/google-workspace-plugin": "^0.1.0",
     "@sandclaw/memory-plugin": "^0.1.0",
     "@sandclaw/muteworker": "^0.1.0",
     "@sandclaw/muteworker-plugin-api": "^0.1.0",

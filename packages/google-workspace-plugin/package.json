@@ -1,11 +1,11 @@
 {
-  "name": "@sandclaw/google-sheets-plugin",
+  "name": "@sandclaw/google-workspace-plugin",
   "version": "0.1.0",
-  "description": "Sandclaw Google Sheets plugin — read/write access to Google Sheets spreadsheets",
+  "description": "Sandclaw Google Workspace plugin — expose the entire gws CLI (17 Google Workspace services) via read and exec tools with human-in-the-loop verification",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/qix/sandclaw.git",
-    "directory": "packages/google-sheets-plugin"
+    "directory": "packages/google-workspace-plugin"
   },
   "main": "src/index.tsx",
   "types": "src/index.tsx",
@@ -22,13 +22,17 @@
   },
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
-    "@sandclaw/muteworker-plugin-api": "^0.1.0"
+    "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "@sandclaw/confidante-plugin-api": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0",
+    "shell-quote": "^1.8.3"
   },
   "peerDependencies": {
     "react": "^18.0.0"
   },
   "devDependencies": {
     "@types/react": "*",
+    "@types/shell-quote": "^1.7.5",
     "typescript": "*"
   }
 }

@@ -7,13 +7,12 @@ import { createMemoryPlugin } from "@sandclaw/memory-plugin";
 import { createWebSearchPlugin } from "@sandclaw/web-search-plugin";
 import { createBrowserPlugin } from "@sandclaw/browser-plugin";
 import { createGithubPlugin } from "@sandclaw/github-plugin";
-//import { createGoogleSheetsPlugin } from "@sandclaw/google-sheets-plugin";
+import { createGoogleWorkspacePlugin } from "@sandclaw/google-workspace-plugin";
 import { createGoogleMapsPlugin } from "@sandclaw/google-maps-plugin";
 import { config } from "./config";
 import { buildTelegramPlugin } from "@sandclaw/telegram-plugin";
 import { createObsidianPlugin } from "@sandclaw/obsidian-plugin";
 import { createGmailPlugin } from "@sandclaw/gmail-plugin";
-import { createGoogleSheetsPlugin } from "@sandclaw/google-sheets-plugin";
 import { createBuilderPlugin } from "@sandclaw/builder-plugin";
 
 export type SandclawPlugin = GatekeeperPlugin &
@@ -55,7 +54,7 @@ export const plugins: SandclawPlugin[] = [
     autoPullPath: "/home/josh/code/daveus-sandclaw",
     autoPullRepo: "qix/daveus-sandclaw",
   }),
-  createGoogleSheetsPlugin({
+  createGoogleWorkspacePlugin({
     clientId: process.env.GOOGLE_CLIENT_ID || "",
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     refreshToken: process.env.GOOGLE_REFRESH_TOKEN || "",
