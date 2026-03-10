@@ -90,9 +90,7 @@ export function createReadTool(
       }
 
       // Format as a simple table
-      const rendered = values
-        .map((row: string[]) => row.join("\t"))
-        .join("\n");
+      const rendered = values.map((row: string[]) => row.join("\t")).join("\n");
 
       return {
         content: [

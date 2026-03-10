@@ -7,13 +7,15 @@
     "url": "git+https://github.com/qix/sandclaw.git",
     "directory": "packages/google-sheets-plugin"
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
   "files": [
     "dist"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json"
