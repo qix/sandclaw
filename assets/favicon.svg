@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" shape-rendering="geometricPrecision">
+  <defs>
+    <!-- Sand dune gradient: muted gold/sand metallic -->
+    <linearGradient id="duneGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#C4A96A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9E7E45;stop-opacity:1" />
+    </linearGradient>
+    <!-- Claw gradient: slate blue to charcoal -->
+    <linearGradient id="clawGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A6585;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2B3A4A;stop-opacity:1" />
+    </linearGradient>
+    <!-- Inner claw highlight -->
+    <linearGradient id="clawInner" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5B7A9E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3D5268;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- White background -->
+  <rect width="64" height="64" fill="#ffffff" rx="10"/>
+
+  <!-- === SAND DUNE (bottom geometric shape) === -->
+  <!-- Main dune arc: two peaks, clean geometric -->
+  <path d="M4 52 L14 38 L24 44 L32 30 L40 44 L50 38 L60 52 Z"
+        fill="url(#duneGrad)" opacity="0.95"/>
+  <!-- Dune shadow ridge -->
+  <path d="M4 52 L14 38 L24 44 L32 30 L40 44 L50 38 L60 52 L60 56 L4 56 Z"
+        fill="#8C6D35" opacity="0.3"/>
+
+  <!-- === CLAW / PINCER (upper geometric form) === -->
+
+  <!-- Upper jaw of claw — angled blade pointing upper-right -->
+  <path d="
+    M20 28
+    L28 10
+    L36 12
+    L32 16
+    L38 20
+    L30 32
+    Z"
+    fill="url(#clawGrad)"/>
+
+  <!-- Lower jaw of claw — angled blade pointing lower-right -->
+  <path d="
+    M20 28
+    L14 38
+    L22 40
+    L28 34
+    L38 38
+    L38 20
+    L30 24
+    Z"
+    fill="url(#clawGrad)"/>
+
+  <!-- Inner gap highlight (the open bite of the claw) -->
+  <path d="
+    M30 24
+    L38 20
+    L38 38
+    L30 32
+    Z"
+    fill="url(#clawInner)" opacity="0.55"/>
+
+  <!-- Claw tip accent — sharp metallic highlight on upper jaw -->
+  <path d="M28 10 L36 12 L32 16 Z" fill="#C4A96A" opacity="0.85"/>
+
+  <!-- Knuckle base circle -->
+  <circle cx="21" cy="28" r="4.5" fill="#2B3A4A"/>
+  <circle cx="21" cy="28" r="2.5" fill="#4A6585"/>
+
+  <!-- Rim highlight on upper blade edge -->
+  <path d="M28 10 L36 12" stroke="#E8D49A" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
+
+</svg>

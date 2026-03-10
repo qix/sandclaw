@@ -1,5 +1,8 @@
 import React, { createElement } from "react";
 import { renderToString } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import type { Knex } from "knex";
@@ -201,7 +204,23 @@ export async function startGatekeeper(
   // 5. Form-action routes for the Verifications page
   registerVerificationFormRoutes(app, db, notifyVerificationChange);
 
-  // 6. SSR — render the React shell on every GET
+  // 6. Favicon
+  const faviconPath = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../assets/favicon.svg",
+  );
+  const faviconSvg = readFileSync(faviconPath, "utf-8");
+  app.get("/favicon.svg", (c) => {
+    return c.body(faviconSvg, {
+      headers: {
+        "Content-Type": "image/svg+xml",
+        "Cache-Control": "public, max-age=86400",
+      },
+    });
+  });
+  app.get("/favicon.ico", (c) => c.redirect("/favicon.svg", 301));
+
+  // 7. SSR — render the React shell on every GET
   app.get("/*", async (c) => {
     const activePage = c.req.query("page") ?? "verifications";
 

@@ -44,6 +44,7 @@ export function App({
           <meta charSet="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <title>Sandclaw Gatekeeper</title>
+          <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
           <style dangerouslySetInnerHTML={{ __html: getGlobalStyles() }} />
         </head>
         <body>
