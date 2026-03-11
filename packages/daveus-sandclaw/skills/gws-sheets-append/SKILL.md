@@ -11,9 +11,11 @@ metadata:
 
 # sheets +append
 
-> **PREREQUISITE:** Read `../gws-shared/SKILL.md` for auth, global flags, and security rules. If missing, run `gws generate-skills` to create it.
+> **PREREQUISITE:** Read `../gws-shared/SKILL.md` for global flags, and security rules.
 
-Append a row to a spreadsheet
+Append a row to a spreadsheet.
+
+If you are not sure of the column names, please read the existing spreadsheet first.
 
 ## Usage
 

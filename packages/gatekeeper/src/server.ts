@@ -130,11 +130,19 @@ export async function startGatekeeper(
     },
   };
 
+  let notifyImpl: (() => void) | undefined;
+  const notifyService: NotifyService = {
+    notifyCountChange() {
+      notifyImpl?.();
+    },
+  };
+
   const services = new Map<string, any>();
   services.set("core.db", db);
   services.set("core.hooks", hooksService);
   services.set("core.components", componentsService);
   services.set("core.ws", wsService);
+  services.set("core.notify", notifyService);
 
   const initFns: Array<() => void | Promise<void>> = [];
   for (const plugin of plugins) {
@@ -227,12 +235,7 @@ export async function startGatekeeper(
     }
   }
 
-  const notifyService: NotifyService = {
-    notifyCountChange() {
-      broadcastChatUnreadCount();
-    },
-  };
-  services.set("core.notify", notifyService);
+  notifyImpl = () => broadcastChatUnreadCount();
 
   // Poll every 2s to detect plugin-side inserts without requiring plugin changes
   setInterval(() => {
