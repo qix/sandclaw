@@ -24,8 +24,8 @@ const workDir = "/home/josh/code/daveus-sandclaw-workdir";
 
 export const plugins: SandclawPlugin[] = [
   // Core plugins (work out of the box)
-  createPromptsPlugin({ promptsDir: "./prompts" }),
-  createMemoryPlugin({ memoryDir: "./memory" }),
+  createPromptsPlugin({ promptsDir: config.promptsDir }),
+  createMemoryPlugin({ memoryDir: config.memoryDir }),
 
   buildChatPlugin(),
   /*
