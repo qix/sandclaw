@@ -7,3 +7,5 @@ export { Input } from "./components/Input";
 export { ConversationList } from "./components/ConversationList";
 export type { ConversationSummary } from "./components/ConversationList";
 export { PageHeader } from "./components/PageHeader";
+export { generateFileEditorScript } from "./fileEditorScript";
+export type { FileEditorConfig } from "./fileEditorScript";

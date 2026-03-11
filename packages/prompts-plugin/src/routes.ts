@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import path from "node:path";
+import { generateFileEditorScript } from "@sandclaw/ui";
 
 /**
  * Recursively list all files under `dirPath`, returning paths relative to it.
@@ -33,6 +34,21 @@ function validateRelativePath(inputPath: string, rootDir: string): string {
 }
 
 export function registerRoutes(app: any, promptsDir: string) {
+  // GET /client.js — serve the file-editor client script
+  const clientJs = generateFileEditorScript({
+    prefix: "prompts",
+    apiBase: "/api/prompts",
+    newFilePrompt: "New prompt file name (e.g. CONTEXT.md):",
+    emptyMessage: "No prompt files yet",
+  });
+
+  app.get("/client.js", (c: any) => {
+    return c.body(clientJs, 200, {
+      "Content-Type": "application/javascript",
+      "Cache-Control": "no-cache",
+    });
+  });
+
   // GET /files — list all prompt files
   app.get("/files", async (c: any) => {
     const files = await listDir(promptsDir).catch((error) => {
