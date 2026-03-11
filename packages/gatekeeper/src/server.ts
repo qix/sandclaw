@@ -258,18 +258,18 @@ export async function startGatekeeper(
   // 6. Favicon
   const faviconPath = resolve(
     dirname(fileURLToPath(import.meta.url)),
-    "../../../assets/favicon.svg",
+    "../../../assets/favicon.jpg",
   );
-  const faviconSvg = readFileSync(faviconPath, "utf-8");
-  app.get("/favicon.svg", (c) => {
-    return c.body(faviconSvg, {
+  const faviconBuf = readFileSync(faviconPath);
+  app.get("/favicon.jpg", (c) => {
+    return c.body(faviconBuf, {
       headers: {
-        "Content-Type": "image/svg+xml",
+        "Content-Type": "image/jpeg",
         "Cache-Control": "public, max-age=86400",
       },
     });
   });
-  app.get("/favicon.ico", (c) => c.redirect("/favicon.svg", 301));
+  app.get("/favicon.ico", (c) => c.redirect("/favicon.jpg", 301));
 
   // 7. SSR — render the React shell on every GET
   app.get("/*", async (c) => {
