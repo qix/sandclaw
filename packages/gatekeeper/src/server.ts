@@ -109,14 +109,24 @@ export async function startGatekeeper(
     ComponentType<VerificationRendererProps>
   > = {};
 
-  // WebSocket upgrade handlers collected from plugins
-  const wsUpgradeHandlers = new Map<
+  // Plugin WS message handlers (prefix → handler) and connect hooks
+  const wsMessageHandlers = new Map<
     string,
-    (req: any, socket: any, head: Buffer) => void
+    (ws: WebSocket, data: any) => void
   >();
+  const wsConnectHandlers: Array<(ws: WebSocket) => void> = [];
   const wsService: WebSocketService = {
-    onUpgrade(path, handler) {
-      wsUpgradeHandlers.set(path, handler);
+    onMessage(prefix, handler) {
+      wsMessageHandlers.set(prefix, handler);
+    },
+    broadcast(data) {
+      const msg = JSON.stringify(data);
+      for (const client of coreClients) {
+        if (client.readyState === WebSocket.OPEN) client.send(msg);
+      }
+    },
+    onConnect(handler) {
+      wsConnectHandlers.push(handler);
     },
   };
 
@@ -448,18 +458,33 @@ export async function startGatekeeper(
         lastBroadcastChatUnread = chatUnread;
         ws.send(JSON.stringify({ type: "chat_unread_count", count: chatUnread }));
 
+        // Route prefixed messages to plugin handlers
+        ws.on("message", (raw) => {
+          try {
+            const data = JSON.parse(String(raw));
+            if (data.type && typeof data.type === "string") {
+              const colonIdx = data.type.indexOf(":");
+              if (colonIdx > 0) {
+                const prefix = data.type.slice(0, colonIdx);
+                const msgHandler = wsMessageHandlers.get(prefix);
+                if (msgHandler) msgHandler(ws, data);
+              }
+            }
+          } catch {}
+        });
+
+        // Notify plugin connect hooks
+        for (const handler of wsConnectHandlers) {
+          handler(ws);
+        }
+
         ws.on("close", () => coreClients.delete(ws));
       });
       return;
     }
 
-    // Plugin WebSocket handlers
-    const handler = wsUpgradeHandlers.get(url.pathname);
-    if (handler) {
-      handler(req, socket, head);
-    } else {
-      socket.destroy();
-    }
+    // No matching path — destroy
+    socket.destroy();
   });
 
   // Fire start hooks (after server is accepting connections)

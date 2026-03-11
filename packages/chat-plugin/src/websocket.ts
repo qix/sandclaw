@@ -1,18 +1,9 @@
-import { WebSocketServer, type WebSocket } from "ws";
-import type { NotifyService } from "@sandclaw/gatekeeper-plugin-api";
-import { chatState, broadcast } from "./state";
+import type {
+  NotifyService,
+  WebSocketService,
+} from "@sandclaw/gatekeeper-plugin-api";
 
 export type DbHandle = any;
-
-let wss: WebSocketServer | null = null;
-
-/** Get or create the WebSocketServer (noServer mode). */
-function getWss(): WebSocketServer {
-  if (!wss) {
-    wss = new WebSocketServer({ noServer: true });
-  }
-  return wss;
-}
 
 /** Conversation ID for the chat thread, lazily resolved. */
 let conversationId: number | null = null;
@@ -54,6 +45,25 @@ async function getRecentHistory(db: DbHandle, limit = 50) {
   }));
 }
 
+/** Compute current unread message count. */
+export async function getUnreadCount(db: DbHandle): Promise<number> {
+  const kvRow = await db("plugin_kv")
+    .where({ plugin: "chat", key: "last_read_message_id" })
+    .first();
+  const lastReadId = kvRow ? Number(kvRow.value) : 0;
+
+  const convRow = await db("conversations")
+    .where({ plugin: "chat", channel: "chat", external_id: "operator" })
+    .first();
+  if (!convRow) return 0;
+
+  const [{ count }] = await db("conversation_message")
+    .where("conversation_id", convRow.id)
+    .where("id", ">", lastReadId)
+    .count("* as count");
+  return Number(count);
+}
+
 /** Store a message and return its DB row data. */
 export async function storeMessage(
   db: DbHandle,
@@ -91,56 +101,40 @@ async function enqueueJob(db: DbHandle, text: string, history: any[]) {
   });
 }
 
-/** Handle a WebSocket upgrade request. */
-export function handleUpgrade(db: DbHandle, notify: NotifyService) {
-  return (req: any, socket: any, head: Buffer) => {
-    const server = getWss();
-    server.handleUpgrade(req, socket, head, (ws) => {
-      server.emit("connection", ws, req);
-      onConnection(ws, db, notify);
-    });
-  };
-}
-
-function onConnection(ws: WebSocket, db: DbHandle, notify: NotifyService) {
-  chatState.clients.add(ws);
-
-  // Send history on connect
+/** Called when a new WS client connects — sends chat history. */
+export function onChatConnect(ws: any, db: DbHandle) {
   getRecentHistory(db)
     .then((messages) => {
       if (ws.readyState === ws.OPEN) {
-        ws.send(JSON.stringify({ type: "history", messages }));
+        ws.send(JSON.stringify({ type: "chat-plugin:history", messages }));
       }
     })
     .catch(() => {});
+}
 
-  ws.on("message", async (raw) => {
-    try {
-      const data = JSON.parse(String(raw));
-      if (data.type === "message" && data.text) {
-        const msg = await storeMessage(db, "inbound", "operator", data.text);
-        broadcast({ type: "message", ...msg });
-        notify.notifyCountChange();
+/** Called when a `chat-plugin:message` WS message arrives from a client. */
+export async function onChatMessage(
+  _ws: any,
+  data: any,
+  db: DbHandle,
+  pipe: WebSocketService,
+  notify: NotifyService,
+) {
+  if (data.type !== "chat-plugin:message" || !data.text) return;
 
-        // Build history for the agent
-        const history = await getRecentHistory(db, 20);
-        const agentHistory = history.slice(0, -1).map((m: any) => ({
-          role:
-            m.direction === "inbound"
-              ? ("user" as const)
-              : ("assistant" as const),
-          text: m.text,
-          timestamp: m.timestamp,
-        }));
+  const msg = await storeMessage(db, "inbound", "operator", data.text);
+  const unread = await getUnreadCount(db);
+  pipe.broadcast({ type: "chat-plugin:message", unread, message: msg });
+  notify.notifyCountChange();
 
-        await enqueueJob(db, data.text, agentHistory);
-      }
-    } catch {
-      // Ignore malformed messages
-    }
-  });
+  // Build history for the agent
+  const history = await getRecentHistory(db, 20);
+  const agentHistory = history.slice(0, -1).map((m: any) => ({
+    role:
+      m.direction === "inbound" ? ("user" as const) : ("assistant" as const),
+    text: m.text,
+    timestamp: m.timestamp,
+  }));
 
-  ws.on("close", () => {
-    chatState.clients.delete(ws);
-  });
+  await enqueueJob(db, data.text, agentHistory);
 }

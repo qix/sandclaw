@@ -1,9 +1,16 @@
-import type { NotifyService } from "@sandclaw/gatekeeper-plugin-api";
-import { storeMessage } from "./websocket";
-import { broadcast } from "./state";
+import type {
+  NotifyService,
+  WebSocketService,
+} from "@sandclaw/gatekeeper-plugin-api";
+import { storeMessage, getUnreadCount } from "./websocket";
 
-export function registerRoutes(app: any, db: any, notify: NotifyService) {
-  // POST /send — store an outbound message and broadcast via WebSocket
+export function registerRoutes(
+  app: any,
+  db: any,
+  ws: WebSocketService,
+  notify: NotifyService,
+) {
+  // POST /send — store an outbound message and broadcast via WebSocket pipe
   app.post("/send", async (c: any) => {
     const body = await c.req.json();
     const { text } = body;
@@ -13,7 +20,8 @@ export function registerRoutes(app: any, db: any, notify: NotifyService) {
     }
 
     const msg = await storeMessage(db, "outbound", "agent", text);
-    broadcast({ type: "message", ...msg });
+    const unread = await getUnreadCount(db);
+    ws.broadcast({ type: "chat-plugin:message", unread, message: msg });
     notify.notifyCountChange();
 
     return c.json({ success: true, messageId: msg.id });

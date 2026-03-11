@@ -135,7 +135,7 @@ export function ChatPanel() {
 
   function connect() {
     var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(proto + '//' + location.host + '/api/chat/ws');
+    ws = new WebSocket(proto + '//' + location.host + '/api/gatekeeper/ws');
 
     ws.onopen = function() {
       connected = true;
@@ -170,7 +170,7 @@ export function ChatPanel() {
     ws.onmessage = function(e) {
       try {
         var data = JSON.parse(e.data);
-        if (data.type === 'history') {
+        if (data.type === 'chat-plugin:history') {
           messagesEl.innerHTML = '';
           if (data.messages && data.messages.length) {
             data.messages.forEach(function(msg) {
@@ -185,14 +185,14 @@ export function ChatPanel() {
           }
           scrollToBottom();
           debouncedMarkRead();
-        } else if (data.type === 'message') {
+        } else if (data.type === 'chat-plugin:message' && data.message) {
           // Remove "no messages" placeholder if present
           var placeholder = messagesEl.querySelector('p');
           if (placeholder && placeholder.textContent.indexOf('No messages') >= 0) {
             placeholder.remove();
           }
-          messagesEl.appendChild(renderMessage(data));
-          if (data.id > latestMessageId) latestMessageId = data.id;
+          messagesEl.appendChild(renderMessage(data.message));
+          if (data.message.id > latestMessageId) latestMessageId = data.message.id;
           var wasAtBottom = isAtBottom();
           scrollToBottom();
           if (wasAtBottom) debouncedMarkRead();
@@ -219,7 +219,7 @@ export function ChatPanel() {
   function sendMessage() {
     var text = input.value.trim();
     if (!text || !connected) return;
-    ws.send(JSON.stringify({ type: 'message', text: text }));
+    ws.send(JSON.stringify({ type: 'chat-plugin:message', text: text }));
     input.value = '';
     autoResize();
   }

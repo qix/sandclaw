@@ -10,7 +10,7 @@ import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
 import { Badge } from "@sandclaw/ui";
 import { ChatPanel, ChatVerificationRenderer } from "./components";
 import { registerRoutes } from "./routes";
-import { handleUpgrade } from "./websocket";
+import { onChatConnect, onChatMessage } from "./websocket";
 import { createSendChatTool } from "./tools";
 import { createChatJobHandlers } from "./jobHandlers";
 
@@ -87,9 +87,12 @@ export function buildChatPlugin() {
           components.register("tabs:channels", ChatTab);
           components.register("page:chat", ChatPanel);
 
-          routes.registerRoutes((app) => registerRoutes(app, db, notify));
+          routes.registerRoutes((app) => registerRoutes(app, db, ws, notify));
 
-          ws.onUpgrade("/api/chat/ws", handleUpgrade(db, notify));
+          ws.onConnect((client) => onChatConnect(client, db));
+          ws.onMessage("chat-plugin", (client, data) =>
+            onChatMessage(client, data, db, ws, notify),
+          );
         },
       });
     },
