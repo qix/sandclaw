@@ -217,7 +217,7 @@ export async function connectWhatsApp(
         await db("safe_queue").insert({
           job_type: "whatsapp:incoming_message",
           data: JSON.stringify(payload),
-          context: JSON.stringify({ channel: "whatsapp", jid }),
+          context: JSON.stringify({ channel: "whatsapp", jid, conversationId }),
           status: "pending",
           created_at: now,
           updated_at: now,

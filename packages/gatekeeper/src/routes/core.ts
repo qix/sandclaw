@@ -248,6 +248,114 @@ export function registerCoreRoutes(
     });
   });
 
+  // GET /api/conversations/:id/messages — fetch conversation history
+  app.get("/api/conversations/:id/messages", async (c) => {
+    const id = parseInt(c.req.param("id"), 10);
+    if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
+
+    const limitParam = parseInt(c.req.query("limit") || "50", 10);
+    const limit = Math.min(200, Math.max(1, limitParam || 50));
+
+    const rows = await db("conversation_message")
+      .where("conversation_id", id)
+      .orderBy("timestamp", "asc")
+      .limit(limit);
+
+    return c.json({
+      messages: rows.map((r: any) => ({
+        id: r.id,
+        from: r.from,
+        to: r.to,
+        direction: r.direction,
+        text: r.text,
+        timestamp: r.timestamp,
+      })),
+    });
+  });
+
+  // POST /api/confidante/result — receive a confidante exec result, build context, enqueue to safe_queue
+  app.post("/api/confidante/result", async (c) => {
+    const body = await c.req.json<{
+      requestId?: string;
+      result?: string;
+      originContext?: {
+        safeQueueContext?: Record<string, unknown>;
+        userMessage?: string;
+      };
+    }>();
+
+    if (!body.requestId)
+      return c.json({ error: "requestId is required" }, 400);
+    if (!body.result) return c.json({ error: "result is required" }, 400);
+
+    const sqCtx = (body.originContext?.safeQueueContext ?? {}) as Record<
+      string,
+      unknown
+    >;
+    const conversationId =
+      typeof sqCtx.conversationId === "number" ? sqCtx.conversationId : null;
+    const channel =
+      typeof sqCtx.channel === "string" ? sqCtx.channel : null;
+
+    const promptParts: string[] = [];
+
+    // Fetch conversation history if we have a conversationId
+    if (conversationId) {
+      const messages = await db("conversation_message")
+        .where("conversation_id", conversationId)
+        .orderBy("timestamp", "asc")
+        .limit(20);
+
+      if (messages.length > 0) {
+        promptParts.push("--- Conversation History ---");
+        for (const m of messages as any[]) {
+          const role = m.direction === "inbound" ? "User" : "Assistant";
+          const ts = new Date(m.timestamp * 1000).toISOString();
+          promptParts.push(`[${ts}] ${role}: ${m.text}`);
+        }
+        promptParts.push("--- End History ---", "");
+      }
+    }
+
+    promptParts.push(
+      "--- Confidante Exec Result ---",
+      `Request ID: ${body.requestId}`,
+    );
+
+    if (body.originContext?.userMessage) {
+      promptParts.push(
+        "",
+        `The user originally asked: "${body.originContext.userMessage}"`,
+      );
+    }
+
+    promptParts.push("", body.result, "------------------------------------");
+
+    if (channel) {
+      promptParts.push(
+        "",
+        `Reply to the user via the ${channel} channel with a concise summary of the result.`,
+      );
+    }
+
+    const prompt = promptParts.join("\n");
+    const context = body.originContext?.safeQueueContext
+      ? JSON.stringify(body.originContext.safeQueueContext)
+      : null;
+    const now = Date.now();
+
+    const [jobId] = await db("safe_queue").insert({
+      job_type: "confidante:result",
+      data: prompt,
+      ...(context ? { context } : {}),
+      status: "pending",
+      created_at: now,
+      updated_at: now,
+    });
+
+    return c.json({ success: true, jobId });
+  });
+
   // POST /api/confidante-queue/complete — mark a confidante job as complete
   app.post("/api/confidante-queue/complete", async (c) => {
     const body = await c.req.json<{ id: number; result?: string }>();

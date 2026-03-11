@@ -11,7 +11,6 @@ import {
 } from "./components";
 import { registerRoutes } from "./routes";
 import { createReadTool, createExecTool } from "./tools";
-import { gwsJobHandlers } from "./jobHandlers";
 import { createGwsConfidanteHandlers } from "./confidanteHandlers";
 
 export type { GoogleWorkspacePluginConfig } from "./gwsClient";
@@ -28,7 +27,6 @@ export function createGoogleWorkspacePlugin(
     id: "google-workspace" as const,
     verificationRenderer: GoogleWorkspaceVerificationRenderer,
 
-    jobHandlers: gwsJobHandlers,
     confidanteHandlers: createGwsConfidanteHandlers(config),
 
     registerGateway(env: PluginEnvironment) {

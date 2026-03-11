@@ -13,6 +13,7 @@ export function registerRoutes(app: any, db: any) {
       command?: string;
       description?: string;
       responseJobType?: string;
+      originContext?: Record<string, unknown>;
     };
 
     if (!body.command) return c.json({ error: "command is required" }, 400);
@@ -29,6 +30,7 @@ export function registerRoutes(app: any, db: any) {
       description: body.description,
       responseJobType,
       createdAt: new Date(now).toISOString(),
+      ...(body.originContext ? { originContext: body.originContext } : {}),
     };
 
     const [id] = await db("verification_requests").insert({
@@ -70,6 +72,9 @@ export function registerRoutes(app: any, db: any) {
         requestId: verificationData.requestId,
         command: verificationData.command,
         responseJobType: verificationData.responseJobType,
+        ...(verificationData.originContext
+          ? { originContext: verificationData.originContext }
+          : {}),
       }),
       status: "pending",
       created_at: now,
@@ -81,34 +86,5 @@ export function registerRoutes(app: any, db: any) {
       .update({ status: "approved", updated_at: now });
 
     return c.json({ success: true, requestId: verificationData.requestId });
-  });
-
-  // POST /result — confidante posts exec results back
-  app.post("/result", async (c: any) => {
-    const body = (await c.req.json()) as {
-      requestId: string;
-      responseJobType?: string;
-      result: string;
-    };
-
-    if (!body.requestId)
-      return c.json({ error: "requestId is required" }, 400);
-    if (!body.result) return c.json({ error: "result is required" }, 400);
-
-    const jobType = body.responseJobType || GWS_RESULT_JOB_TYPE;
-    const now = Date.now();
-
-    const [jobId] = await db("safe_queue").insert({
-      job_type: jobType,
-      data: JSON.stringify({
-        requestId: body.requestId,
-        result: body.result,
-      }),
-      status: "pending",
-      created_at: now,
-      updated_at: now,
-    });
-
-    return c.json({ success: true, jobId });
   });
 }

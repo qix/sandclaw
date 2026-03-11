@@ -90,11 +90,11 @@ export async function storeMessage(
 }
 
 /** Enqueue a safe_queue job for muteworker processing. */
-async function enqueueJob(db: DbHandle, text: string, history: any[]) {
+async function enqueueJob(db: DbHandle, text: string, history: any[], convId: number) {
   await db("safe_queue").insert({
     job_type: "chat:incoming_message",
     data: JSON.stringify({ text, history }),
-    context: JSON.stringify({ channel: "chat" }),
+    context: JSON.stringify({ channel: "chat", conversationId: convId }),
     status: "pending",
     created_at: Date.now(),
     updated_at: Date.now(),
@@ -136,5 +136,6 @@ export async function onChatMessage(
     timestamp: m.timestamp,
   }));
 
-  await enqueueJob(db, data.text, agentHistory);
+  const convId = await getOrCreateConversationId(db);
+  await enqueueJob(db, data.text, agentHistory, convId);
 }

@@ -6,6 +6,7 @@ interface GwsExecPayload {
   requestId: string;
   command: string[];
   responseJobType?: string;
+  originContext?: { safeQueueContext?: unknown; userMessage?: string };
 }
 
 export function createGwsConfidanteHandlers(
@@ -26,6 +27,7 @@ export function createGwsConfidanteHandlers(
         requestId,
         command,
         responseJobType = GWS_RESULT_JOB_TYPE,
+        originContext,
       } = payload;
 
       ctx.logger.info("gws.exec.executing", {
@@ -66,7 +68,7 @@ export function createGwsConfidanteHandlers(
       const result = resultParts.join("\n");
 
       const response = await fetch(
-        `${ctx.gatekeeperInternalUrl}/api/google-workspace/result`,
+        `${ctx.gatekeeperInternalUrl}/api/confidante/result`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -74,6 +76,7 @@ export function createGwsConfidanteHandlers(
             requestId,
             responseJobType,
             result,
+            ...(originContext ? { originContext } : {}),
           }),
         },
       );
