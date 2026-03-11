@@ -101,8 +101,8 @@ export function ChatPanel() {
   var messagesEl = document.getElementById('chat-messages');
   var form = document.getElementById('chat-form');
   var input = document.getElementById('chat-input');
-  var ws = null;
-  var connected = false;
+  var latestMessageId = 0;
+  var markReadTimer = null;
 
   function escapeHtml(str) {
     var div = document.createElement('div');
@@ -133,82 +133,58 @@ export function ChatPanel() {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  function connect() {
-    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(proto + '//' + location.host + '/api/gatekeeper/ws');
-
-    ws.onopen = function() {
-      connected = true;
-    };
-
-    var latestMessageId = 0;
-    var markReadTimer = null;
-
-    function isAtBottom() {
-      return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 50;
-    }
-
-    function markRead() {
-      if (latestMessageId > 0) {
-        fetch('/api/chat/mark-read', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messageId: latestMessageId })
-        }).catch(function() {});
-      }
-    }
-
-    function debouncedMarkRead() {
-      if (markReadTimer) clearTimeout(markReadTimer);
-      markReadTimer = setTimeout(markRead, 300);
-    }
-
-    messagesEl.addEventListener('scroll', function() {
-      if (isAtBottom()) debouncedMarkRead();
-    });
-
-    ws.onmessage = function(e) {
-      try {
-        var data = JSON.parse(e.data);
-        if (data.type === 'chat-plugin:history') {
-          messagesEl.innerHTML = '';
-          if (data.messages && data.messages.length) {
-            data.messages.forEach(function(msg) {
-              messagesEl.appendChild(renderMessage(msg));
-              if (msg.id > latestMessageId) latestMessageId = msg.id;
-            });
-          } else {
-            var p = document.createElement('p');
-            p.style.cssText = 'color:${colors.muted};font-size:0.875rem;text-align:center;margin:auto 0;';
-            p.textContent = 'No messages yet. Start a conversation!';
-            messagesEl.appendChild(p);
-          }
-          scrollToBottom();
-          debouncedMarkRead();
-        } else if (data.type === 'chat-plugin:message' && data.message) {
-          // Remove "no messages" placeholder if present
-          var placeholder = messagesEl.querySelector('p');
-          if (placeholder && placeholder.textContent.indexOf('No messages') >= 0) {
-            placeholder.remove();
-          }
-          messagesEl.appendChild(renderMessage(data.message));
-          if (data.message.id > latestMessageId) latestMessageId = data.message.id;
-          var wasAtBottom = isAtBottom();
-          scrollToBottom();
-          if (wasAtBottom) debouncedMarkRead();
-        }
-      } catch(err) {}
-    };
-
-    ws.onclose = function() {
-      connected = false;
-      setTimeout(connect, 2000);
-    };
-
-    ws.onerror = function() {
-      ws.close();
-    };
+  function isAtBottom() {
+    return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 50;
   }
+
+  function markRead() {
+    if (latestMessageId > 0) {
+      fetch('/api/chat/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId: latestMessageId })
+      }).catch(function() {});
+    }
+  }
+
+  function debouncedMarkRead() {
+    if (markReadTimer) clearTimeout(markReadTimer);
+    markReadTimer = setTimeout(markRead, 300);
+  }
+
+  messagesEl.addEventListener('scroll', function() {
+    if (isAtBottom()) debouncedMarkRead();
+  });
+
+  document.addEventListener('sc:ws:message', function(e) {
+    var data = e.detail;
+    if (data.type === 'chat-plugin:history') {
+      messagesEl.innerHTML = '';
+      if (data.messages && data.messages.length) {
+        data.messages.forEach(function(msg) {
+          messagesEl.appendChild(renderMessage(msg));
+          if (msg.id > latestMessageId) latestMessageId = msg.id;
+        });
+      } else {
+        var p = document.createElement('p');
+        p.style.cssText = 'color:${colors.muted};font-size:0.875rem;text-align:center;margin:auto 0;';
+        p.textContent = 'No messages yet. Start a conversation!';
+        messagesEl.appendChild(p);
+      }
+      scrollToBottom();
+      debouncedMarkRead();
+    } else if (data.type === 'chat-plugin:message' && data.message) {
+      var placeholder = messagesEl.querySelector('p');
+      if (placeholder && placeholder.textContent.indexOf('No messages') >= 0) {
+        placeholder.remove();
+      }
+      messagesEl.appendChild(renderMessage(data.message));
+      if (data.message.id > latestMessageId) latestMessageId = data.message.id;
+      var wasAtBottom = isAtBottom();
+      scrollToBottom();
+      if (wasAtBottom) debouncedMarkRead();
+    }
+  });
 
   function autoResize() {
     input.style.height = 'auto';
@@ -218,8 +194,8 @@ export function ChatPanel() {
 
   function sendMessage() {
     var text = input.value.trim();
-    if (!text || !connected) return;
-    ws.send(JSON.stringify({ type: 'chat-plugin:message', text: text }));
+    if (!text || !window.__scWs) return;
+    window.__scWs.send({ type: 'chat-plugin:message', text: text });
     input.value = '';
     autoResize();
   }
@@ -237,8 +213,6 @@ export function ChatPanel() {
     e.preventDefault();
     sendMessage();
   });
-
-  connect();
 })();
 `,
         }}

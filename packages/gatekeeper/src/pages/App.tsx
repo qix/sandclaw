@@ -258,17 +258,33 @@ export function App({
       if (badgeEl) badgeEl.style.display = count > 0 ? '' : 'none';
     }
   }
+  window.__scWs = {
+    send: function(data) {
+      if (window.__scWs._raw && window.__scWs._raw.readyState === 1) {
+        window.__scWs._raw.send(typeof data === 'string' ? data : JSON.stringify(data));
+      }
+    },
+    _raw: null
+  };
   function connect() {
     var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     var ws = new WebSocket(proto + '//' + location.host + '/api/gatekeeper/ws');
+    window.__scWs._raw = ws;
+    ws.onopen = function() {
+      document.dispatchEvent(new CustomEvent('sc:ws:open'));
+    };
     ws.onmessage = function(e) {
       try {
         var msg = JSON.parse(e.data);
         if (msg.type === 'verification_count') update(msg.count);
         if (msg.type === 'chat_unread_count') updateChat(msg.count);
+        document.dispatchEvent(new CustomEvent('sc:ws:message', { detail: msg }));
       } catch(err) {}
     };
-    ws.onclose = function() { setTimeout(connect, 2000); };
+    ws.onclose = function() {
+      document.dispatchEvent(new CustomEvent('sc:ws:close'));
+      setTimeout(connect, 2000);
+    };
   }
   connect();
 })();`,
