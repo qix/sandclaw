@@ -75,11 +75,7 @@ async function discoverSession(
 
   // Fetch mailbox IDs
   const mbRes = await jmapCallRaw(session.apiUrl, config.apiToken, [
-    [
-      "Mailbox/get",
-      { accountId, properties: ["id", "name", "role"] },
-      "mb",
-    ],
+    ["Mailbox/get", { accountId, properties: ["id", "name", "role"] }, "mb"],
   ]);
 
   const mailboxes =
@@ -111,7 +107,7 @@ function invalidateSession(): void {
 const JMAP_USING = [
   "urn:ietf:params:jmap:core",
   "urn:ietf:params:jmap:mail",
-  "urn:ietf:params:jmap:submission",
+  // "urn:ietf:params:jmap:submission",
 ];
 
 async function jmapCallRaw(
@@ -242,6 +238,61 @@ export async function getEmails(
   });
 }
 
+/** Query recent inbox email IDs (up to `limit`, default 25). */
+export async function queryInboxEmails(
+  config: EmailPluginConfig,
+  limit = 25,
+): Promise<JmapEmail[]> {
+  const session = await discoverSession(config);
+
+  const result = await jmapCall(config, [
+    [
+      "Email/query",
+      {
+        accountId: session.accountId,
+        filter: { inMailbox: session.inboxId },
+        sort: [{ property: "receivedAt", isAscending: false }],
+        limit,
+      },
+      "q",
+    ],
+  ]);
+
+  const response = result.methodResponses.find((r) => r[2] === "q");
+  const ids = (response?.[1]?.ids as string[]) ?? [];
+  if (ids.length === 0) return [];
+
+  return getEmails(config, ids);
+}
+
+/** Search emails by text query. Returns up to `limit` results (default 25). */
+export async function searchEmails(
+  config: EmailPluginConfig,
+  query: string,
+  limit = 25,
+): Promise<JmapEmail[]> {
+  const session = await discoverSession(config);
+
+  const result = await jmapCall(config, [
+    [
+      "Email/query",
+      {
+        accountId: session.accountId,
+        filter: { text: query },
+        sort: [{ property: "receivedAt", isAscending: false }],
+        limit,
+      },
+      "q",
+    ],
+  ]);
+
+  const response = result.methodResponses.find((r) => r[2] === "q");
+  const ids = (response?.[1]?.ids as string[]) ?? [];
+  if (ids.length === 0) return [];
+
+  return getEmails(config, ids);
+}
+
 /** Send an email via JMAP (create draft + submit in one request). */
 export async function sendEmail(
   config: EmailPluginConfig,
@@ -290,8 +341,7 @@ export async function sendEmail(
 
   // Extract created email ID
   const createResponse = result.methodResponses.find((r) => r[2] === "c");
-  const createdId =
-    createResponse?.[1]?.created?.draft?.id ?? "";
+  const createdId = createResponse?.[1]?.created?.draft?.id ?? "";
 
   return { messageId: createdId };
 }
@@ -311,10 +361,6 @@ export async function markAsRead(
   }
 
   await jmapCall(config, [
-    [
-      "Email/set",
-      { accountId: session.accountId, update },
-      "r",
-    ],
+    ["Email/set", { accountId: session.accountId, update }, "r"],
   ]);
 }

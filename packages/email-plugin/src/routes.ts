@@ -1,6 +1,8 @@
 import {
   sendEmail,
   queryUnseenEmails,
+  queryInboxEmails,
+  searchEmails,
   getEmails,
   markAsRead,
   type EmailPluginConfig,
@@ -152,6 +154,70 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
     });
 
     return c.json({ success: true, jobId });
+  });
+
+  // GET /inbox — list recent inbox emails (subjects + IDs)
+  app.get("/inbox", async (c: any) => {
+    try {
+      const limit = parseInt(c.req.query("limit") ?? "25", 10);
+      const emails = await queryInboxEmails(config, limit);
+      return c.json({
+        emails: emails.map((e) => ({
+          id: e.id,
+          subject: e.subject,
+          from: e.from,
+          receivedAt: e.receivedAt,
+        })),
+      });
+    } catch (e) {
+      return c.json(
+        { error: `Failed to fetch inbox: ${(e as Error).message}` },
+        500,
+      );
+    }
+  });
+
+  // GET /search — search emails by query (subjects + IDs)
+  app.get("/search", async (c: any) => {
+    const query = c.req.query("q");
+    if (!query) return c.json({ error: "q parameter is required" }, 400);
+
+    try {
+      const limit = parseInt(c.req.query("limit") ?? "25", 10);
+      const emails = await searchEmails(config, query, limit);
+      return c.json({
+        emails: emails.map((e) => ({
+          id: e.id,
+          subject: e.subject,
+          from: e.from,
+          receivedAt: e.receivedAt,
+        })),
+      });
+    } catch (e) {
+      return c.json(
+        { error: `Failed to search emails: ${(e as Error).message}` },
+        500,
+      );
+    }
+  });
+
+  // GET /read/:id — read full email content by ID
+  app.get("/read/:id", async (c: any) => {
+    const id = c.req.param("id");
+    if (!id) return c.json({ error: "Email ID is required" }, 400);
+
+    try {
+      const emails = await getEmails(config, [id]);
+      if (emails.length === 0) {
+        return c.json({ error: "Email not found" }, 404);
+      }
+      return c.json({ email: emails[0] });
+    } catch (e) {
+      return c.json(
+        { error: `Failed to read email: ${(e as Error).message}` },
+        500,
+      );
+    }
   });
 
   // Start email polling if configured

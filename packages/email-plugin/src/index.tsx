@@ -6,12 +6,22 @@ import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
 import type { EmailPluginConfig } from "./jmapClient";
 import { EmailPanel, EmailVerificationRenderer } from "./components";
 import { registerRoutes } from "./routes";
-import { createSendEmailTool } from "./tools";
+import {
+  createSendEmailTool,
+  createListInboxTool,
+  createSearchEmailsTool,
+  createReadEmailTool,
+} from "./tools";
 import { emailJobHandlers } from "./jobHandlers";
 
 export type { EmailPluginConfig } from "./jmapClient";
 export { EmailPanel, EmailVerificationRenderer } from "./components";
-export { createSendEmailTool } from "./tools";
+export {
+  createSendEmailTool,
+  createListInboxTool,
+  createSearchEmailsTool,
+  createReadEmailTool,
+} from "./tools";
 
 export function createEmailPlugin(config: EmailPluginConfig) {
   return {
@@ -43,7 +53,12 @@ export function createEmailPlugin(config: EmailPluginConfig) {
       env.registerInit({
         deps: { tools: muteworkerDeps.tools },
         init({ tools }) {
-          tools.registerTools((ctx) => [createSendEmailTool(ctx)]);
+          tools.registerTools((ctx) => [
+            createSendEmailTool(ctx),
+            createListInboxTool(ctx),
+            createSearchEmailsTool(ctx),
+            createReadEmailTool(ctx),
+          ]);
         },
       });
     },
