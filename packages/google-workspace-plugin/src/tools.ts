@@ -27,7 +27,7 @@ export function createReadTool(
     label: "Google Workspace Read",
     description: [
       "Execute a read-only Google Workspace command via the gws CLI.",
-      "Pass the arguments after `gws` as an array of strings.",
+      "Pass the command as an array of argument strings (after `gws`).",
       "",
       "Examples:",
       '  ["drive", "files", "list", "--params", "{\\"q\\": \\"trashed=false\\", \\"pageSize\\": 5}"]',
@@ -41,22 +41,22 @@ export function createReadTool(
     parameters: {
       type: "object",
       properties: {
-        args: {
+        command: {
           type: "array",
           items: { type: "string" },
           description:
-            'The gws command arguments as an array (e.g. ["drive", "files", "list", "--params", "{...}"]).',
+            'The gws command arguments after `gws` (e.g. ["drive", "files", "list", "--params", "..."]).',
         },
       },
-      required: ["args"],
+      required: ["command"],
       additionalProperties: false,
     } as any,
     execute: async (_toolCallId: string, params: any) => {
-      const args: string[] = params.args;
-      if (!Array.isArray(args) || !args.length)
-        throw new Error("args is required and must be a non-empty array");
+      const command: string[] = params.command;
+      if (!Array.isArray(command) || !command.length)
+        throw new Error("command is required and must be a non-empty array");
 
-      const parsed = args.filter(
+      const parsed = command.filter(
         (a): a is string => typeof a === "string",
       );
       if (!parsed.length) throw new Error("No valid string arguments provided");
@@ -116,18 +116,19 @@ export function createExecTool(ctx: MuteworkerPluginContext) {
       "Non-destructive edit commands (ie. append row instead of update cell) are recommended to minimize risk.",
       "",
       "Examples:",
-      '  sheets spreadsheets values update --params \'{"spreadsheetId": "...", "range": "Sheet1!A1", "valueInputOption": "USER_ENTERED"}\' --json \'{"values": [["hello"]]}\'',
-      '  gmail users messages send --params \'{"userId": "me"}\' --json \'{"raw": "..."}\'',
-      '  drive files delete --params \'{"fileId": "..."}\'',
-      '  calendar events insert --params \'{"calendarId": "primary"}\' --json \'{"summary": "Meeting", "start": {...}, "end": {...}}\'',
+      '  ["sheets", "spreadsheets", "values", "update", "--params", "{\\"spreadsheetId\\": \\"...\\", \\"range\\": \\"Sheet1!A1\\", \\"valueInputOption\\": \\"USER_ENTERED\\"}", "--json", "{\\"values\\": [[\\"hello\\"]]}"]',
+      '  ["gmail", "users", "messages", "send", "--params", "{\\"userId\\": \\"me\\"}", "--json", "{\\"raw\\": \\"...\\"}"]',
+      '  ["drive", "files", "delete", "--params", "{\\"fileId\\": \\"...\\"}"]',
+      '  ["calendar", "events", "insert", "--params", "{\\"calendarId\\": \\"primary\\"}", "--json", "{\\"summary\\": \\"Meeting\\", \\"start\\": {...}, \\"end\\": {...}}"]',
     ].join("\n"),
     parameters: {
       type: "object",
       properties: {
         command: {
-          type: "string",
+          type: "array",
+          items: { type: "string" },
           description:
-            "The full gws command after `gws` (e.g. \"sheets spreadsheets values update --params '...' --json '...'\").",
+            'The gws command arguments after `gws` (e.g. ["sheets", "spreadsheets", "values", "update", "--params", "...", "--json", "..."]).',
         },
         description: {
           type: "string",
@@ -139,8 +140,9 @@ export function createExecTool(ctx: MuteworkerPluginContext) {
       additionalProperties: false,
     } as any,
     execute: async (_toolCallId: string, params: any) => {
-      const command = String(params.command ?? "").trim();
-      if (!command) throw new Error("command is required");
+      const command: string[] = params.command;
+      if (!Array.isArray(command) || !command.length)
+        throw new Error("command is required and must be a non-empty array");
       const description = String(params.description ?? "").trim();
       if (!description) throw new Error("description is required");
 

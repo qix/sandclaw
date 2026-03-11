@@ -4,7 +4,6 @@ import { homedir } from "os";
 import { readFileSync } from "fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 const localStore = path.join(homedir(), ".config/daveus-sandclaw");
 const obsidianStore = path.join(homedir(), "obsidian/primary/daveus");
 
@@ -36,7 +35,7 @@ export const gatekeeperConfig = {
   dbPath: path.join(localStore, "data/db.sqlite"),
   memoryDir: path.join(localStore, "memory"),
   promptsDir: path.join(obsidianStore, "prompts"),
-  skillsDir: path.join(obsidianStore, "skills"),
+  skillsDir: path.join(__dirname, "skills"),
 };
 
 export const muteworkerConfig = {

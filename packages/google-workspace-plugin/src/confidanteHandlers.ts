@@ -1,11 +1,10 @@
 import type { ConfidantePluginContext } from "@sandclaw/confidante-plugin-api";
-import { parse as shellParse } from "shell-quote";
 import { GWS_CONFIDANTE_JOB_TYPE, GWS_RESULT_JOB_TYPE } from "./constants";
 import { gwsExec, type GoogleWorkspacePluginConfig } from "./gwsClient";
 
 interface GwsExecPayload {
   requestId: string;
-  command: string;
+  command: string[];
   responseJobType?: string;
 }
 
@@ -35,7 +34,7 @@ export function createGwsConfidanteHandlers(
         command,
       });
 
-      const args = shellParse(command).filter(
+      const args = command.filter(
         (a): a is string => typeof a === "string",
       );
 
