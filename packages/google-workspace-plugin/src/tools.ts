@@ -1,5 +1,4 @@
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
-import { parse as shellParse } from "shell-quote";
 import { READ_METHODS, GWS_RESULT_JOB_TYPE } from "./constants";
 import { gwsExec, type GoogleWorkspacePluginConfig } from "./gwsClient";
 
@@ -28,13 +27,13 @@ export function createReadTool(
     label: "Google Workspace Read",
     description: [
       "Execute a read-only Google Workspace command via the gws CLI.",
-      "Pass the full command after `gws` as a single string.",
+      "Pass the arguments after `gws` as an array of strings.",
       "",
       "Examples:",
-      '  drive files list --params \'{"q": "trashed=false", "pageSize": 5}\'',
-      '  sheets spreadsheets values get --params \'{"spreadsheetId": "...", "range": "Sheet1!A1:C10"}\'',
-      '  gmail users messages list --params \'{"userId": "me", "maxResults": 10}\'',
-      '  calendar events list --params \'{"calendarId": "primary", "maxResults": 5}\'',
+      '  ["drive", "files", "list", "--params", "{\\"q\\": \\"trashed=false\\", \\"pageSize\\": 5}"]',
+      '  ["sheets", "spreadsheets", "values", "get", "--params", "{\\"spreadsheetId\\": \\"...\\", \\"range\\": \\"Sheet1!A1:C10\\"}"]',
+      '  ["gmail", "users", "messages", "list", "--params", "{\\"userId\\": \\"me\\", \\"maxResults\\": 10}"]',
+      '  ["calendar", "events", "list", "--params", "{\\"calendarId\\": \\"primary\\", \\"maxResults\\": 5}"]',
       "",
       "Only read methods are allowed (get, list, search, query, download, export, etc.).",
       "--format json is added automatically if not present.",
@@ -42,23 +41,25 @@ export function createReadTool(
     parameters: {
       type: "object",
       properties: {
-        command: {
-          type: "string",
+        args: {
+          type: "array",
+          items: { type: "string" },
           description:
-            "The full gws command after `gws` (e.g. \"drive files list --params '...'\").",
+            'The gws command arguments as an array (e.g. ["drive", "files", "list", "--params", "{...}"]).',
         },
       },
-      required: ["command"],
+      required: ["args"],
       additionalProperties: false,
     } as any,
     execute: async (_toolCallId: string, params: any) => {
-      const command = String(params.command ?? "").trim();
-      if (!command) throw new Error("command is required");
+      const args: string[] = params.args;
+      if (!Array.isArray(args) || !args.length)
+        throw new Error("args is required and must be a non-empty array");
 
-      const parsed = shellParse(command).filter(
+      const parsed = args.filter(
         (a): a is string => typeof a === "string",
       );
-      if (!parsed.length) throw new Error("Could not parse command");
+      if (!parsed.length) throw new Error("No valid string arguments provided");
 
       const method = extractMethod(parsed);
       if (!method || !READ_METHODS.has(method)) {
@@ -82,7 +83,7 @@ export function createReadTool(
       ctx.artifacts.push({
         type: "text",
         label: "GWS Read",
-        value: command.slice(0, 200),
+        value: parsed.join(" ").slice(0, 200),
       });
 
       if (result.exitCode !== 0) {
