@@ -1,7 +1,8 @@
+import type { NotifyService } from "@sandclaw/gatekeeper-plugin-api";
 import { storeMessage } from "./websocket";
 import { broadcast } from "./state";
 
-export function registerRoutes(app: any, db: any) {
+export function registerRoutes(app: any, db: any, notify: NotifyService) {
   // POST /send — store an outbound message and broadcast via WebSocket
   app.post("/send", async (c: any) => {
     const body = await c.req.json();
@@ -13,8 +14,40 @@ export function registerRoutes(app: any, db: any) {
 
     const msg = await storeMessage(db, "outbound", "agent", text);
     broadcast({ type: "message", ...msg });
+    notify.notifyCountChange();
 
     return c.json({ success: true, messageId: msg.id });
+  });
+
+  // POST /mark-read — mark messages up to a given ID as read
+  app.post("/mark-read", async (c: any) => {
+    const body = await c.req.json();
+    const messageId = Number(body.messageId);
+
+    if (!messageId || isNaN(messageId)) {
+      return c.json({ error: "messageId is required" }, 400);
+    }
+
+    const existing = await db("plugin_kv")
+      .where({ plugin: "chat", key: "last_read_message_id" })
+      .first();
+
+    if (existing) {
+      if (messageId > Number(existing.value)) {
+        await db("plugin_kv")
+          .where({ plugin: "chat", key: "last_read_message_id" })
+          .update({ value: String(messageId) });
+      }
+    } else {
+      await db("plugin_kv").insert({
+        plugin: "chat",
+        key: "last_read_message_id",
+        value: String(messageId),
+      });
+    }
+
+    notify.notifyCountChange();
+    return c.json({ success: true });
   });
 
   // GET /history — fetch recent messages (fallback for non-WS clients)

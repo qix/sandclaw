@@ -12,6 +12,7 @@ import type {
   ComponentsService,
   RoutesService,
   WebSocketService,
+  NotifyService,
   VerificationRendererProps,
 } from "@sandclaw/gatekeeper-plugin-api";
 import type { ComponentType } from "react";
@@ -186,9 +187,49 @@ export async function startGatekeeper(
     broadcastVerificationCount();
   }
 
+  // Chat unread count broadcasting
+  let lastBroadcastChatUnread = -1;
+
+  async function broadcastChatUnreadCount() {
+    const kvRow = await db("plugin_kv")
+      .where({ plugin: "chat", key: "last_read_message_id" })
+      .first();
+    const lastReadId = kvRow ? Number(kvRow.value) : 0;
+
+    const convRow = await db("conversations")
+      .where({ plugin: "chat", channel: "chat", external_id: "operator" })
+      .first();
+
+    let n = 0;
+    if (convRow) {
+      const [{ count }] = await db("conversation_message")
+        .where("conversation_id", convRow.id)
+        .where("id", ">", lastReadId)
+        .count("* as count");
+      n = Number(count);
+    }
+
+    if (n === lastBroadcastChatUnread) return;
+    lastBroadcastChatUnread = n;
+    const msg = JSON.stringify({ type: "chat_unread_count", count: n });
+    for (const client of coreClients) {
+      if (client.readyState === WebSocket.OPEN) client.send(msg);
+    }
+  }
+
+  const notifyService: NotifyService = {
+    notifyCountChange() {
+      broadcastChatUnreadCount();
+    },
+  };
+  services.set("core.notify", notifyService);
+
   // Poll every 2s to detect plugin-side inserts without requiring plugin changes
   setInterval(() => {
-    if (coreClients.size > 0) broadcastVerificationCount();
+    if (coreClients.size > 0) {
+      broadcastVerificationCount();
+      broadcastChatUnreadCount();
+    }
   }, 2000);
 
   // 3b. Register core API routes
@@ -387,6 +428,26 @@ export async function startGatekeeper(
         const n = Number(count);
         lastBroadcastCount = n;
         ws.send(JSON.stringify({ type: "verification_count", count: n }));
+
+        // Send initial chat unread count
+        const kvRow = await db("plugin_kv")
+          .where({ plugin: "chat", key: "last_read_message_id" })
+          .first();
+        const lastReadId = kvRow ? Number(kvRow.value) : 0;
+        const convRow = await db("conversations")
+          .where({ plugin: "chat", channel: "chat", external_id: "operator" })
+          .first();
+        let chatUnread = 0;
+        if (convRow) {
+          const [{ count: uc }] = await db("conversation_message")
+            .where("conversation_id", convRow.id)
+            .where("id", ">", lastReadId)
+            .count("* as count");
+          chatUnread = Number(uc);
+        }
+        lastBroadcastChatUnread = chatUnread;
+        ws.send(JSON.stringify({ type: "chat_unread_count", count: chatUnread }));
+
         ws.on("close", () => coreClients.delete(ws));
       });
       return;

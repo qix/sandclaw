@@ -77,4 +77,13 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
       t.integer("created_at");
     });
   }
+
+  if (!(await db.schema.hasTable("plugin_kv"))) {
+    await db.schema.createTable("plugin_kv", (t) => {
+      t.text("plugin").notNullable();
+      t.text("key").notNullable();
+      t.text("value");
+      t.unique(["plugin", "key"]);
+    });
+  }
 }

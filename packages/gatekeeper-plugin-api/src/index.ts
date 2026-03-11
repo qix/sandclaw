@@ -53,6 +53,10 @@ export interface WebSocketService {
   ): void;
 }
 
+export interface NotifyService {
+  notifyCountChange(): void;
+}
+
 /** Core service refs available to all plugins. */
 export const gatekeeperDeps = {
   db: createServiceRef<Knex>({ id: "core.db" }),
@@ -60,6 +64,7 @@ export const gatekeeperDeps = {
   components: createServiceRef<ComponentsService>({ id: "core.components" }),
   routes: createServiceRef<RoutesService>({ id: "core.routes" }),
   ws: createServiceRef<WebSocketService>({ id: "core.ws" }),
+  notify: createServiceRef<NotifyService>({ id: "core.notify" }),
 };
 
 type ResolveDeps<T extends Record<string, ServiceRef<any>>> = {

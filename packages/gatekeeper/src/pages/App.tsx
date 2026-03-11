@@ -246,6 +246,18 @@ export function App({
       if (dotEl) dotEl.style.display = count > 0 ? '' : 'none';
     }
   }
+  function updateChat(count) {
+    var chatIds = [
+      ['sc-sidebar-chat-count', 'sc-sidebar-chat-badge'],
+      ['sc-mobile-chat-count', 'sc-mobile-chat-badge']
+    ];
+    for (var i = 0; i < chatIds.length; i++) {
+      var countEl = document.getElementById(chatIds[i][0]);
+      var badgeEl = document.getElementById(chatIds[i][1]);
+      if (countEl) countEl.textContent = String(count);
+      if (badgeEl) badgeEl.style.display = count > 0 ? '' : 'none';
+    }
+  }
   function connect() {
     var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     var ws = new WebSocket(proto + '//' + location.host + '/api/gatekeeper/ws');
@@ -253,6 +265,7 @@ export function App({
       try {
         var msg = JSON.parse(e.data);
         if (msg.type === 'verification_count') update(msg.count);
+        if (msg.type === 'chat_unread_count') updateChat(msg.count);
       } catch(err) {}
     };
     ws.onclose = function() { setTimeout(connect, 2000); };

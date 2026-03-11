@@ -141,6 +141,32 @@ export function ChatPanel() {
       connected = true;
     };
 
+    var latestMessageId = 0;
+    var markReadTimer = null;
+
+    function isAtBottom() {
+      return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 50;
+    }
+
+    function markRead() {
+      if (latestMessageId > 0) {
+        fetch('/api/chat/mark-read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageId: latestMessageId })
+        }).catch(function() {});
+      }
+    }
+
+    function debouncedMarkRead() {
+      if (markReadTimer) clearTimeout(markReadTimer);
+      markReadTimer = setTimeout(markRead, 300);
+    }
+
+    messagesEl.addEventListener('scroll', function() {
+      if (isAtBottom()) debouncedMarkRead();
+    });
+
     ws.onmessage = function(e) {
       try {
         var data = JSON.parse(e.data);
@@ -149,6 +175,7 @@ export function ChatPanel() {
           if (data.messages && data.messages.length) {
             data.messages.forEach(function(msg) {
               messagesEl.appendChild(renderMessage(msg));
+              if (msg.id > latestMessageId) latestMessageId = msg.id;
             });
           } else {
             var p = document.createElement('p');
@@ -157,6 +184,7 @@ export function ChatPanel() {
             messagesEl.appendChild(p);
           }
           scrollToBottom();
+          debouncedMarkRead();
         } else if (data.type === 'message') {
           // Remove "no messages" placeholder if present
           var placeholder = messagesEl.querySelector('p');
@@ -164,7 +192,10 @@ export function ChatPanel() {
             placeholder.remove();
           }
           messagesEl.appendChild(renderMessage(data));
+          if (data.id > latestMessageId) latestMessageId = data.id;
+          var wasAtBottom = isAtBottom();
           scrollToBottom();
+          if (wasAtBottom) debouncedMarkRead();
         }
       } catch(err) {}
     };

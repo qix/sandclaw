@@ -1,4 +1,5 @@
 import { WebSocketServer, type WebSocket } from "ws";
+import type { NotifyService } from "@sandclaw/gatekeeper-plugin-api";
 import { chatState, broadcast } from "./state";
 
 export type DbHandle = any;
@@ -91,17 +92,17 @@ async function enqueueJob(db: DbHandle, text: string, history: any[]) {
 }
 
 /** Handle a WebSocket upgrade request. */
-export function handleUpgrade(db: DbHandle) {
+export function handleUpgrade(db: DbHandle, notify: NotifyService) {
   return (req: any, socket: any, head: Buffer) => {
     const server = getWss();
     server.handleUpgrade(req, socket, head, (ws) => {
       server.emit("connection", ws, req);
-      onConnection(ws, db);
+      onConnection(ws, db, notify);
     });
   };
 }
 
-function onConnection(ws: WebSocket, db: DbHandle) {
+function onConnection(ws: WebSocket, db: DbHandle, notify: NotifyService) {
   chatState.clients.add(ws);
 
   // Send history on connect
@@ -119,6 +120,7 @@ function onConnection(ws: WebSocket, db: DbHandle) {
       if (data.type === "message" && data.text) {
         const msg = await storeMessage(db, "inbound", "operator", data.text);
         broadcast({ type: "message", ...msg });
+        notify.notifyCountChange();
 
         // Build history for the agent
         const history = await getRecentHistory(db, 20);

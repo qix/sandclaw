@@ -1,8 +1,13 @@
-import React from "react";
-import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
+import React, { useContext } from "react";
+import {
+  gatekeeperDeps,
+  NavigationContext,
+  TabVariantContext,
+} from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
+import { Badge } from "@sandclaw/ui";
 import { ChatPanel, ChatVerificationRenderer } from "./components";
 import { registerRoutes } from "./routes";
 import { handleUpgrade } from "./websocket";
@@ -11,6 +16,56 @@ import { createChatJobHandlers } from "./jobHandlers";
 
 export { ChatPanel, ChatVerificationRenderer } from "./components";
 export { createSendChatTool } from "./tools";
+
+function ChatTab() {
+  const { activePage } = useContext(NavigationContext);
+  const variant = useContext(TabVariantContext);
+  const isActive = activePage === "chat";
+
+  if (variant === "dropdown") {
+    return (
+      <a
+        href="?page=chat"
+        className={`sc-dropdown-item ${isActive ? "active" : ""}`}
+        role="menuitem"
+      >
+        <span className="sc-dropdown-check">{isActive ? "\u2713" : ""}</span>
+        <span className="sc-status-dot sc-status-dot-green" />
+        Chat
+        <span
+          id="sc-mobile-chat-badge"
+          style={{ display: "none", marginLeft: "auto" }}
+        >
+          <Badge bg="#ef4444" fg="#fff" style={{ fontSize: "0.65rem" }}>
+            <span id="sc-mobile-chat-count">0</span>
+          </Badge>
+        </span>
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href="?page=chat"
+      className={`sc-nav-link ${isActive ? "active" : ""}`}
+    >
+      <span className="sc-status-dot sc-status-dot-green" />
+      Chat
+      <span
+        id="sc-sidebar-chat-badge"
+        style={{ display: "none", marginLeft: "0.4rem" }}
+      >
+        <Badge
+          bg="#ef4444"
+          fg="#fff"
+          style={{ marginLeft: "0.4rem", fontSize: "0.65rem" }}
+        >
+          <span id="sc-sidebar-chat-count">0</span>
+        </Badge>
+      </span>
+    </a>
+  );
+}
 
 export function buildChatPlugin() {
   return {
@@ -26,19 +81,15 @@ export function buildChatPlugin() {
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
           ws: gatekeeperDeps.ws,
+          notify: gatekeeperDeps.notify,
         },
-        init({ db, components, routes, ws }) {
-          function ChatTab() {
-            return (
-              <TabLink href="?page=chat" title="Chat" statusColor="green" />
-            );
-          }
+        init({ db, components, routes, ws, notify }) {
           components.register("tabs:channels", ChatTab);
           components.register("page:chat", ChatPanel);
 
-          routes.registerRoutes((app) => registerRoutes(app, db));
+          routes.registerRoutes((app) => registerRoutes(app, db, notify));
 
-          ws.onUpgrade("/api/chat/ws", handleUpgrade(db));
+          ws.onUpgrade("/api/chat/ws", handleUpgrade(db, notify));
         },
       });
     },
