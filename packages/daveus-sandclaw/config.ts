@@ -36,6 +36,7 @@ export const gatekeeperConfig = {
   dbPath: path.join(localStore, "data/db.sqlite"),
   memoryDir: path.join(localStore, "memory"),
   promptsDir: path.join(obsidianStore, "prompts"),
+  skillsDir: path.join(obsidianStore, "skills"),
 };
 
 export const muteworkerConfig = {

@@ -3,6 +3,7 @@ import type { MuteworkerPlugin } from "@sandclaw/muteworker-plugin-api";
 import type { ConfidantePlugin } from "@sandclaw/confidante-plugin-api";
 import { buildChatPlugin } from "@sandclaw/chat-plugin";
 import { createPromptsPlugin } from "@sandclaw/prompts-plugin";
+import { createSkillsPlugin } from "@sandclaw/skills-plugin";
 import { createMemoryPlugin } from "@sandclaw/memory-plugin";
 import { createWebSearchPlugin } from "@sandclaw/web-search-plugin";
 import { createBrowserPlugin } from "@sandclaw/browser-plugin";
@@ -25,6 +26,7 @@ const workDir = "/home/josh/code/daveus-sandclaw-workdir";
 export const plugins: SandclawPlugin[] = [
   // Core plugins (work out of the box)
   createPromptsPlugin({ promptsDir: config.promptsDir }),
+  createSkillsPlugin({ skillsDir: config.skillsDir }),
   createMemoryPlugin({ memoryDir: config.memoryDir }),
 
   buildChatPlugin(),
