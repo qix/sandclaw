@@ -46,7 +46,7 @@
     "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
     "source=/home/josh/.config/daveus-sandclaw,target=/home/node/.config/daveus-sandclaw,type=bind,readonly",
     "source=/home/josh/.config/devcontainer-gws,target=/home/node/.config/gws,type=bind",
-    "source=/home/josh/code/cm,target=/home/node/cm,type=bind,readonly"
+    "source=/home/josh/code/cm,target=/opt/cm,type=bind,readonly"
   ],
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
