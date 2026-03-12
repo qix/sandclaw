@@ -108,7 +108,9 @@ export function EmailPanel() {
       <section style={{ marginTop: "1rem" }}>
         <h3>Received Emails</h3>
         <div id="sc-email-received-list">
-          <p style={{ color: colors.muted, fontSize: "0.85rem" }}>Loading&hellip;</p>
+          <p style={{ color: colors.muted, fontSize: "0.85rem" }}>
+            Loading&hellip;
+          </p>
         </div>
       </section>
       <script

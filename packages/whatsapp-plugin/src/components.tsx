@@ -79,7 +79,7 @@ export function WhatsAppPanel() {
     <div className="sc-section">
       <PageHeader
         title="WhatsApp"
-        subtitle="Connects to WhatsApp via Baileys. Incoming messages are queued for the muteworker; outbound messages require human approval."
+        subtitle="Connects to WhatsApp via Baileys. Incoming messages are always saved; the toggle controls whether they are queued for the muteworker."
       />
       <Card>
         <CardHeader>
@@ -137,7 +137,7 @@ export function WhatsAppPanel() {
               htmlFor="sc-wa-watch-toggle"
               style={{ fontSize: "0.9rem", cursor: "pointer" }}
             >
-              Watch WhatsApp inbox
+              Process incoming messages
             </label>
             <span
               id="sc-wa-watch-status"

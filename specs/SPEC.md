@@ -39,16 +39,17 @@ Each Sandclaw component (gatekeeper, muteworker, confidante) has a corresponding
 Plugins call `createGatekeeperPlugin` from `@sandclaw/gatekeeper-plugin-api`:
 
 ```typescript
-import { createGatekeeperPlugin } from '@sandclaw/gatekeeper-plugin-api';
+import { createGatekeeperPlugin } from "@sandclaw/gatekeeper-plugin-api";
 
 export const myPlugin = createGatekeeperPlugin({
-  id: 'my-plugin',
-  title: 'My Plugin',
+  id: "my-plugin",
+  title: "My Plugin",
   component: MyPanelComponent,
 });
 ```
 
 A `GatekeeperPlugin` can contribute:
+
 - **`component`** — A React `ComponentType` rendered in the gatekeeper UI sidebar
 - **`routes`** — A function `(app: Hono) => void` that registers backend API routes
 - **`migrations`** — A function `(knex: Knex) => Promise<void>` that runs DB migrations on startup
@@ -58,8 +59,8 @@ A `GatekeeperPlugin` can contribute:
 The gatekeeper exposes `startGatekeeper` which accepts a list of plugins:
 
 ```typescript
-import { startGatekeeper } from '@sandclaw/gatekeeper';
-import { myPlugin } from '@sandclaw/my-plugin';
+import { startGatekeeper } from "@sandclaw/gatekeeper";
+import { myPlugin } from "@sandclaw/my-plugin";
 
 startGatekeeper({
   plugins: [myPlugin],
@@ -68,6 +69,7 @@ startGatekeeper({
 ```
 
 On startup, `startGatekeeper`:
+
 1. Runs each plugin's `migrations` against the SQLite database
 2. Registers each plugin's `routes` on the Hono app
 3. Serves the React SPA, which renders each plugin's `component` in a sidebar tab
@@ -77,14 +79,14 @@ On startup, `startGatekeeper`:
 Plugins that need to execute work on the confidante implement `confidanteHandlers` and optionally `registerConfidante`:
 
 ```typescript
-import type { ConfidantePluginContext } from '@sandclaw/confidante-plugin-api';
+import type { ConfidantePluginContext } from "@sandclaw/confidante-plugin-api";
 
 export function createMyPlugin() {
   return {
-    id: 'my-plugin',
+    id: "my-plugin",
     confidanteHandlers: {
-      async 'my-plugin:do_work'(ctx: ConfidantePluginContext) {
-        const result = await ctx.docker.run('alpine:latest', ['echo', 'hello']);
+      async "my-plugin:do_work"(ctx: ConfidantePluginContext) {
+        const result = await ctx.docker.run("alpine:latest", ["echo", "hello"]);
         // Post result back to gatekeeper...
       },
     },
@@ -96,6 +98,7 @@ export function createMyPlugin() {
 ```
 
 A `ConfidantePlugin` can contribute:
+
 - **`confidanteHandlers`** — Handlers keyed by `jobType` that execute confidante jobs. Each handler receives a `ConfidantePluginContext` with access to a built-in `DockerService` for running work inside containers.
 - **`registerConfidante`** — Backstage-style DI hook for lifecycle events.
 
@@ -104,16 +107,17 @@ A `ConfidantePlugin` can contribute:
 The confidante exposes `startConfidante` which accepts a list of plugins:
 
 ```typescript
-import { startConfidante } from '@sandclaw/confidante';
-import { createBrowserPlugin } from '@sandclaw/browser-plugin';
+import { startConfidante } from "@sandclaw/confidante";
+import { createBrowserPlugin } from "@sandclaw/browser-plugin";
 
 startConfidante({
   plugins: [createBrowserPlugin()],
-  config: { gatekeeperInternalUrl: 'http://localhost:3000' },
+  config: { gatekeeperInternalUrl: "http://localhost:3000" },
 });
 ```
 
 On startup, `startConfidante`:
+
 1. Creates a Docker service for running containerised work
 2. Runs each plugin's `registerConfidante` (if present)
 3. Starts polling the gatekeeper's `confidante_queue` for approved jobs

@@ -237,7 +237,7 @@ export async function connectWhatsApp(
         );
       } else {
         console.log(
-          `[whatsapp] Ignored incoming message from ${pushName ?? jid}`,
+          `[whatsapp] Saved message from ${pushName ?? jid} (queue ${watchEnabled ? "enabled, operator-only filtered" : "disabled"})`,
         );
       }
 

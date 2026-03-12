@@ -23,7 +23,7 @@ The Confidante is an agent that is intended to run with secrets, but the scope o
 ## Getting Started
 
 > [!WARNING]
-> This is a *very early* release and work in progress, it should start up with the chat plugin, but some of the other plugins, especially the builder, will require tweaking on your end to get working.
+> This is a _very early_ release and work in progress, it should start up with the chat plugin, but some of the other plugins, especially the builder, will require tweaking on your end to get working.
 
 ```bash
 npx @sandclaw/create
