@@ -7,11 +7,21 @@ import { resolveVaultRoot } from "./pathUtils";
 import { ObsidianVaultIndex } from "./vaultIndex";
 import { ObsidianPanel, ObsidianVerificationRenderer } from "./components";
 import { registerRoutes } from "./routes";
-import { createSearchTool, createReadTool, createWriteTool } from "./tools";
+import {
+  createSearchTool,
+  createListTool,
+  createReadTool,
+  createWriteTool,
+} from "./tools";
 
 export type { ObsidianVaultIndex } from "./vaultIndex";
 export { ObsidianPanel, ObsidianVerificationRenderer } from "./components";
-export { createSearchTool, createReadTool, createWriteTool } from "./tools";
+export {
+  createSearchTool,
+  createListTool,
+  createReadTool,
+  createWriteTool,
+} from "./tools";
 
 export interface ObsidianPluginConfig {
   /** Path to the Obsidian vault root. `~` is expanded to the home directory. */
@@ -53,6 +63,7 @@ export function createObsidianPlugin(config: ObsidianPluginConfig) {
         init({ tools }) {
           tools.registerTools((ctx) => [
             createSearchTool(ctx),
+            createListTool(ctx),
             createReadTool(ctx),
             createWriteTool(ctx),
           ]);

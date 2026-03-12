@@ -73,6 +73,72 @@ export function createSearchTool(ctx: MuteworkerPluginContext) {
   };
 }
 
+export function createListTool(ctx: MuteworkerPluginContext) {
+  return {
+    name: "obsidian_list",
+    label: "List Obsidian Directory",
+    description:
+      "List files and subdirectories in an Obsidian vault directory. Omit path or use '.' to list the vault root.",
+    parameters: {
+      type: "object",
+      properties: {
+        path: { type: "string" },
+      },
+      required: [],
+      additionalProperties: false,
+    } as any,
+    execute: async (_toolCallId: string, params: any) => {
+      const dirPath = String(params.path ?? "").trim();
+
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/obsidian/list`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ path: dirPath || undefined }),
+        },
+      );
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(
+          `Obsidian list failed (${response.status}): ${body.slice(0, 200)}`,
+        );
+      }
+
+      const data = (await response.json()) as any;
+      ctx.artifacts.push({
+        type: "text",
+        label: "Obsidian List",
+        value: data.path,
+      });
+
+      if (!data.items?.length) {
+        return {
+          content: [
+            { type: "text", text: `Path: ${data.path}\n\nDirectory is empty.` },
+          ],
+          details: data,
+        };
+      }
+
+      const lines = data.items.map((item: any) =>
+        item.type === "directory" ? `${item.name}/` : item.name,
+      );
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Path: ${data.path}\n\n${lines.join("\n")}`,
+          },
+        ],
+        details: data,
+      };
+    },
+  };
+}
+
 export function createReadTool(ctx: MuteworkerPluginContext) {
   return {
     name: "obsidian_read",
@@ -121,7 +187,12 @@ export function createReadTool(ctx: MuteworkerPluginContext) {
 
       const suffix = data.truncated ? "\n\n[Output truncated by maxChars]" : "";
       return {
-        content: [{ type: "text", text: `${data.content}${suffix}` }],
+        content: [
+          {
+            type: "text",
+            text: `Path: ${data.path}\n\n${data.content}${suffix}`,
+          },
+        ],
         details: data,
       };
     },

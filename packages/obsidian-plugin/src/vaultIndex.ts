@@ -51,6 +51,23 @@ export class ObsidianVaultIndex {
     this.lastScanMs = 0;
   }
 
+  /**
+   * Find files matching a bare filename (no directory separators).
+   * Returns all vault-relative paths that end with the given filename.
+   */
+  async findByFilename(filename: string): Promise<string[]> {
+    await this.ensureFresh();
+    const matches: string[] = [];
+    const lower = filename.toLowerCase();
+    for (const relPath of this.documents.keys()) {
+      const base = relPath.split("/").pop()!;
+      if (base.toLowerCase() === lower) {
+        matches.push(relPath);
+      }
+    }
+    return matches.sort();
+  }
+
   async ensureFresh(): Promise<void> {
     if (
       Date.now() - this.lastScanMs >= INDEX_REFRESH_MIN_MS ||
