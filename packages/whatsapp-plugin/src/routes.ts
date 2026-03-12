@@ -47,7 +47,7 @@ export function registerRoutes(
   // POST /send — create a verification request for sending a message
   app.post("/send", async (c: any) => {
     const body = await c.req.json();
-    const { jid, text } = body;
+    const { jid, text, job } = body;
 
     if (!jid || !text) {
       return c.json({ error: "jid and text are required" }, 400);
@@ -60,6 +60,7 @@ export function registerRoutes(
       action: "send_message",
       data: JSON.stringify({ jid, text }),
       status: autoApprove ? "approved" : "pending",
+      ...(job ? { job } : {}),
       created_at: now,
       updated_at: now,
     });

@@ -189,6 +189,7 @@ export function registerCoreRoutes(
         action: r.action,
         data: r.data,
         status: r.status,
+        job: r.job ?? undefined,
         createdAt: r.created_at,
       })),
     });
@@ -220,6 +221,7 @@ export function registerCoreRoutes(
         action: r.action,
         data: r.data,
         status: r.status,
+        job: r.job ?? undefined,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       })),

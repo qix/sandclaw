@@ -17,6 +17,7 @@ export interface VerificationRequest {
   action: string;
   data: string;
   status: string;
+  job?: string;
   createdAt: number;
   updatedAt?: number;
 }
@@ -95,6 +96,20 @@ function VerificationCard({
             {r.action}
           </span>
           <span style={{ color: colors.muted }}>#{r.id}</span>
+          {r.job && (
+            r.job.startsWith("muteworker:") ? (
+              <a
+                href={`?page=agent-status&job=${encodeURIComponent(r.job.slice("muteworker:".length))}`}
+                style={{ color: colors.accent, fontSize: "0.8rem", textDecoration: "none" }}
+              >
+                [{r.job}]
+              </a>
+            ) : (
+              <span style={{ color: colors.muted, fontSize: "0.8rem" }}>
+                [{r.job}]
+              </span>
+            )
+          )}
         </div>
         <div className="sc-flex-row">
           {isResolved && (

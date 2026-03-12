@@ -18,6 +18,7 @@ interface AppProps {
   channelTabs: ComponentType[];
   primaryTabs: ComponentType[];
   activePage: string;
+  queryParams?: Record<string, string>;
   pageComponent?: ComponentType;
   pageNotFound?: boolean;
   verificationRequests?: VerificationRequest[];
@@ -30,6 +31,7 @@ export function App({
   channelTabs,
   primaryTabs,
   activePage,
+  queryParams,
   pageComponent,
   pageNotFound,
   verificationRequests,
@@ -38,7 +40,7 @@ export function App({
   renderers,
 }: AppProps) {
   return (
-    <NavigationContext.Provider value={{ activePage }}>
+    <NavigationContext.Provider value={{ activePage, queryParams: queryParams ?? {} }}>
       <html lang="en">
         <head>
           <meta charSet="utf-8" />

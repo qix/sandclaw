@@ -16,6 +16,7 @@ export function registerRoutes(
       prompt?: string;
       url?: string;
       responseJobType?: string;
+      job?: string;
     };
 
     if (!body.prompt) return c.json({ error: "prompt is required" }, 400);
@@ -39,6 +40,7 @@ export function registerRoutes(
       action: BROWSER_VERIFICATION_ACTION,
       data: JSON.stringify(verificationData),
       status: "pending",
+      ...(body.job ? { job: body.job } : {}),
       created_at: now,
       updated_at: now,
     });

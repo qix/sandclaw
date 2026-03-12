@@ -4,6 +4,7 @@ import {
   NavigationContext,
   TabVariantContext,
 } from "@sandclaw/gatekeeper-plugin-api";
+import { AgentJobDetailPanel } from "./components";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { StatusDot } from "@sandclaw/ui";
 import { runAgentStatusMigrations } from "./migrations";
@@ -43,6 +44,16 @@ function AgentStatusTab() {
 }
 
 function AgentStatusPage() {
+  const { queryParams } = useContext(NavigationContext);
+  const jobId = queryParams.job ? parseInt(queryParams.job, 10) : undefined;
+
+  if (jobId && !isNaN(jobId)) {
+    const jobEvents = agentStatusState.recentEvents.filter(
+      (e) => e.jobId === jobId,
+    );
+    return <AgentJobDetailPanel jobId={jobId} events={jobEvents} />;
+  }
+
   return <AgentStatusPanel events={agentStatusState.recentEvents} />;
 }
 

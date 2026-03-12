@@ -23,6 +23,7 @@ export function registerRoutes(
       head?: string;
       title?: string;
       body?: string;
+      job?: string;
     };
 
     const { repo, head, title, body: prBody } = body;
@@ -96,6 +97,7 @@ export function registerRoutes(
       action: GITHUB_PR_CREATED_ACTION,
       data: JSON.stringify(data),
       status: "pending",
+      ...(body.job ? { job: body.job } : {}),
       created_at: now,
       updated_at: now,
     });

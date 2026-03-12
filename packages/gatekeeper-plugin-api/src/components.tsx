@@ -2,7 +2,7 @@ import React, { createContext, useContext } from "react";
 import type { StatusColorValue } from "./index";
 
 /** Provided by the gateway's App shell so Tab components know which page is active. */
-export const NavigationContext = createContext({ activePage: "" });
+export const NavigationContext = createContext({ activePage: "", queryParams: {} as Record<string, string> });
 
 /** Controls whether TabLink renders as a sidebar entry or a mobile dropdown item. */
 export const TabVariantContext = createContext<"sidebar" | "dropdown">(

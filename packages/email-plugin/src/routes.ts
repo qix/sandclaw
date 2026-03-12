@@ -55,6 +55,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       to?: string;
       subject?: string;
       text?: string;
+      job?: string;
     });
     if (!body.to) return c.json({ error: "to is required" }, 400);
     if (!body.subject) return c.json({ error: "subject is required" }, 400);
@@ -73,6 +74,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       action: "send_email",
       data: JSON.stringify(verificationData),
       status: "pending",
+      ...(body.job ? { job: body.job } : {}),
       created_at: now,
       updated_at: now,
     });

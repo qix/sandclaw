@@ -157,6 +157,7 @@ export async function executeBuild(
               "",
               finalReply || "",
             ].join("\n"),
+            job: `muteworker:${ctx.job.id}`,
           }),
         },
       );

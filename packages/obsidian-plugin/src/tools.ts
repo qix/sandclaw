@@ -230,6 +230,7 @@ export function createWriteTool(ctx: MuteworkerPluginContext) {
             path: notePath,
             content: params.content,
             append: params.append === true,
+            job: `muteworker:${ctx.job.id}`,
           }),
         },
       );

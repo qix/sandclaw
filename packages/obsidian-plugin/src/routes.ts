@@ -138,6 +138,7 @@ export function registerRoutes(
       path?: string;
       content?: string;
       append?: boolean;
+      job?: string;
     };
     let notePath = (body.path ?? "").trim();
     if (!notePath) return c.json({ error: "path is required" }, 400);
@@ -187,6 +188,7 @@ export function registerRoutes(
       action: "write_file",
       data: JSON.stringify(verificationData),
       status: "pending",
+      ...(body.job ? { job: body.job } : {}),
       created_at: now,
       updated_at: now,
     });

@@ -28,6 +28,7 @@ export function createRequestBuildTool(ctx: MuteworkerPluginContext) {
           body: JSON.stringify({
             prompt,
             responseJobType: DEFAULT_BUILDER_RESULT_JOB_TYPE,
+            job: `muteworker:${ctx.job.id}`,
           }),
         },
       );

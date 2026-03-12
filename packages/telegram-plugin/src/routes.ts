@@ -94,7 +94,7 @@ export function registerRoutes(
   // POST /send — create a verification request for sending a message
   app.post("/send", async (c: any) => {
     const body = await c.req.json();
-    const { chatId, text } = body;
+    const { chatId, text, job } = body;
 
     if (!chatId || !text) {
       return c.json({ error: "chatId and text are required" }, 400);
@@ -107,6 +107,7 @@ export function registerRoutes(
       action: "send_message",
       data: JSON.stringify({ chatId, text }),
       status: autoApprove ? "approved" : "pending",
+      ...(job ? { job } : {}),
       created_at: now,
       updated_at: now,
     });

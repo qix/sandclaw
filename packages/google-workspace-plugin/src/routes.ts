@@ -38,6 +38,7 @@ export function registerRoutes(app: any, db: any) {
       action: GWS_VERIFICATION_ACTION,
       data: JSON.stringify(verificationData),
       status: "pending",
+      ...((body as any).job ? { job: (body as any).job } : {}),
       created_at: now,
       updated_at: now,
     });

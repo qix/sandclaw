@@ -175,6 +175,7 @@ export function createExecTool(ctx: MuteworkerPluginContext) {
             description,
             responseJobType: GWS_RESULT_JOB_TYPE,
             ...(originContext ? { originContext } : {}),
+            job: `muteworker:${ctx.job.id}`,
           }),
         },
       );

@@ -282,6 +282,11 @@ export async function startGatekeeper(
   app.get("/*", async (c) => {
     const activePage = c.req.query("page") ?? "verifications";
 
+    // Collect all query params for page components
+    const url = new URL(c.req.url);
+    const queryParams: Record<string, string> = {};
+    url.searchParams.forEach((v, k) => { queryParams[k] = v; });
+
     // Always fetch pending count for the sidebar badge
     const [{ count: pendingVerificationCount }] = await db(
       "verification_requests",
@@ -309,6 +314,7 @@ export async function startGatekeeper(
         action: r.action,
         data: r.data,
         status: r.status,
+        job: r.job ?? undefined,
         createdAt: r.created_at,
       }));
 
@@ -340,6 +346,7 @@ export async function startGatekeeper(
             action: r.action,
             data: r.data,
             status: r.status,
+            job: r.job ?? undefined,
             createdAt: r.created_at,
             updatedAt: r.updated_at,
           })),
@@ -362,6 +369,7 @@ export async function startGatekeeper(
       channelTabs,
       primaryTabs,
       activePage,
+      queryParams,
       pageComponent,
       pageNotFound,
       verificationRequests,
