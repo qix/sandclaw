@@ -1,5 +1,4 @@
-import React from "react";
-import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
+import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
@@ -37,12 +36,6 @@ export function createGoogleWorkspacePlugin(
           routes: gatekeeperDeps.routes,
         },
         init({ db, components, routes }) {
-          function GoogleWorkspaceTab() {
-            return (
-              <TabLink href="?page=google-workspace" title="Google Workspace" />
-            );
-          }
-          components.register("tabs:primary", GoogleWorkspaceTab);
           components.register("page:google-workspace", GoogleWorkspacePanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db));
