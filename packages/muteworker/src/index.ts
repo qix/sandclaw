@@ -246,7 +246,8 @@ async function handleToolsCommand(options: MuteworkerOptions): Promise<void> {
   for (const tool of allTools) {
     console.log(`  ${tool.name}`);
     if (tool.description) {
-      console.log(`    ${tool.description}`);
+      const firstLine = tool.description.split("\n")[0];
+      console.log(`    ${firstLine}`);
     }
   }
   console.log();
