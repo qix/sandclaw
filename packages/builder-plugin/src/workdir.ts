@@ -14,7 +14,7 @@ function logCmd(cmd: string, args: string[]) {
   process.stderr.write(`${BOLD}$ ${quote([cmd, ...args])}${RESET}\n`);
 }
 
-function run(
+export async function run(
   cmd: string,
   args: string[],
   opts?: { cwd?: string; capture?: boolean },

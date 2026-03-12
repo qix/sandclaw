@@ -2,7 +2,12 @@ import type { ConfidantePluginContext } from "@sandclaw/confidante-plugin-api";
 import { runDockerCommand } from "@sandclaw/confidante-util";
 import { runDockerClaude } from "./docker";
 import { DEFAULT_BUILDER_RESULT_JOB_TYPE } from "./constants";
-import { prepareWorkDir, detectAndCommitChanges, pushBranch } from "./workdir";
+import {
+  prepareWorkDir,
+  detectAndCommitChanges,
+  pushBranch,
+  run,
+} from "./workdir";
 
 interface BuildRequestPayload {
   requestId: string;
@@ -73,51 +78,35 @@ export async function executeBuild(
     baseBranch: branch,
   });
 
-  // Step 2: npm install in Docker
+  // Step 2: npm outside of docker
   ctx.logger.info("builder.build.npm_install", {
     jobId: ctx.job.id,
     requestId,
   });
-  const npmResult = await runDockerCommand({
-    image,
-    command: ["npm", "install"],
-    dockerArgs: dockerMountArgs,
-  });
-
-  if (npmResult.exitCode !== 0) {
-    throw new Error(`npm install failed with exit code ${npmResult.exitCode}`);
-  }
+  await run("npm", ["install"], { cwd: workDir });
 
   // Step 3: Run claude in Docker with proxy (cm-style prompt interception)
   ctx.logger.info("builder.build.running_claude", {
     jobId: ctx.job.id,
     requestId,
   });
-  const {
-    finalReply,
-    exitCode: claudeExitCode,
-    prompts: collectedPrompts,
-  } = await runDockerClaude({
-    image,
-    prompt,
-    dockerArgs: [
-      "--cap-add=NET_ADMIN",
-      "--cap-add=NET_RAW",
-      ...dockerMountArgs,
-    ],
-  });
+
+  const claudeOutput = await run(
+    "devcontainer",
+    ["exec", "claude", "--dangerously-skip-permissions", "--print", prompt],
+    { cwd: workDir, capture: true },
+  );
 
   ctx.logger.info("builder.build.claude_completed", {
     jobId: ctx.job.id,
     requestId,
-    claudeExitCode,
   });
 
   // Step 4: Detect and commit changes
   // Use proxy-collected prompts as the commit message for better traceability
   // (these are the actual user prompts extracted from API calls, not the raw input)
   const commitMessage =
-    collectedPrompts.length > 0 ? collectedPrompts.join("\n\n") : prompt;
+    prompt + "\n\nCreated by claude with output:\n" + claudeOutput;
   const commitResult = await detectAndCommitChanges(workDir, commitMessage);
 
   ctx.logger.info("builder.build.commit_result", {
@@ -153,7 +142,7 @@ export async function executeBuild(
             body: [
               `Build from job ${ctx.job.id} (request ${requestId}).`,
               "",
-              finalReply || "",
+              claudeOutput || "",
             ].join("\n"),
             jobContext: { worker: "muteworker", jobId: ctx.job.id },
           }),
@@ -180,7 +169,7 @@ export async function executeBuild(
 
   // Step 6: Build result summary and post back to gatekeeper
   const resultParts = [
-    `Build completed (claude exit code: ${claudeExitCode}).`,
+    `Build completed.`,
     commitResult.changed
       ? `Changes committed: ${commitResult.headBefore.slice(0, 8)}..${commitResult.headAfter.slice(0, 8)}`
       : "No changes detected.",
@@ -188,8 +177,8 @@ export async function executeBuild(
   if (prUrl) {
     resultParts.push(`PR created: ${prUrl}`);
   }
-  if (finalReply) {
-    resultParts.push("", "--- Claude Reply ---", finalReply);
+  if (claudeOutput) {
+    resultParts.push("", "--- Claude Reply ---", claudeOutput);
   }
   const result = resultParts.join("\n");
 
