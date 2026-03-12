@@ -169,7 +169,9 @@ function initializePlugins(plugins: MuteworkerPlugin[]) {
  * Muteworker CLI script entry point.
  *
  * Uses `cac` for subcommand parsing:
- *   - (default)          — Start the queue loop.
+ *   - (default)          — Show help.
+ *   - `worker`           — Start the queue loop.
+ *   - `system-prompt`    — Generate and print the system prompt.
  *   - `tools`            — List all available tools and exit.
  *   - `replay <id>`      — Replay a specific job by ID.
  */
@@ -178,9 +180,19 @@ export async function muteworkerScript(
 ): Promise<void> {
   const cli = cac("muteworker");
 
-  cli.command("", "Start the queue loop").action(async () => {
+  cli.command("", "Show help").action(() => {
+    cli.outputHelp();
+  });
+
+  cli.command("worker", "Start the queue loop").action(async (opts: {}) => {
     await startMuteworker(options);
   });
+
+  cli
+    .command("system-prompt", "Generate and print the system prompt")
+    .action(async () => {
+      await handleSystemPromptCommand(options);
+    });
 
   cli.command("tools", "List all available tools and exit").action(async () => {
     await handleToolsCommand(options);
@@ -251,6 +263,24 @@ async function handleToolsCommand(options: MuteworkerOptions): Promise<void> {
     }
   }
   console.log();
+}
+
+/**
+ * Generate and print the system prompt to stdout.
+ */
+async function handleSystemPromptCommand(
+  options: MuteworkerOptions,
+): Promise<void> {
+  const plugins = options.plugins ?? [];
+  const { buildSystemPrompt, runInit } = initializePlugins(plugins);
+  await runInit();
+
+  const prompt = await buildSystemPrompt();
+  if (!prompt) {
+    console.log("(empty system prompt — no plugins contributed content)");
+    return;
+  }
+  console.log(prompt);
 }
 
 /**
