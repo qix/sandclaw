@@ -8,10 +8,13 @@ export function registerCoreRoutes(
   onVerificationChange?: () => void,
   agentStatusHooks?: Array<(event: AgentStatusEvent) => Promise<void>>,
 ): void {
-  // --- Safe Queue (Muteworker) ---
+  // --- Job Queue ---
 
-  // GET /api/muteworker-queue/next — long-poll for the next pending job
-  app.get("/api/muteworker-queue/next", async (c) => {
+  // GET /api/job/next — long-poll for the next pending job for a given executor
+  app.get("/api/job/next", async (c) => {
+    const executor = c.req.query("executor");
+    if (!executor) return c.json({ error: "executor is required" }, 400);
+
     const timeoutParam = c.req.query("timeout");
     const timeoutSec = Math.min(
       600,
@@ -22,13 +25,14 @@ export function registerCoreRoutes(
 
     while (Date.now() < deadline) {
       const now = Date.now();
-      const job = await db("safe_queue")
+      const job = await db("job_queue")
+        .where("executor", executor)
         .where("status", "pending")
         .orderBy("id", "asc")
         .first();
 
       if (job) {
-        await db("safe_queue")
+        await db("job_queue")
           .where("id", job.id)
           .update({ status: "in_progress", updated_at: now });
         return c.json({
@@ -37,6 +41,7 @@ export function registerCoreRoutes(
             jobType: job.job_type,
             data: job.data,
             context: job.context ?? null,
+            executor: job.executor,
             status: "in_progress",
           },
         });
@@ -52,12 +57,12 @@ export function registerCoreRoutes(
     return c.body(null, 204);
   });
 
-  // GET /api/muteworker-queue/:id — fetch a specific muteworker job by ID
-  app.get("/api/muteworker-queue/:id", async (c) => {
+  // GET /api/job/:id — fetch a specific job by ID
+  app.get("/api/job/:id", async (c) => {
     const id = parseInt(c.req.param("id"), 10);
     if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
 
-    const job = await db("safe_queue").where("id", id).first();
+    const job = await db("job_queue").where("id", id).first();
     if (!job) return c.json({ error: "Job not found" }, 404);
 
     return c.json({
@@ -66,37 +71,45 @@ export function registerCoreRoutes(
         jobType: job.job_type,
         data: job.data,
         context: job.context ?? null,
+        executor: job.executor,
         status: job.status,
       },
     });
   });
 
-  // POST /api/muteworker-queue/complete — mark a job as complete
-  app.post("/api/muteworker-queue/complete", async (c) => {
-    const body = await c.req.json<{ id: number }>();
+  // POST /api/job/complete — mark a job as complete
+  app.post("/api/job/complete", async (c) => {
+    const body = await c.req.json<{ id: number; result?: string }>();
     if (!body.id) return c.json({ error: "id is required" }, 400);
 
-    const updated = await db("safe_queue")
+    const updated = await db("job_queue")
       .where("id", body.id)
-      .update({ status: "complete", updated_at: Date.now() });
+      .update({
+        status: "complete",
+        result: body.result ?? null,
+        updated_at: Date.now(),
+      });
 
     if (updated === 0) return c.json({ error: "Job not found" }, 404);
     return c.json({ success: true });
   });
 
-  // POST /api/muteworker-queue/add — add a new job to the safe queue
-  app.post("/api/muteworker-queue/add", async (c) => {
+  // POST /api/job/add — add a new job to the queue
+  app.post("/api/job/add", async (c) => {
     const body = await c.req.json<{
+      executor: string;
       jobType: string;
       data: string;
       context?: string;
     }>();
+    if (!body.executor) return c.json({ error: "executor is required" }, 400);
     if (!body.jobType) return c.json({ error: "jobType is required" }, 400);
     if (body.data === undefined)
       return c.json({ error: "data is required" }, 400);
 
     const now = Date.now();
-    const [id] = await db("safe_queue").insert({
+    const [id] = await db("job_queue").insert({
+      executor: body.executor,
       job_type: body.jobType,
       data:
         typeof body.data === "string" ? body.data : JSON.stringify(body.data),
@@ -106,18 +119,19 @@ export function registerCoreRoutes(
       updated_at: now,
     });
 
-    const job = await db("safe_queue").where("id", id).first();
+    const job = await db("job_queue").where("id", id).first();
     return c.json({
       id: job.id,
       jobType: job.job_type,
       data: job.data,
       context: job.context ?? null,
+      executor: job.executor,
       status: job.status,
     });
   });
 
-  // POST /api/muteworker-queue/agent-status — receive agent status event and fire hooks
-  app.post("/api/muteworker-queue/agent-status", async (c) => {
+  // POST /api/job/status — receive job status event and fire hooks
+  app.post("/api/job/status", async (c) => {
     const body = await c.req.json<{
       jobId?: number;
       event?: string;
@@ -241,67 +255,6 @@ export function registerCoreRoutes(
     });
   });
 
-  // --- Confidante Queue ---
-
-  // GET /api/confidante-queue/next — long-poll for the next pending confidante job
-  app.get("/api/confidante-queue/next", async (c) => {
-    const timeoutParam = c.req.query("timeout");
-    const timeoutSec = Math.min(
-      600,
-      Math.max(1, parseInt(timeoutParam || "25", 10) || 25),
-    );
-    const deadline = Date.now() + timeoutSec * 1000;
-    const pollMs = 500;
-
-    while (Date.now() < deadline) {
-      const now = Date.now();
-      const job = await db("confidante_queue")
-        .where("status", "pending")
-        .orderBy("id", "asc")
-        .first();
-
-      if (job) {
-        await db("confidante_queue")
-          .where("id", job.id)
-          .update({ status: "in_progress", updated_at: now });
-        return c.json({
-          job: {
-            id: job.id,
-            jobType: job.job_type,
-            data: job.data,
-            status: "in_progress",
-          },
-        });
-      }
-
-      const remaining = deadline - Date.now();
-      if (remaining <= 0) break;
-      await new Promise((resolve) =>
-        setTimeout(resolve, Math.min(pollMs, remaining)),
-      );
-    }
-
-    return c.body(null, 204);
-  });
-
-  // GET /api/confidante-queue/:id — fetch a specific confidante job by ID
-  app.get("/api/confidante-queue/:id", async (c) => {
-    const id = parseInt(c.req.param("id"), 10);
-    if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
-
-    const job = await db("confidante_queue").where("id", id).first();
-    if (!job) return c.json({ error: "Job not found" }, 404);
-
-    return c.json({
-      job: {
-        id: job.id,
-        jobType: job.job_type,
-        data: job.data,
-        status: job.status,
-      },
-    });
-  });
-
   // GET /api/conversations/:id/messages — fetch conversation history
   app.get("/api/conversations/:id/messages", async (c) => {
     const id = parseInt(c.req.param("id"), 10);
@@ -327,7 +280,7 @@ export function registerCoreRoutes(
     });
   });
 
-  // POST /api/confidante/result — receive a confidante exec result, build context, enqueue to safe_queue
+  // POST /api/confidante/result — receive a confidante exec result, build context, enqueue to job_queue
   app.post("/api/confidante/result", async (c) => {
     const body = await c.req.json<{
       requestId?: string;
@@ -338,12 +291,12 @@ export function registerCoreRoutes(
     if (!body.requestId) return c.json({ error: "requestId is required" }, 400);
     if (!body.result) return c.json({ error: "result is required" }, 400);
 
-    // Fetch context from the originating safe_queue job by reference
+    // Fetch context from the originating job by reference
     let sqCtx: Record<string, unknown> = {};
     let userMessage: string | undefined;
 
     if (body.jobContext?.worker === "muteworker" && body.jobContext.jobId) {
-      const originJob = await db("safe_queue")
+      const originJob = await db("job_queue")
         .where("id", body.jobContext.jobId)
         .first();
       if (originJob) {
@@ -408,7 +361,8 @@ export function registerCoreRoutes(
       Object.keys(sqCtx).length > 0 ? JSON.stringify(sqCtx) : null;
     const now = Date.now();
 
-    const [jobId] = await db("safe_queue").insert({
+    const [jobId] = await db("job_queue").insert({
+      executor: "muteworker",
       job_type: "confidante:result",
       data: prompt,
       ...(context ? { context } : {}),
@@ -418,22 +372,5 @@ export function registerCoreRoutes(
     });
 
     return c.json({ success: true, jobId });
-  });
-
-  // POST /api/confidante-queue/complete — mark a confidante job as complete
-  app.post("/api/confidante-queue/complete", async (c) => {
-    const body = await c.req.json<{ id: number; result?: string }>();
-    if (!body.id) return c.json({ error: "id is required" }, 400);
-
-    const updated = await db("confidante_queue")
-      .where("id", body.id)
-      .update({
-        status: "complete",
-        result: body.result ?? null,
-        updated_at: Date.now(),
-      });
-
-    if (updated === 0) return c.json({ error: "Job not found" }, 404);
-    return c.json({ success: true });
   });
 }

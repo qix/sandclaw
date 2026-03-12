@@ -164,7 +164,8 @@ export async function connectTelegram(db: any, token: string) {
     };
 
     const now = Date.now();
-    await db("safe_queue").insert({
+    await db("job_queue").insert({
+      executor: "muteworker",
       job_type: "telegram:incoming_message",
       data: JSON.stringify(payload),
       context: JSON.stringify({ channel: "telegram", chatId }),

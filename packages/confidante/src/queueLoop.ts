@@ -63,6 +63,15 @@ export class ConfidanteQueueLoop {
           logger: this.logger,
           plugins: this.plugins,
           docker: this.docker,
+          reportStatus: (event) => {
+            this.client.postAgentStatus(event).catch((err) => {
+              this.logger.warn("queue.agent_status.error", {
+                jobId: job.id,
+                event: event.event,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            });
+          },
         });
 
         await this.client.markComplete(job.id, result.result);

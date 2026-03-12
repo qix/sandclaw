@@ -6,6 +6,7 @@ export interface MuteworkerQueueJob {
   /** JSON-encoded payload. Parse before use. */
   data: string;
   context?: string | null;
+  executor?: string;
   status: JobStatus;
 }
 

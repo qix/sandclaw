@@ -136,7 +136,8 @@ export function registerRoutes(app: any, db: any, config: GmailPluginConfig) {
     }));
 
     // Queue as a muteworker job
-    const [jobId] = await db("safe_queue").insert({
+    const [jobId] = await db("job_queue").insert({
+      executor: "muteworker",
       job_type: "gmail:incoming_email",
       data: JSON.stringify({
         messageId: body.messageId,
@@ -241,7 +242,8 @@ async function startEmailPolling(
           timestamp: h.timestamp,
         }));
 
-        await db("safe_queue").insert({
+        await db("job_queue").insert({
+          executor: "muteworker",
           job_type: "gmail:incoming_email",
           data: JSON.stringify({
             messageId: msg.id,

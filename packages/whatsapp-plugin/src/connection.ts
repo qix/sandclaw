@@ -223,7 +223,8 @@ export async function connectWhatsApp(
         };
 
         const now = Date.now();
-        await db("safe_queue").insert({
+        await db("job_queue").insert({
+          executor: "muteworker",
           job_type: "whatsapp:incoming_message",
           data: JSON.stringify(payload),
           context: JSON.stringify({ channel: "whatsapp", jid, conversationId }),

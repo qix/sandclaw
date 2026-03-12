@@ -60,28 +60,53 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
     }
   }
 
-  if (!(await db.schema.hasTable("safe_queue"))) {
-    await db.schema.createTable("safe_queue", (t) => {
+  if (!(await db.schema.hasTable("job_queue"))) {
+    await db.schema.createTable("job_queue", (t) => {
       t.increments("id");
+      t.text("executor").notNullable();
       t.text("job_type").notNullable();
       t.text("data").notNullable();
       t.text("context");
+      t.text("result");
       t.text("status").notNullable().defaultTo("pending");
       t.integer("created_at");
       t.integer("updated_at");
     });
   }
 
-  if (!(await db.schema.hasTable("confidante_queue"))) {
-    await db.schema.createTable("confidante_queue", (t) => {
-      t.increments("id");
-      t.text("job_type").notNullable();
-      t.text("data").notNullable();
-      t.text("result");
-      t.text("status").notNullable().defaultTo("pending");
-      t.integer("created_at");
-      t.integer("updated_at");
-    });
+  // Migrate from old safe_queue / confidante_queue tables into job_queue
+  if (await db.schema.hasTable("safe_queue")) {
+    const rows = await db("safe_queue").select("*");
+    for (const row of rows) {
+      await db("job_queue").insert({
+        executor: "muteworker",
+        job_type: row.job_type,
+        data: row.data,
+        context: row.context ?? null,
+        result: null,
+        status: row.status,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      });
+    }
+    await db.schema.dropTable("safe_queue");
+  }
+
+  if (await db.schema.hasTable("confidante_queue")) {
+    const rows = await db("confidante_queue").select("*");
+    for (const row of rows) {
+      await db("job_queue").insert({
+        executor: "confidante",
+        job_type: row.job_type,
+        data: row.data,
+        context: null,
+        result: row.result ?? null,
+        status: row.status,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      });
+    }
+    await db.schema.dropTable("confidante_queue");
   }
 
   if (!(await db.schema.hasTable("conversations"))) {

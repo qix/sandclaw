@@ -51,7 +51,7 @@ export function registerRoutes(app: any, db: any) {
     });
   });
 
-  // POST /approve/:id — approve and enqueue to confidante_queue
+  // POST /approve/:id — approve and enqueue to job_queue (confidante)
   app.post("/approve/:id", async (c: any) => {
     const id = parseInt(c.req.param("id"), 10);
     if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
@@ -71,7 +71,8 @@ export function registerRoutes(app: any, db: any) {
       : null;
     const now = Date.now();
 
-    await db("confidante_queue").insert({
+    await db("job_queue").insert({
+      executor: "confidante",
       job_type: GWS_CONFIDANTE_JOB_TYPE,
       data: JSON.stringify({
         requestId: verificationData.requestId,

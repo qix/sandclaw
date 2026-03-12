@@ -24,7 +24,7 @@ export class ConfidanteApiClient {
       Math.floor(this.config.longPollTimeoutMs / 1000),
     );
     const response = await this.request(
-      `/api/confidante-queue/next?timeout=${encodeURIComponent(String(timeoutSec))}`,
+      `/api/job/next?executor=confidante&timeout=${encodeURIComponent(String(timeoutSec))}`,
       { method: "GET" },
       signal,
     );
@@ -41,7 +41,7 @@ export class ConfidanteApiClient {
 
   async getJob(jobId: number): Promise<ConfidanteQueueJob | null> {
     const response = await this.request(
-      `/api/confidante-queue/${encodeURIComponent(String(jobId))}`,
+      `/api/job/${encodeURIComponent(String(jobId))}`,
       { method: "GET" },
     );
     if (response.status === 404) return null;
@@ -53,7 +53,7 @@ export class ConfidanteApiClient {
   }
 
   async markComplete(jobId: number, result?: string): Promise<void> {
-    const response = await this.request("/api/confidante-queue/complete", {
+    const response = await this.request("/api/job/complete", {
       method: "POST",
       body: JSON.stringify({ id: jobId, result: result ?? null }),
     });
@@ -62,6 +62,30 @@ export class ConfidanteApiClient {
         "Failed to mark confidante job complete",
         response,
       );
+    }
+  }
+
+  async postAgentStatus(event: {
+    jobId: number;
+    event: string;
+    prompt?: string;
+    systemPrompt?: string;
+    toolNames?: string[];
+    data?: Record<string, unknown>;
+    createdAt?: number;
+  }): Promise<void> {
+    try {
+      await this.request("/api/job/status", {
+        method: "POST",
+        body: JSON.stringify(event),
+      });
+    } catch (err) {
+      // Status reporting must never break job execution, but log it
+      this.logger?.warn("api.agent_status.error", {
+        jobId: event.jobId,
+        event: event.event,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 

@@ -194,6 +194,14 @@ async function handleReplayCommand(
     return;
   }
 
+  // Verify this job belongs to confidante
+  if (job.executor && job.executor !== "confidante") {
+    console.error(
+      `Error: Job ${replayJobId} has executor "${job.executor}", expected "confidante".`,
+    );
+    process.exit(1);
+  }
+
   // Display job details
   console.log("\n--- Job Details ---");
   console.log(`  ID:      ${job.id}`);
@@ -223,6 +231,15 @@ async function handleReplayCommand(
     logger,
     plugins,
     docker,
+    reportStatus: (event) => {
+      client.postAgentStatus(event).catch((err) => {
+        logger.warn("replay.agent_status.error", {
+          jobId: job.id,
+          event: event.event,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    },
   });
 
   await client.markComplete(job.id, result.result);

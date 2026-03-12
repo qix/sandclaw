@@ -386,6 +386,14 @@ async function handleReplayCommand(
     return;
   }
 
+  // Verify this job belongs to muteworker
+  if (job.executor && job.executor !== "muteworker") {
+    console.error(
+      `Error: Job ${replayJobId} has executor "${job.executor}", expected "muteworker".`,
+    );
+    process.exit(1);
+  }
+
   // Display job details
   console.log("\n--- Job Details ---");
   console.log(`  ID:      ${job.id}`);

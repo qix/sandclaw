@@ -190,7 +190,8 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
           )
         : null;
 
-      const [jobId] = await db("safe_queue").insert({
+      const [jobId] = await db("job_queue").insert({
+        executor: "muteworker",
         job_type: "email:email_received",
         data: JSON.stringify({
           messageId: body.messageId,
@@ -535,7 +536,8 @@ export async function startEmailPolling(
             ? await matchEmailQueue(email.to, config.emailQueueDir)
             : null;
 
-          const [jobId] = await db("safe_queue").insert({
+          const [jobId] = await db("job_queue").insert({
+            executor: "muteworker",
             job_type: "email:email_received",
             data: JSON.stringify({
               messageId: email.id,
@@ -553,7 +555,7 @@ export async function startEmailPolling(
             updated_at: now,
           });
 
-          // Link the safe_queue job to the email_received record
+          // Link the job_queue job to the email_received record
           await db("email_received")
             .where("id", emailReceivedId)
             .update({

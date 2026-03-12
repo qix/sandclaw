@@ -27,7 +27,7 @@ export class MuteworkerApiClient {
       Math.floor(this.config.longPollTimeoutMs / 1000),
     );
     const response = await this.request(
-      `/api/muteworker-queue/next?timeout=${encodeURIComponent(String(timeoutSec))}`,
+      `/api/job/next?executor=muteworker&timeout=${encodeURIComponent(String(timeoutSec))}`,
       { method: "GET" },
       signal,
     );
@@ -44,7 +44,7 @@ export class MuteworkerApiClient {
 
   async getJob(jobId: number): Promise<MuteworkerQueueJob | null> {
     const response = await this.request(
-      `/api/muteworker-queue/${encodeURIComponent(String(jobId))}`,
+      `/api/job/${encodeURIComponent(String(jobId))}`,
       { method: "GET" },
     );
     if (response.status === 404) return null;
@@ -65,7 +65,7 @@ export class MuteworkerApiClient {
     createdAt?: number;
   }): Promise<void> {
     try {
-      await this.request("/api/muteworker-queue/agent-status", {
+      await this.request("/api/job/status", {
         method: "POST",
         body: JSON.stringify(event),
       });
@@ -80,7 +80,7 @@ export class MuteworkerApiClient {
   }
 
   async markComplete(jobId: number): Promise<void> {
-    const response = await this.request("/api/muteworker-queue/complete", {
+    const response = await this.request("/api/job/complete", {
       method: "POST",
       body: JSON.stringify({ id: jobId }),
     });

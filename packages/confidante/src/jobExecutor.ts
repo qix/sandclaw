@@ -24,6 +24,12 @@ export interface ConfidanteJobArgs {
   job: ConfidanteQueueJob;
   plugins: ConfidantePlugin[];
   docker: DockerServiceImpl;
+  reportStatus?: (event: {
+    jobId: number;
+    event: string;
+    data?: Record<string, unknown>;
+    createdAt?: number;
+  }) => void;
 }
 
 export interface ConfidanteJobResult {
@@ -38,10 +44,16 @@ export interface ConfidanteJobResult {
 export async function executeConfidanteJob(
   args: ConfidanteJobArgs,
 ): Promise<ConfidanteJobResult> {
-  const { config, logger, job } = args;
+  const { config, logger, job, reportStatus } = args;
   const startTime = Date.now();
 
   logger.info("job.execution.started", { jobId: job.id, jobType: job.jobType });
+  reportStatus?.({
+    jobId: job.id,
+    event: "started",
+    data: { jobType: job.jobType },
+    createdAt: startTime,
+  });
 
   try {
     const ctx: ConfidantePluginContext = {
@@ -71,11 +83,19 @@ export async function executeConfidanteJob(
       );
     }
 
+    const durationMs = Date.now() - startTime;
+    reportStatus?.({
+      jobId: job.id,
+      event: "completed",
+      data: { durationMs },
+      createdAt: Date.now(),
+    });
+
     return {
       jobId: job.id,
       status: "success",
       result: typeof result === "string" ? result : undefined,
-      durationMs: Date.now() - startTime,
+      durationMs,
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
@@ -88,6 +108,13 @@ export async function executeConfidanteJob(
       durationMs,
       kind,
       error: message,
+    });
+
+    reportStatus?.({
+      jobId: job.id,
+      event: "failed",
+      data: { durationMs, kind, error: message },
+      createdAt: Date.now(),
     });
 
     return {

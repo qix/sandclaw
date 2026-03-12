@@ -89,14 +89,15 @@ export async function storeMessage(
   return { id, from, text, direction, timestamp: now };
 }
 
-/** Enqueue a safe_queue job for muteworker processing. */
+/** Enqueue a job_queue job for muteworker processing. */
 async function enqueueJob(
   db: DbHandle,
   text: string,
   history: any[],
   convId: number,
 ) {
-  await db("safe_queue").insert({
+  await db("job_queue").insert({
+    executor: "muteworker",
     job_type: "chat:incoming_message",
     data: JSON.stringify({ text, history }),
     context: JSON.stringify({ channel: "chat", conversationId: convId }),
