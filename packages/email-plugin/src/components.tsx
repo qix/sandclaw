@@ -106,20 +106,61 @@ export function EmailPanel() {
         }}
       />
       <section style={{ marginTop: "1rem" }}>
-        <h3>Capabilities</h3>
-        <ul style={{ lineHeight: "1.8" }}>
-          <li>
-            <strong>Receive:</strong> Polls for unseen emails and queues as jobs
-          </li>
-          <li>
-            <strong>Send:</strong> Compose and send emails (requires approval)
-          </li>
-        </ul>
+        <h3>Received Emails</h3>
+        <div id="sc-email-received-list">
+          <p style={{ color: colors.muted, fontSize: "0.85rem" }}>Loading&hellip;</p>
+        </div>
       </section>
-      <section>
-        <h3>Pending actions</h3>
-        <p>Check the verification panel for pending send requests.</p>
-      </section>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `(function(){
+  var container = document.getElementById('sc-email-received-list');
+  var accent = '${colors.accent}';
+  var muted = '${colors.muted}';
+  var border = '${colors.border}';
+  var surface = '${colors.surface}';
+
+  fetch('/api/email/received')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var emails = d.emails || [];
+      if (emails.length === 0) {
+        container.innerHTML = '<p style="color:' + muted + ';font-size:0.85rem">No emails received yet.</p>';
+        return;
+      }
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">';
+      html += '<thead><tr>';
+      html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">From</th>';
+      html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">Subject</th>';
+      html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">Received</th>';
+      html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">Job</th>';
+      html += '</tr></thead><tbody>';
+      emails.forEach(function(e){
+        var date = e.received_at ? new Date(e.received_at * 1000).toLocaleString() : '';
+        var jobCell = '';
+        if (e.job_id) {
+          jobCell = '<a href="?page=agent-status&job=' + encodeURIComponent(e.job_id) + '" style="color:' + accent + ';text-decoration:none;font-size:0.8rem">#' + e.job_id + '</a>';
+        }
+        html += '<tr style="border-bottom:1px solid ' + border + '">';
+        html += '<td style="padding:0.4rem 0.75rem;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">' + escapeHtml(e.from || '') + '</td>';
+        html += '<td style="padding:0.4rem 0.75rem">' + escapeHtml(e.subject || '(no subject)') + '</td>';
+        html += '<td style="padding:0.4rem 0.75rem;white-space:nowrap;color:' + muted + '">' + date + '</td>';
+        html += '<td style="padding:0.4rem 0.75rem">' + jobCell + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    })
+    .catch(function(){ container.innerHTML = '<p style="color:' + muted + ';font-size:0.85rem">Failed to load emails.</p>'; });
+
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(s));
+    return d.innerHTML;
+  }
+})();`,
+        }}
+      />
     </div>
   );
 }

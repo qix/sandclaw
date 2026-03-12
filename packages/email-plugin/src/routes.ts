@@ -212,6 +212,22 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
     return c.json({ success: true, queued: false });
   });
 
+  // GET /received — list emails from email_received table
+  app.get("/received", async (c: any) => {
+    try {
+      const limit = parseInt(c.req.query("limit") ?? "50", 10);
+      const rows = await db("email_received")
+        .orderBy("created_at", "desc")
+        .limit(limit);
+      return c.json({ emails: rows });
+    } catch (e) {
+      return c.json(
+        { error: `Failed to fetch received emails: ${(e as Error).message}` },
+        500,
+      );
+    }
+  });
+
   // GET /inbox — list recent inbox emails (subjects + IDs)
   app.get("/inbox", async (c: any) => {
     try {
@@ -471,7 +487,7 @@ export async function startEmailPolling(
         );
 
         // Record in email_received to prevent future duplicates
-        await db("email_received").insert({
+        const [emailReceivedId] = await db("email_received").insert({
           message_id: email.id,
           from: email.from,
           to: email.to,
@@ -518,7 +534,7 @@ export async function startEmailPolling(
             ? await matchEmailQueue(email.to, config.emailQueueDir)
             : null;
 
-          await db("safe_queue").insert({
+          const [jobId] = await db("safe_queue").insert({
             job_type: "email:email_received",
             data: JSON.stringify({
               messageId: email.id,
@@ -535,6 +551,11 @@ export async function startEmailPolling(
             created_at: now,
             updated_at: now,
           });
+
+          // Link the safe_queue job to the email_received record
+          await db("email_received")
+            .where("id", emailReceivedId)
+            .update({ job_id: jobId });
         }
       }
 
