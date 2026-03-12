@@ -3,11 +3,63 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
 
+function extractDescription(content: string): string | null {
+  const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
+  if (!match) return null;
+  const descMatch = match[1].match(/^description:\s*"?([^"\n]+)"?\s*$/m);
+  return descMatch ? descMatch[1].trim() : null;
+}
+
 export function createSkillTools(
   ctx: MuteworkerPluginContext,
   skillsDir: string,
 ) {
   return [
+    {
+      name: "list_skills",
+      label: "List Skills",
+      description:
+        "List all skills with their descriptions. Returns skill filenames and descriptions for use in the system prompt.",
+      parameters: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      } as unknown as TSchema,
+      execute: async () => {
+        const files = await listDir(skillsDir).catch((error) => {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+          throw error;
+        });
+
+        if (files.length === 0) {
+          return {
+            content: [{ type: "text", text: "No skills found." }],
+            details: { skills: [] },
+          };
+        }
+
+        const entries = await Promise.all(
+          files.map(async (filename) => {
+            const content = await readFile(
+              path.join(skillsDir, filename),
+              "utf8",
+            ).catch(() => null);
+            const description = content ? extractDescription(content) : null;
+            return { filename, description };
+          }),
+        );
+
+        const lines = entries.map(
+          (e) => `# ${e.filename}\n${e.description ?? "(no description)"}`,
+        );
+        const block = `<SKILLS>\nThe following is a list of skill names and their descriptions. Use the \`skill_read\` tool to fetch more details.\n\n${lines.join("\n\n")}\n</SKILLS>`;
+
+        return {
+          content: [{ type: "text", text: block }],
+          details: { skills: entries },
+        };
+      },
+    },
     {
       name: "list_skill_files",
       label: "List Skill Files",
