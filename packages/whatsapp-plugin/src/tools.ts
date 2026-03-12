@@ -84,7 +84,11 @@ export function createSendWhatsappTool(ctx: MuteworkerPluginContext) {
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ jid, text, jobContext: { worker: "muteworker", jobId: ctx.job.id } }),
+          body: JSON.stringify({
+            jid,
+            text,
+            jobContext: { worker: "muteworker", jobId: ctx.job.id },
+          }),
         },
       );
 

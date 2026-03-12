@@ -7,9 +7,9 @@ export function BrowserPanel() {
     <div style={{ padding: "1.5rem" }}>
       <h2 style={{ marginTop: 0 }}>Browser</h2>
       <p style={{ color: colors.muted }}>
-        Allows the muteworker to request web browsing tasks. All browse
-        requests require human approval before the Confidante agent executes
-        them in a Docker container using Claude Agent SDK with agent-browser.
+        Allows the muteworker to request web browsing tasks. All browse requests
+        require human approval before the Confidante agent executes them in a
+        Docker container using Claude Agent SDK with agent-browser.
       </p>
       <section>
         <h3>Flow</h3>

@@ -4,8 +4,16 @@ import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
 import type { EmailPluginConfig } from "./jmapClient";
-import { EmailPanel, EmailQueuePanel, EmailVerificationRenderer } from "./components";
-import { registerRoutes, registerEmailQueueRoutes, startEmailPolling } from "./routes";
+import {
+  EmailPanel,
+  EmailQueuePanel,
+  EmailVerificationRenderer,
+} from "./components";
+import {
+  registerRoutes,
+  registerEmailQueueRoutes,
+  startEmailPolling,
+} from "./routes";
 import {
   createSendEmailTool,
   createListInboxTool,
@@ -16,7 +24,11 @@ import { emailJobHandlers } from "./jobHandlers";
 import { migrations } from "./migrations";
 
 export type { EmailPluginConfig } from "./jmapClient";
-export { EmailPanel, EmailQueuePanel, EmailVerificationRenderer } from "./components";
+export {
+  EmailPanel,
+  EmailQueuePanel,
+  EmailVerificationRenderer,
+} from "./components";
 export {
   createSendEmailTool,
   createListInboxTool,

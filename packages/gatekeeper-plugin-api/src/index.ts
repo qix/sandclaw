@@ -46,7 +46,9 @@ export interface GatekeeperHooks {
   register(hooks: {
     "gatekeeper:start"?: () => void | Promise<void>;
     "gatekeeper:stop"?: () => void | Promise<void>;
-    "muteworker:agent-status"?: (event: AgentStatusEvent) => void | Promise<void>;
+    "muteworker:agent-status"?: (
+      event: AgentStatusEvent,
+    ) => void | Promise<void>;
   }): void;
 }
 
@@ -66,10 +68,7 @@ export interface RoutesService {
 
 export interface WebSocketService {
   /** Register a handler for incoming WS messages whose `type` starts with `prefix:`. */
-  onMessage(
-    prefix: string,
-    handler: (ws: any, data: any) => void,
-  ): void;
+  onMessage(prefix: string, handler: (ws: any, data: any) => void): void;
   /** Send a JSON message to all connected WS clients. */
   broadcast(data: Record<string, unknown>): void;
   /** Register a callback invoked when a new WS client connects. */

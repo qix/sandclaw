@@ -64,13 +64,7 @@ export function runDockerClaude(
   // Pass prompt via environment variable for the entry point
   envFlags.push("-e", `CLAUDE_PROMPT=${prompt}`);
 
-  const fullArgs = [
-    "run",
-    "--rm",
-    ...envFlags,
-    ...dockerArgs,
-    image,
-  ];
+  const fullArgs = ["run", "--rm", ...envFlags, ...dockerArgs, image];
   logCmd("docker", fullArgs);
 
   const child = spawn("docker", fullArgs, {

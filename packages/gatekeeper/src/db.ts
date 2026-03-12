@@ -28,9 +28,7 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
 
   // Add job_context column to verification_requests if missing, migrate from old job column
   if (await db.schema.hasTable("verification_requests")) {
-    const cols = await db.raw(
-      "PRAGMA table_info(verification_requests)",
-    );
+    const cols = await db.raw("PRAGMA table_info(verification_requests)");
     const hasJob = cols.some((c: any) => c.name === "job");
     if (!hasJob) {
       await db.schema.alterTable("verification_requests", (t) => {

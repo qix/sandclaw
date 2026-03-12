@@ -117,9 +117,7 @@ export async function executeBuild(
   // Use proxy-collected prompts as the commit message for better traceability
   // (these are the actual user prompts extracted from API calls, not the raw input)
   const commitMessage =
-    collectedPrompts.length > 0
-      ? collectedPrompts.join("\n\n")
-      : prompt;
+    collectedPrompts.length > 0 ? collectedPrompts.join("\n\n") : prompt;
   const commitResult = await detectAndCommitChanges(workDir, commitMessage);
 
   ctx.logger.info("builder.build.commit_result", {

@@ -96,11 +96,15 @@ function VerificationCard({
             {r.action}
           </span>
           <span style={{ color: colors.muted }}>#{r.id}</span>
-          {r.jobContext && (
-            r.jobContext.worker === "muteworker" ? (
+          {r.jobContext &&
+            (r.jobContext.worker === "muteworker" ? (
               <a
                 href={`?page=agent-status&job=${encodeURIComponent(String(r.jobContext.jobId))}`}
-                style={{ color: colors.accent, fontSize: "0.8rem", textDecoration: "none" }}
+                style={{
+                  color: colors.accent,
+                  fontSize: "0.8rem",
+                  textDecoration: "none",
+                }}
               >
                 [{r.jobContext.worker}:{r.jobContext.jobId}]
               </a>
@@ -108,8 +112,7 @@ function VerificationCard({
               <span style={{ color: colors.muted, fontSize: "0.8rem" }}>
                 [{r.jobContext.worker}:{r.jobContext.jobId}]
               </span>
-            )
-          )}
+            ))}
         </div>
         <div className="sc-flex-row">
           {isResolved && (

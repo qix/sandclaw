@@ -108,9 +108,7 @@ export interface McpToolDef {
   name: string;
   description: string;
   zodShape: Record<string, z.ZodTypeAny>;
-  handler: (
-    args: Record<string, unknown>,
-  ) => Promise<{
+  handler: (args: Record<string, unknown>) => Promise<{
     content: Array<{ type: "text"; text: string }>;
     isError?: boolean;
   }>;

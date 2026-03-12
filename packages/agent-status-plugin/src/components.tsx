@@ -20,10 +20,7 @@ interface AgentJobDetailPanelProps {
 
 /** Group events by jobId, returning jobs with their events. */
 function groupByJob(events: AgentStatusEvent[]) {
-  const map = new Map<
-    number,
-    { jobId: number; events: AgentStatusEvent[] }
-  >();
+  const map = new Map<number, { jobId: number; events: AgentStatusEvent[] }>();
   for (const ev of events) {
     let entry = map.get(ev.jobId);
     if (!entry) {
@@ -127,7 +124,9 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                       <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>
                         Job #{j.jobId}
                       </span>
-                      <span style={{ fontSize: "0.75rem", color: colors.muted }}>
+                      <span
+                        style={{ fontSize: "0.75rem", color: colors.muted }}
+                      >
                         {started ? formatTime(started.createdAt) : ""}
                       </span>
                     </div>
@@ -195,8 +194,9 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                   const stepCount = j.events.filter(
                     (e) => e.event === "step",
                   ).length;
-                  const durationMs =
-                    terminal.data?.durationMs as number | undefined;
+                  const durationMs = terminal.data?.durationMs as
+                    | number
+                    | undefined;
                   const isSuccess = terminal.event === "completed";
                   return (
                     <div
@@ -216,9 +216,7 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                           marginBottom: "0.25rem",
                         }}
                       >
-                        <span
-                          style={{ fontWeight: 600, fontSize: "0.875rem" }}
-                        >
+                        <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>
                           Job #{j.jobId}
                         </span>
                         <span
@@ -414,7 +412,10 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
   );
 }
 
-export function AgentJobDetailPanel({ jobId, events }: AgentJobDetailPanelProps) {
+export function AgentJobDetailPanel({
+  jobId,
+  events,
+}: AgentJobDetailPanelProps) {
   const started = events.find((e) => e.event === "started");
   const terminal = events.find(
     (e) => e.event === "completed" || e.event === "failed",
@@ -438,7 +439,11 @@ export function AgentJobDetailPanel({ jobId, events }: AgentJobDetailPanelProps)
       <div style={{ marginBottom: "1rem" }}>
         <a
           href="?page=agent-status"
-          style={{ color: colors.accent, fontSize: "0.85rem", textDecoration: "none" }}
+          style={{
+            color: colors.accent,
+            fontSize: "0.85rem",
+            textDecoration: "none",
+          }}
         >
           &larr; Back to Agent Status
         </a>
@@ -448,7 +453,9 @@ export function AgentJobDetailPanel({ jobId, events }: AgentJobDetailPanelProps)
       <Card>
         <CardHeader>
           <span style={{ fontWeight: 600, color: colors.text }}>
-            <StatusDot color={isFinished ? (isSuccess ? "gray" : "red") : "green"} />{" "}
+            <StatusDot
+              color={isFinished ? (isSuccess ? "gray" : "red") : "green"}
+            />{" "}
             Summary
           </span>
           {isFinished && (
@@ -464,19 +471,41 @@ export function AgentJobDetailPanel({ jobId, events }: AgentJobDetailPanelProps)
           )}
         </CardHeader>
         <CardBody>
-          <div style={{ display: "flex", gap: "2rem", fontSize: "0.85rem", color: colors.muted, flexWrap: "wrap" }}>
-            <span>{stepCount} step{stepCount !== 1 ? "s" : ""}</span>
+          <div
+            style={{
+              display: "flex",
+              gap: "2rem",
+              fontSize: "0.85rem",
+              color: colors.muted,
+              flexWrap: "wrap",
+            }}
+          >
+            <span>
+              {stepCount} step{stepCount !== 1 ? "s" : ""}
+            </span>
             {durationMs != null && <span>{formatDuration(durationMs)}</span>}
             {started && <span>Started: {formatTime(started.createdAt)}</span>}
             {terminal && <span>Ended: {formatTime(terminal.createdAt)}</span>}
           </div>
           {started?.toolNames && (
-            <div style={{ fontSize: "0.8rem", color: colors.muted, marginTop: "0.5rem" }}>
+            <div
+              style={{
+                fontSize: "0.8rem",
+                color: colors.muted,
+                marginTop: "0.5rem",
+              }}
+            >
               Tools: {started.toolNames.join(", ")}
             </div>
           )}
           {!isSuccess && terminal?.data?.error != null && (
-            <div style={{ fontSize: "0.8rem", color: colors.danger, marginTop: "0.5rem" }}>
+            <div
+              style={{
+                fontSize: "0.8rem",
+                color: colors.danger,
+                marginTop: "0.5rem",
+              }}
+            >
               Error: {String(terminal.data.error as string)}
             </div>
           )}
@@ -493,7 +522,14 @@ export function AgentJobDetailPanel({ jobId, events }: AgentJobDetailPanelProps)
           </CardHeader>
           <CardBody>
             {events.length === 0 ? (
-              <p style={{ color: colors.muted, fontSize: "0.875rem", textAlign: "center", padding: "1rem 0" }}>
+              <p
+                style={{
+                  color: colors.muted,
+                  fontSize: "0.875rem",
+                  textAlign: "center",
+                  padding: "1rem 0",
+                }}
+              >
                 No events recorded for this job.
               </p>
             ) : (
@@ -502,15 +538,31 @@ export function AgentJobDetailPanel({ jobId, events }: AgentJobDetailPanelProps)
                   key={i}
                   style={{
                     padding: "0.5rem 0.75rem",
-                    borderBottom: i < events.length - 1 ? `1px solid ${colors.border}` : undefined,
+                    borderBottom:
+                      i < events.length - 1
+                        ? `1px solid ${colors.border}`
+                        : undefined,
                     fontSize: "0.8rem",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
-                    <span style={{
-                      fontWeight: 600,
-                      color: ev.event === "failed" ? colors.danger : ev.event === "completed" ? colors.success : colors.text,
-                    }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        color:
+                          ev.event === "failed"
+                            ? colors.danger
+                            : ev.event === "completed"
+                              ? colors.success
+                              : colors.text,
+                      }}
+                    >
                       {ev.event}
                     </span>
                     <span style={{ color: colors.muted, fontSize: "0.75rem" }}>
@@ -518,7 +570,10 @@ export function AgentJobDetailPanel({ jobId, events }: AgentJobDetailPanelProps)
                     </span>
                   </div>
                   {ev.data && Object.keys(ev.data).length > 0 && (
-                    <pre className="sc-pre" style={{ fontSize: "0.75rem", margin: "0.25rem 0 0" }}>
+                    <pre
+                      className="sc-pre"
+                      style={{ fontSize: "0.75rem", margin: "0.25rem 0 0" }}
+                    >
                       {JSON.stringify(ev.data, null, 2)}
                     </pre>
                   )}

@@ -29,9 +29,7 @@ export function pushEvent(event: AgentStatusEvent): void {
 }
 
 export async function loadRecentEvents(db: any): Promise<void> {
-  const rows = await db("agent_status")
-    .orderBy("id", "desc")
-    .limit(MAX_RECENT);
+  const rows = await db("agent_status").orderBy("id", "desc").limit(MAX_RECENT);
 
   agentStatusState.recentEvents = rows.reverse().map((r: any) => ({
     jobId: r.job_id,

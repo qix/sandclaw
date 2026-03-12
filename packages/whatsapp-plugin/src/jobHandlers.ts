@@ -36,7 +36,11 @@ export function createWhatsappJobHandlers(operatorJids: ReadonlySet<string>) {
             await fetch(`${ctx.gatekeeperInternalUrl}/api/whatsapp/send`, {
               method: "POST",
               headers: { "content-type": "application/json" },
-              body: JSON.stringify({ jid: jobCtx.jid, text: reply, jobContext: { worker: "muteworker", jobId: ctx.job.id } }),
+              body: JSON.stringify({
+                jid: jobCtx.jid,
+                text: reply,
+                jobContext: { worker: "muteworker", jobId: ctx.job.id },
+              }),
             });
 
             ctx.artifacts.push({

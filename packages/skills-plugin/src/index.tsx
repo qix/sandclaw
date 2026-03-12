@@ -33,9 +33,7 @@ export function createSkillsPlugin(config: SkillsPluginConfig) {
           components.register("tabs:primary", SkillsTab);
           components.register("page:skills", SkillsPanel);
 
-          routes.registerRoutes((app) =>
-            registerRoutes(app, config.skillsDir),
-          );
+          routes.registerRoutes((app) => registerRoutes(app, config.skillsDir));
         },
       });
     },
@@ -44,9 +42,7 @@ export function createSkillsPlugin(config: SkillsPluginConfig) {
       env.registerInit({
         deps: { hooks: muteworkerDeps.hooks, tools: muteworkerDeps.tools },
         init({ hooks, tools }) {
-          tools.registerTools((ctx) =>
-            createSkillTools(ctx, config.skillsDir),
-          );
+          tools.registerTools((ctx) => createSkillTools(ctx, config.skillsDir));
 
           hooks.register({
             "muteworker:build-system-prompt": async (prev) => {

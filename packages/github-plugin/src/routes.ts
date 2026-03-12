@@ -97,7 +97,9 @@ export function registerRoutes(
       action: GITHUB_PR_CREATED_ACTION,
       data: JSON.stringify(data),
       status: "pending",
-      ...(body.jobContext ? { job_context: JSON.stringify(body.jobContext) } : {}),
+      ...(body.jobContext
+        ? { job_context: JSON.stringify(body.jobContext) }
+        : {}),
       created_at: now,
       updated_at: now,
     });

@@ -266,7 +266,14 @@ export function EmailQueuePanel() {
           >
             Select a file
           </span>
-          <span id="email-queue-dirty" style={{ display: "none", color: colors.warning, fontSize: "0.75rem" }}>
+          <span
+            id="email-queue-dirty"
+            style={{
+              display: "none",
+              color: colors.warning,
+              fontSize: "0.75rem",
+            }}
+          >
             (unsaved)
           </span>
           <div style={{ flex: 1 }} />

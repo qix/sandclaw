@@ -76,7 +76,8 @@ export async function startGatekeeper(
   // 2. Plugin lifecycle: create services, run register + init
   const startHooks: Array<() => Promise<void>> = [];
   const stopHooks: Array<() => Promise<void>> = [];
-  const agentStatusHooks: Array<(event: AgentStatusEvent) => Promise<void>> = [];
+  const agentStatusHooks: Array<(event: AgentStatusEvent) => Promise<void>> =
+    [];
   const hooksService: GatekeeperHooks = {
     register(hooks) {
       if (hooks["gatekeeper:start"])
@@ -84,7 +85,9 @@ export async function startGatekeeper(
       if (hooks["gatekeeper:stop"])
         stopHooks.push(async () => hooks["gatekeeper:stop"]!());
       if (hooks["muteworker:agent-status"])
-        agentStatusHooks.push(async (event) => hooks["muteworker:agent-status"]!(event));
+        agentStatusHooks.push(async (event) =>
+          hooks["muteworker:agent-status"]!(event),
+        );
     },
   };
 
@@ -285,7 +288,9 @@ export async function startGatekeeper(
     // Collect all query params for page components
     const url = new URL(c.req.url);
     const queryParams: Record<string, string> = {};
-    url.searchParams.forEach((v, k) => { queryParams[k] = v; });
+    url.searchParams.forEach((v, k) => {
+      queryParams[k] = v;
+    });
 
     // Always fetch pending count for the sidebar badge
     const [{ count: pendingVerificationCount }] = await db(
@@ -471,7 +476,9 @@ export async function startGatekeeper(
           chatUnread = Number(uc);
         }
         lastBroadcastChatUnread = chatUnread;
-        ws.send(JSON.stringify({ type: "chat_unread_count", count: chatUnread }));
+        ws.send(
+          JSON.stringify({ type: "chat_unread_count", count: chatUnread }),
+        );
 
         // Route prefixed messages to plugin handlers
         ws.on("message", (raw) => {

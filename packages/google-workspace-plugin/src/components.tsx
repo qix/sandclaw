@@ -9,7 +9,8 @@ export function GoogleWorkspacePanel() {
       <p style={{ color: colors.muted }}>
         Provides access to all 17 Google Workspace services via the{" "}
         <code>gws</code> CLI. Read commands execute directly; write/mutating
-        commands require human approval and are executed by the Confidante agent.
+        commands require human approval and are executed by the Confidante
+        agent.
       </p>
       <section>
         <h3>Tools</h3>

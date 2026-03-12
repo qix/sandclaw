@@ -72,7 +72,7 @@ export async function gwsExec(
         resolve({
           stdout: stdout ?? "",
           stderr: stderr ?? "",
-          exitCode: error ? (error as any).code ?? 1 : 0,
+          exitCode: error ? ((error as any).code ?? 1) : 0,
         });
       },
     );

@@ -40,7 +40,9 @@ export function registerRoutes(
       action: BROWSER_VERIFICATION_ACTION,
       data: JSON.stringify(verificationData),
       status: "pending",
-      ...(body.jobContext ? { job_context: JSON.stringify(body.jobContext) } : {}),
+      ...(body.jobContext
+        ? { job_context: JSON.stringify(body.jobContext) }
+        : {}),
       created_at: now,
       updated_at: now,
     });

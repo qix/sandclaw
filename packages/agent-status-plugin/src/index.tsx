@@ -26,7 +26,10 @@ function AgentStatusTab() {
         role="menuitem"
       >
         <span className="sc-dropdown-check">{isActive ? "\u2713" : ""}</span>
-        <span className="sc-status-dot sc-status-dot-gray" id="agent-status-tab-dot-mobile" />
+        <span
+          className="sc-status-dot sc-status-dot-gray"
+          id="agent-status-tab-dot-mobile"
+        />
         Agent Status
       </a>
     );
@@ -37,7 +40,10 @@ function AgentStatusTab() {
       href="?page=agent-status"
       className={`sc-nav-link ${isActive ? "active" : ""}`}
     >
-      <span className="sc-status-dot sc-status-dot-gray" id="agent-status-tab-dot-sidebar" />
+      <span
+        className="sc-status-dot sc-status-dot-gray"
+        id="agent-status-tab-dot-sidebar"
+      />
       Agent Status
     </a>
   );

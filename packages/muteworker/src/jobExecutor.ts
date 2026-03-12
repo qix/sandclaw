@@ -85,7 +85,9 @@ export async function executeMuteworkerJob(
     for (const factory of args.toolFactories) {
       rawTools.push(...factory(pluginCtx));
     }
-    const toolNames = rawTools.map((t: any) => t.name as string).filter(Boolean);
+    const toolNames = rawTools
+      .map((t: any) => t.name as string)
+      .filter(Boolean);
     const mcpToolDefs = getMcpToolDefs(rawTools, { config, logger, job });
 
     // Emit "started" event

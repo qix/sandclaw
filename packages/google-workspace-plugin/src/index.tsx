@@ -39,10 +39,7 @@ export function createGoogleWorkspacePlugin(
         init({ db, components, routes }) {
           function GoogleWorkspaceTab() {
             return (
-              <TabLink
-                href="?page=google-workspace"
-                title="Google Workspace"
-              />
+              <TabLink href="?page=google-workspace" title="Google Workspace" />
             );
           }
           components.register("tabs:primary", GoogleWorkspaceTab);

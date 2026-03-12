@@ -36,9 +36,7 @@ export function createGwsConfidanteHandlers(
         command,
       });
 
-      const args = command.filter(
-        (a): a is string => typeof a === "string",
-      );
+      const args = command.filter((a): a is string => typeof a === "string");
 
       // Add --format json if not already present
       if (!args.includes("--format")) {

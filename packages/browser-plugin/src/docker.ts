@@ -71,13 +71,7 @@ export function runDockerBrowser(
   }
   envFlags.push("-e", `BROWSER_MAX_TURNS=${maxTurns}`);
 
-  const fullArgs = [
-    "run",
-    "--rm",
-    ...envFlags,
-    ...dockerArgs,
-    image,
-  ];
+  const fullArgs = ["run", "--rm", ...envFlags, ...dockerArgs, image];
   logCmd("docker", fullArgs);
 
   const child = spawn("docker", fullArgs, {

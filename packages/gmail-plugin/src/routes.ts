@@ -30,7 +30,9 @@ export function registerRoutes(app: any, db: any, config: GmailPluginConfig) {
       action: "send_email",
       data: JSON.stringify(verificationData),
       status: "pending",
-      ...(body.jobContext ? { job_context: JSON.stringify(body.jobContext) } : {}),
+      ...(body.jobContext
+        ? { job_context: JSON.stringify(body.jobContext) }
+        : {}),
       created_at: now,
       updated_at: now,
     });

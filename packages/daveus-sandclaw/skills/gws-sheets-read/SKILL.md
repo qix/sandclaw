@@ -23,10 +23,10 @@ google_workspace_read command: ["sheets", "+read", "--spreadsheet", "<ID>", "--r
 
 ## Flags
 
-| Flag | Required | Default | Description |
-|------|----------|---------|-------------|
-| `--spreadsheet` | ✓ | — | Spreadsheet ID |
-| `--range` | ✓ | — | Range to read (e.g. 'Sheet1!A1:B2') |
+| Flag            | Required | Default | Description                         |
+| --------------- | -------- | ------- | ----------------------------------- |
+| `--spreadsheet` | ✓        | —       | Spreadsheet ID                      |
+| `--range`       | ✓        | —       | Range to read (e.g. 'Sheet1!A1:B2') |
 
 ## Examples
 

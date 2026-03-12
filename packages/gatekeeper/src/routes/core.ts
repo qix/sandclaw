@@ -391,10 +391,7 @@ export function registerCoreRoutes(
     );
 
     if (userMessage) {
-      promptParts.push(
-        "",
-        `The user originally asked: "${userMessage}"`,
-      );
+      promptParts.push("", `The user originally asked: "${userMessage}"`);
     }
 
     promptParts.push("", body.result, "------------------------------------");
@@ -407,9 +404,8 @@ export function registerCoreRoutes(
     }
 
     const prompt = promptParts.join("\n");
-    const context = Object.keys(sqCtx).length > 0
-      ? JSON.stringify(sqCtx)
-      : null;
+    const context =
+      Object.keys(sqCtx).length > 0 ? JSON.stringify(sqCtx) : null;
     const now = Date.now();
 
     const [jobId] = await db("safe_queue").insert({

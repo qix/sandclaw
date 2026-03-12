@@ -45,10 +45,7 @@ function ChatTab() {
   }
 
   return (
-    <a
-      href="?page=chat"
-      className={`sc-nav-link ${isActive ? "active" : ""}`}
-    >
+    <a href="?page=chat" className={`sc-nav-link ${isActive ? "active" : ""}`}>
       <span className="sc-status-dot sc-status-dot-green" />
       Chat
       <span

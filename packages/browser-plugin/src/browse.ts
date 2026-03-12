@@ -53,9 +53,7 @@ export async function executeBrowse(
   });
 
   // Build result summary and post back to gatekeeper
-  const resultParts = [
-    `Browse completed (exit code: ${exitCode}).`,
-  ];
+  const resultParts = [`Browse completed (exit code: ${exitCode}).`];
   if (finalResult) {
     resultParts.push("", "--- Browse Result ---", finalResult);
   } else {

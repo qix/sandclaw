@@ -56,9 +56,7 @@ export function createReadTool(
       if (!Array.isArray(command) || !command.length)
         throw new Error("command is required and must be a non-empty array");
 
-      const parsed = command.filter(
-        (a): a is string => typeof a === "string",
-      );
+      const parsed = command.filter((a): a is string => typeof a === "string");
       if (!parsed.length) throw new Error("No valid string arguments provided");
 
       const method = extractMethod(parsed);

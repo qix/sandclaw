@@ -40,7 +40,9 @@ export function App({
   renderers,
 }: AppProps) {
   return (
-    <NavigationContext.Provider value={{ activePage, queryParams: queryParams ?? {} }}>
+    <NavigationContext.Provider
+      value={{ activePage, queryParams: queryParams ?? {} }}
+    >
       <html lang="en">
         <head>
           <meta charSet="utf-8" />

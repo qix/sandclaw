@@ -35,9 +35,10 @@ export function registerRoutes(
     const dirPath = (body.path ?? "").trim();
 
     // Empty or "." means vault root
-    const absDir = dirPath && dirPath !== "."
-      ? resolveVaultPath(vaultRoot, dirPath)
-      : vaultRoot;
+    const absDir =
+      dirPath && dirPath !== "."
+        ? resolveVaultPath(vaultRoot, dirPath)
+        : vaultRoot;
     if (!absDir) return c.json({ error: "path escapes vault" }, 400);
 
     let entries;
@@ -57,7 +58,8 @@ export function registerRoutes(
 
     const items: Array<{ name: string; type: "file" | "directory" }> = [];
     for (const entry of entries) {
-      if (entry.name.startsWith(".") || LIST_SKIP_DIRS.has(entry.name)) continue;
+      if (entry.name.startsWith(".") || LIST_SKIP_DIRS.has(entry.name))
+        continue;
       if (entry.isDirectory()) {
         items.push({ name: entry.name, type: "directory" });
       } else if (entry.isFile()) {
@@ -68,7 +70,9 @@ export function registerRoutes(
     items.sort((a, b) =>
       a.type === b.type
         ? a.name.localeCompare(b.name)
-        : a.type === "directory" ? -1 : 1,
+        : a.type === "directory"
+          ? -1
+          : 1,
     );
 
     return c.json({ path: relDir, items });
@@ -188,7 +192,9 @@ export function registerRoutes(
       action: "write_file",
       data: JSON.stringify(verificationData),
       status: "pending",
-      ...(body.jobContext ? { job_context: JSON.stringify(body.jobContext) } : {}),
+      ...(body.jobContext
+        ? { job_context: JSON.stringify(body.jobContext) }
+        : {}),
       created_at: now,
       updated_at: now,
     });

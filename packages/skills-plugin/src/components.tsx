@@ -102,7 +102,14 @@ export function SkillsPanel() {
           >
             Select a file
           </span>
-          <span id="skills-dirty" style={{ display: "none", color: colors.warning, fontSize: "0.75rem" }}>
+          <span
+            id="skills-dirty"
+            style={{
+              display: "none",
+              color: colors.warning,
+              fontSize: "0.75rem",
+            }}
+          >
             (unsaved)
           </span>
           <div style={{ flex: 1 }} />
