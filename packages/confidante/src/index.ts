@@ -1,6 +1,6 @@
-import * as readline from "node:readline";
 import { inspect } from "node:util";
 import cac from "cac";
+import { confirm } from "@sandclaw/util";
 import type {
   ConfidantePlugin,
   ConfidanteHooks,
@@ -250,17 +250,4 @@ async function handleReplayCommand(
   for (const fn of stopHooks) {
     await fn();
   }
-}
-
-function confirm(question: string): Promise<boolean> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-  return new Promise((resolve) => {
-    rl.question(`${question} [y/N] `, (answer) => {
-      rl.close();
-      resolve(answer.trim().toLowerCase() === "y");
-    });
-  });
 }
