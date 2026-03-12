@@ -71,7 +71,13 @@ export class MuteworkerQueueLoop {
           toolFactories: this.toolFactories,
           buildSystemPrompt: this.buildSystemPrompt,
           reportStatus: (event) => {
-            this.client.postAgentStatus(event).catch(() => {});
+            this.client.postAgentStatus(event).catch((err) => {
+              this.logger.warn("queue.agent_status.error", {
+                jobId: job.id,
+                event: event.event,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            });
           },
         });
 

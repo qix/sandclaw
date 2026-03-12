@@ -18,7 +18,7 @@ export class ApiError extends Error {
 export class MuteworkerApiClient {
   constructor(
     private readonly config: MuteworkerConfig,
-    private readonly logger?: Logger,
+    private readonly logger: Logger,
   ) {}
 
   async readNextJob(signal?: AbortSignal): Promise<MuteworkerQueueJob | null> {
@@ -69,8 +69,13 @@ export class MuteworkerApiClient {
         method: "POST",
         body: JSON.stringify(event),
       });
-    } catch {
-      // Status reporting must never break job execution
+    } catch (err) {
+      // Status reporting must never break job execution, but log it
+      this.logger.warn("api.agent_status.error", {
+        jobId: event.jobId,
+        event: event.event,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
@@ -100,7 +105,7 @@ export class MuteworkerApiClient {
       headers,
       signal,
     }).then((response) => {
-      this.logger?.debug("api.request", {
+      this.logger.debug("api.request", {
         path,
         method: init.method ?? "GET",
         status: response.status,

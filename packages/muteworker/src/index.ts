@@ -386,6 +386,15 @@ async function handleReplayCommand(
     plugins,
     toolFactories,
     buildSystemPrompt,
+    reportStatus: (event) => {
+      client.postAgentStatus(event).catch((err) => {
+        logger.warn("replay.agent_status.error", {
+          jobId: job.id,
+          event: event.event,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    },
   });
 
   await client.markComplete(job.id);

@@ -149,7 +149,14 @@ export function registerCoreRoutes(
 
     if (agentStatusHooks) {
       for (const hook of agentStatusHooks) {
-        await hook(statusEvent);
+        try {
+          await hook(statusEvent);
+        } catch (err) {
+          console.error(
+            `[agent-status] hook error for job ${statusEvent.jobId}:`,
+            err instanceof Error ? err.message : err,
+          );
+        }
       }
     }
 
