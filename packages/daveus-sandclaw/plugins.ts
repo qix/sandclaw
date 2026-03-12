@@ -19,6 +19,7 @@ import { createGmailPlugin } from "@sandclaw/gmail-plugin";
 import { createBuilderPlugin } from "@sandclaw/builder-plugin";
 import { createEmailPlugin } from "@sandclaw/email-plugin";
 import { createAgentStatusPlugin } from "@sandclaw/agent-status-plugin";
+import { buildWhatsappPlugin } from "@sandclaw/whatsapp-plugin";
 
 export type SandclawPlugin = GatekeeperPlugin &
   MuteworkerPlugin &
@@ -34,15 +35,10 @@ export const plugins: SandclawPlugin[] = [
   createMemoryPlugin({ memoryDir: config.memoryDir }),
 
   buildChatPlugin(),
-  /*
-   * @disabled
   buildWhatsappPlugin({
-    operatorJids: [
-    "218519480315934@lid",
-    ],
+    operatorJids: ["218519480315934@lid"],
     operatorOnly: true,
   }),
-  */
   buildTelegramPlugin({
     botToken: process.env.TELEGRAM_BOT_TOKEN,
 

@@ -35,6 +35,38 @@ export function registerRoutes(
   db: any,
   operatorJids: ReadonlySet<string>,
 ) {
+  // GET /settings/watch-inbox — read current toggle state
+  app.get("/settings/watch-inbox", async (c: any) => {
+    const row = await db("plugin_kv")
+      .where({ plugin: "whatsapp", key: "watch_inbox" })
+      .first();
+    return c.json({ enabled: row?.value === "true" });
+  });
+
+  // POST /settings/watch-inbox — update toggle state
+  app.post("/settings/watch-inbox", async (c: any) => {
+    const body = await c.req.json();
+    const enabled = !!body.enabled;
+
+    const existing = await db("plugin_kv")
+      .where({ plugin: "whatsapp", key: "watch_inbox" })
+      .first();
+
+    if (existing) {
+      await db("plugin_kv")
+        .where({ plugin: "whatsapp", key: "watch_inbox" })
+        .update({ value: String(enabled) });
+    } else {
+      await db("plugin_kv").insert({
+        plugin: "whatsapp",
+        key: "watch_inbox",
+        value: String(enabled),
+      });
+    }
+
+    return c.json({ enabled });
+  });
+
   // GET /status — current connection state
   app.get("/status", (_c: any) => {
     return _c.json({

@@ -91,6 +91,103 @@ export function WhatsAppPanel() {
       </Card>
       <Card>
         <CardHeader>
+          <span style={{ fontWeight: 600, color: colors.text }}>Settings</span>
+        </CardHeader>
+        <CardBody>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+            }}
+          >
+            <button
+              id="sc-wa-watch-toggle"
+              type="button"
+              role="switch"
+              aria-checked="false"
+              style={{
+                position: "relative",
+                width: "44px",
+                height: "24px",
+                borderRadius: "12px",
+                border: `1px solid ${colors.border}`,
+                background: colors.surface,
+                cursor: "pointer",
+                padding: 0,
+                flexShrink: 0,
+                transition: "background 0.2s",
+              }}
+            >
+              <span
+                id="sc-wa-watch-knob"
+                style={{
+                  position: "absolute",
+                  top: "2px",
+                  left: "2px",
+                  width: "18px",
+                  height: "18px",
+                  borderRadius: "50%",
+                  background: colors.muted,
+                  transition: "transform 0.2s, background 0.2s",
+                }}
+              />
+            </button>
+            <label
+              htmlFor="sc-wa-watch-toggle"
+              style={{ fontSize: "0.9rem", cursor: "pointer" }}
+            >
+              Watch WhatsApp inbox
+            </label>
+            <span
+              id="sc-wa-watch-status"
+              style={{ fontSize: "0.8rem", color: colors.muted }}
+            />
+          </div>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){
+  var btn = document.getElementById('sc-wa-watch-toggle');
+  var knob = document.getElementById('sc-wa-watch-knob');
+  var status = document.getElementById('sc-wa-watch-status');
+  var enabled = false;
+  var accent = '${colors.accent}';
+  var surface = '${colors.surface}';
+  var muted = '${colors.muted}';
+
+  function render() {
+    btn.setAttribute('aria-checked', String(enabled));
+    btn.style.background = enabled ? accent : surface;
+    knob.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
+    knob.style.background = enabled ? '#fff' : muted;
+    status.textContent = '';
+  }
+
+  fetch('/api/whatsapp/settings/watch-inbox')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ enabled = d.enabled; render(); })
+    .catch(function(){ status.textContent = 'Failed to load'; });
+
+  btn.addEventListener('click', function(){
+    enabled = !enabled;
+    render();
+    status.textContent = 'Saving...';
+    fetch('/api/whatsapp/settings/watch-inbox', {
+      method: 'POST',
+      headers: {'content-type':'application/json'},
+      body: JSON.stringify({enabled: enabled})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ enabled = d.enabled; render(); })
+    .catch(function(){ enabled = !enabled; render(); status.textContent = 'Save failed'; });
+  });
+})();`,
+            }}
+          />
+        </CardBody>
+      </Card>
+      <Card>
+        <CardHeader>
           <span style={{ fontWeight: 600, color: colors.text }}>
             Recent Conversations
           </span>

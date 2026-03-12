@@ -8,6 +8,14 @@ import type { ConversationSummary } from "@sandclaw/ui";
 import { waState } from "./state";
 import { useDBAuthState } from "./auth";
 
+/** Check whether the "watch inbox" toggle is enabled (defaults to OFF). */
+export async function isWatchInboxEnabled(db: any): Promise<boolean> {
+  const row = await db("plugin_kv")
+    .where({ plugin: "whatsapp", key: "watch_inbox" })
+    .first();
+  return row?.value === "true";
+}
+
 /** Look up or create a conversation row for the given JID, returning its auto-increment ID. */
 export async function getOrCreateConversationId(
   db: any,
@@ -179,7 +187,8 @@ export async function connectWhatsApp(
         created_at: Date.now(),
       });
 
-      if (!operatorOnly || operatorJids.has(jid)) {
+      const watchEnabled = await isWatchInboxEnabled(db);
+      if (watchEnabled && (!operatorOnly || operatorJids.has(jid))) {
         // Fetch recent history for context
         const recentMessages = await db("conversation_message")
           .where({ plugin: "whatsapp", thread_id: jid })
