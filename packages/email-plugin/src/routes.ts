@@ -273,10 +273,6 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
     }
   });
 
-  // Start email polling if configured
-  startEmailPolling(config, db, config.pollIntervalMs ?? 30000).catch(() => {
-    // Polling failed to start — likely missing credentials
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -446,28 +442,45 @@ export function registerEmailQueueRoutes(app: any, emailQueueDir: string) {
   });
 }
 
-async function startEmailPolling(
+export async function startEmailPolling(
   config: EmailPluginConfig,
   db: any,
   intervalMs: number,
 ): Promise<void> {
   if (!config.apiToken) return;
 
-  // Track processed IDs within this session to avoid duplicates
-  const processedIds = new Set<string>();
-
   const poll = async () => {
     try {
       const unseenIds = await queryUnseenEmails(config);
-      const newIds = unseenIds.filter((id) => !processedIds.has(id));
+      if (unseenIds.length === 0) return;
+
+      // Filter out emails already in email_received table
+      const existing = await db("email_received")
+        .whereIn("message_id", unseenIds)
+        .select("message_id");
+      const existingIds = new Set(existing.map((r: any) => r.message_id));
+      const newIds = unseenIds.filter((id) => !existingIds.has(id));
       if (newIds.length === 0) return;
 
       const emails = await getEmails(config, newIds);
 
       for (const email of emails) {
-        processedIds.add(email.id);
-
         const now = Date.now();
+        const receivedAt = Math.floor(
+          new Date(email.receivedAt).getTime() / 1000,
+        );
+
+        // Record in email_received to prevent future duplicates
+        await db("email_received").insert({
+          message_id: email.id,
+          from: email.from,
+          to: email.to,
+          subject: email.subject,
+          thread_id: email.threadId ?? null,
+          received_at: receivedAt,
+          created_at: now,
+        });
+
         await db("conversation_message").insert({
           conversation_id: 0,
           plugin: "email",
@@ -476,9 +489,7 @@ async function startEmailPolling(
           thread_id: email.threadId ?? null,
           from: email.from,
           to: email.to,
-          timestamp: Math.floor(
-            new Date(email.receivedAt).getTime() / 1000,
-          ),
+          timestamp: receivedAt,
           direction: "received",
           text: email.textBody,
           created_at: now,

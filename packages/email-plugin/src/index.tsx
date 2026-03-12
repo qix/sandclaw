@@ -5,7 +5,7 @@ import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
 import type { EmailPluginConfig } from "./jmapClient";
 import { EmailPanel, EmailQueuePanel, EmailVerificationRenderer } from "./components";
-import { registerRoutes, registerEmailQueueRoutes } from "./routes";
+import { registerRoutes, registerEmailQueueRoutes, startEmailPolling } from "./routes";
 import {
   createSendEmailTool,
   createListInboxTool,
@@ -13,6 +13,7 @@ import {
   createReadEmailTool,
 } from "./tools";
 import { emailJobHandlers } from "./jobHandlers";
+import { migrations } from "./migrations";
 
 export type { EmailPluginConfig } from "./jmapClient";
 export { EmailPanel, EmailQueuePanel, EmailVerificationRenderer } from "./components";
@@ -29,15 +30,17 @@ export function createEmailPlugin(config: EmailPluginConfig) {
     verificationRenderer: EmailVerificationRenderer,
 
     jobHandlers: emailJobHandlers,
+    migrations,
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({
         deps: {
           db: gatekeeperDeps.db,
+          hooks: gatekeeperDeps.hooks,
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
         },
-        init({ db, components, routes }) {
+        init({ db, hooks, components, routes }) {
           function EmailTab() {
             return <TabLink href="?page=email" title="Email" />;
           }
@@ -57,6 +60,11 @@ export function createEmailPlugin(config: EmailPluginConfig) {
             if (config.emailQueueDir) {
               registerEmailQueueRoutes(app, config.emailQueueDir);
             }
+          });
+
+          hooks.register({
+            "gatekeeper:start": () =>
+              startEmailPolling(config, db, config.pollIntervalMs ?? 30000),
           });
         },
       });
