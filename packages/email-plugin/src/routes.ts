@@ -556,7 +556,10 @@ export async function startEmailPolling(
           // Link the safe_queue job to the email_received record
           await db("email_received")
             .where("id", emailReceivedId)
-            .update({ job_id: jobId });
+            .update({
+              job_id: jobId,
+              job_context: `worker: muteworker, jobId: ${jobId}`,
+            });
         }
       }
 

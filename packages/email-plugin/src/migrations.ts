@@ -10,6 +10,7 @@ export async function migrations(knex: any): Promise<void> {
       t.integer("received_at");
       t.integer("created_at");
       t.integer("job_id");
+      t.text("job_context");
     });
   }
 }
