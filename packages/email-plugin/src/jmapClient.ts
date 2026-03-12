@@ -1,8 +1,10 @@
 export interface EmailPluginConfig {
   /** JMAP host, e.g. "api.fastmail.com" */
   jmapHost: string;
-  /** Fastmail API token (App Password with JMAP scope) */
+  /** Fastmail API token (App Password with JMAP read scope) */
   apiToken: string;
+  /** Fastmail API token with write/submission scope. Falls back to apiToken. */
+  writeApiToken?: string;
   /** User's email address (the "from" for outbound) */
   userEmail: string;
   /** Polling interval for new messages in ms. Defaults to 30000. */
@@ -303,43 +305,49 @@ export async function sendEmail(
   text: string,
 ): Promise<{ messageId: string }> {
   const session = await discoverSession(config);
+  const writeToken = config.writeApiToken || config.apiToken;
 
-  const result = await jmapCall(config, [
+  const result = await jmapCallRaw(
+    session.apiUrl,
+    writeToken,
     [
-      "Email/set",
-      {
-        accountId: session.accountId,
-        create: {
-          draft: {
-            mailboxIds: { [session.draftsId]: true },
-            from: [{ email: config.userEmail }],
-            to: [{ email: to }],
-            subject,
-            textBody: [{ partId: "1", type: "text/plain" }],
-            bodyValues: { "1": { value: text } },
-          },
-        },
-      },
-      "c",
-    ],
-    [
-      "EmailSubmission/set",
-      {
-        accountId: session.accountId,
-        create: {
-          send: {
-            emailId: "#draft",
-            envelope: {
-              mailFrom: { email: config.userEmail },
-              rcptTo: [{ email: to }],
+      [
+        "Email/set",
+        {
+          accountId: session.accountId,
+          create: {
+            draft: {
+              mailboxIds: { [session.draftsId]: true },
+              from: [{ email: config.userEmail }],
+              to: [{ email: to }],
+              subject,
+              textBody: [{ partId: "1", type: "text/plain" }],
+              bodyValues: { "1": { value: text } },
             },
           },
         },
-        onSuccessDestroyEmail: ["#send"],
-      },
-      "s",
+        "c",
+      ],
+      [
+        "EmailSubmission/set",
+        {
+          accountId: session.accountId,
+          create: {
+            send: {
+              emailId: "#draft",
+              envelope: {
+                mailFrom: { email: config.userEmail },
+                rcptTo: [{ email: to }],
+              },
+            },
+          },
+          onSuccessDestroyEmail: ["#send"],
+        },
+        "s",
+      ],
     ],
-  ]);
+    [...JMAP_USING, "urn:ietf:params:jmap:submission"],
+  );
 
   // Extract created email ID
   const createResponse = result.methodResponses.find((r) => r[2] === "c");

@@ -81,6 +81,7 @@ export const plugins: SandclawPlugin[] = [
   createEmailPlugin({
     jmapHost: "api.fastmail.com",
     apiToken: process.env.FASTMAIL_READ_API_TOKEN || "",
+    writeApiToken: process.env.FASTMAIL_WRITE_API_TOKEN || "",
     userEmail: process.env.FASTMAIL_EMAIL || "",
     emailQueueDir: path.join(obsidianDir, "daveus/email-queue"),
   }),

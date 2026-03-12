@@ -11,7 +11,44 @@ import {
   type EmailPluginConfig,
 } from "./jmapClient";
 
+async function isWatchInboxEnabled(db: any): Promise<boolean> {
+  const row = await db("plugin_kv")
+    .where({ plugin: "email", key: "watch_inbox" })
+    .first();
+  return row?.value === "true";
+}
+
 export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
+  // GET /settings/watch-inbox — read current toggle state
+  app.get("/settings/watch-inbox", async (c: any) => {
+    const enabled = await isWatchInboxEnabled(db);
+    return c.json({ enabled });
+  });
+
+  // POST /settings/watch-inbox — update toggle state
+  app.post("/settings/watch-inbox", async (c: any) => {
+    const body = await c.req.json();
+    const enabled = !!body.enabled;
+
+    const existing = await db("plugin_kv")
+      .where({ plugin: "email", key: "watch_inbox" })
+      .first();
+
+    if (existing) {
+      await db("plugin_kv")
+        .where({ plugin: "email", key: "watch_inbox" })
+        .update({ value: String(enabled) });
+    } else {
+      await db("plugin_kv").insert({
+        plugin: "email",
+        key: "watch_inbox",
+        value: String(enabled),
+      });
+    }
+
+    return c.json({ enabled });
+  });
+
   // POST /send — create a verification request for an email send
   app.post("/send", async (c: any) => {
     const body = await (c.req.json() as {
@@ -138,31 +175,36 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       timestamp: h.timestamp,
     }));
 
-    // Check if email matches a queue
-    const emailQueuePrompt = config.emailQueueDir
-      ? await matchEmailQueue(body.to ?? config.userEmail, config.emailQueueDir)
-      : null;
+    // Only queue if watch inbox is enabled
+    const watchEnabled = await isWatchInboxEnabled(db);
+    if (watchEnabled) {
+      // Check if email matches a queue
+      const emailQueuePrompt = config.emailQueueDir
+        ? await matchEmailQueue(body.to ?? config.userEmail, config.emailQueueDir)
+        : null;
 
-    // Queue as a muteworker job
-    const [jobId] = await db("safe_queue").insert({
-      job_type: "email:email_received",
-      data: JSON.stringify({
-        messageId: body.messageId,
-        from: body.from,
-        to: body.to ?? config.userEmail,
-        subject: body.subject ?? "",
-        text: body.text ?? "",
-        threadId: body.threadId ?? null,
-        history: historyEntries,
-        ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
-      }),
-      context: JSON.stringify({ channel: "email", from: body.from }),
-      status: "pending",
-      created_at: now,
-      updated_at: now,
-    });
+      const [jobId] = await db("safe_queue").insert({
+        job_type: "email:email_received",
+        data: JSON.stringify({
+          messageId: body.messageId,
+          from: body.from,
+          to: body.to ?? config.userEmail,
+          subject: body.subject ?? "",
+          text: body.text ?? "",
+          threadId: body.threadId ?? null,
+          history: historyEntries,
+          ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
+        }),
+        context: JSON.stringify({ channel: "email", from: body.from }),
+        status: "pending",
+        created_at: now,
+        updated_at: now,
+      });
 
-    return c.json({ success: true, jobId });
+      return c.json({ success: true, jobId });
+    }
+
+    return c.json({ success: true, queued: false });
   });
 
   // GET /inbox — list recent inbox emails (subjects + IDs)
@@ -440,43 +482,47 @@ async function startEmailPolling(
           created_at: now,
         });
 
-        const history = await db("conversation_message")
-          .where("plugin", "email")
-          .where("channel", email.from)
-          .orderBy("timestamp", "asc")
-          .limit(20);
+        // Only queue if watch inbox is enabled
+        const watchEnabled = await isWatchInboxEnabled(db);
+        if (watchEnabled) {
+          const history = await db("conversation_message")
+            .where("plugin", "email")
+            .where("channel", email.from)
+            .orderBy("timestamp", "asc")
+            .limit(20);
 
-        const historyEntries = history.map((h: any) => ({
-          role:
-            h.direction === "sent"
-              ? ("assistant" as const)
-              : ("user" as const),
-          text: h.text ?? "",
-          timestamp: h.timestamp,
-        }));
+          const historyEntries = history.map((h: any) => ({
+            role:
+              h.direction === "sent"
+                ? ("assistant" as const)
+                : ("user" as const),
+            text: h.text ?? "",
+            timestamp: h.timestamp,
+          }));
 
-        // Check if email matches a queue
-        const emailQueuePrompt = config.emailQueueDir
-          ? await matchEmailQueue(email.to, config.emailQueueDir)
-          : null;
+          // Check if email matches a queue
+          const emailQueuePrompt = config.emailQueueDir
+            ? await matchEmailQueue(email.to, config.emailQueueDir)
+            : null;
 
-        await db("safe_queue").insert({
-          job_type: "email:email_received",
-          data: JSON.stringify({
-            messageId: email.id,
-            from: email.from,
-            to: email.to,
-            subject: email.subject,
-            text: email.textBody,
-            threadId: email.threadId ?? null,
-            history: historyEntries,
-            ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
-          }),
-          context: JSON.stringify({ channel: "email", from: email.from }),
-          status: "pending",
-          created_at: now,
-          updated_at: now,
-        });
+          await db("safe_queue").insert({
+            job_type: "email:email_received",
+            data: JSON.stringify({
+              messageId: email.id,
+              from: email.from,
+              to: email.to,
+              subject: email.subject,
+              text: email.textBody,
+              threadId: email.threadId ?? null,
+              history: historyEntries,
+              ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
+            }),
+            context: JSON.stringify({ channel: "email", from: email.from }),
+            status: "pending",
+            created_at: now,
+            updated_at: now,
+          });
+        }
       }
 
       // Mark all as read
