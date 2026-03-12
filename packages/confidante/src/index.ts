@@ -1,4 +1,6 @@
+import * as readline from "node:readline";
 import { inspect } from "node:util";
+import cac from "cac";
 import type {
   ConfidantePlugin,
   ConfidanteHooks,
@@ -19,9 +21,51 @@ export interface ConfidanteOptions {
   config?: Partial<ConfidanteConfig>;
 }
 
-export interface ConfidanteScriptOptions extends ConfidanteOptions {
-  /** Replay a specific job by ID instead of running the queue loop. */
-  replayJobId?: number;
+/**
+ * Initialize plugins and return the collected services.
+ * Shared between the queue loop and replay.
+ */
+function initializePlugins(
+  plugins: ConfidantePlugin[],
+  docker: DockerServiceImpl,
+) {
+  const startHooks: Array<() => Promise<void>> = [];
+  const stopHooks: Array<() => Promise<void>> = [];
+  const hooksService: ConfidanteHooks = {
+    register(hooks) {
+      if (hooks["confidante:start"])
+        startHooks.push(async () => hooks["confidante:start"]!());
+      if (hooks["confidante:stop"])
+        stopHooks.push(async () => hooks["confidante:stop"]!());
+    },
+  };
+
+  const services = new Map<string, any>();
+  services.set("core.hooks", hooksService);
+  services.set("core.docker", docker);
+
+  const initFns: Array<() => void | Promise<void>> = [];
+  for (const plugin of plugins) {
+    if (plugin.registerConfidante) {
+      plugin.registerConfidante({
+        registerInit({ deps, init }) {
+          const resolved: Record<string, any> = {};
+          for (const [key, ref] of Object.entries(deps)) {
+            resolved[key] = services.get(ref.id);
+          }
+          initFns.push(() => init(resolved as any));
+        },
+      });
+    }
+  }
+
+  const runInit = async () => {
+    for (const fn of initFns) {
+      await fn();
+    }
+  };
+
+  return { startHooks, stopHooks, runInit };
 }
 
 /**
@@ -52,39 +96,8 @@ export async function startConfidante(
   const client = new ConfidanteApiClient(config, logger);
   const docker = new DockerServiceImpl(logger);
 
-  // Plugin lifecycle: create services, run registerConfidante + init
-  const startHooks: Array<() => Promise<void>> = [];
-  const stopHooks: Array<() => Promise<void>> = [];
-  const hooksService: ConfidanteHooks = {
-    register(hooks) {
-      if (hooks["confidante:start"])
-        startHooks.push(async () => hooks["confidante:start"]!());
-      if (hooks["confidante:stop"])
-        stopHooks.push(async () => hooks["confidante:stop"]!());
-    },
-  };
-
-  const services = new Map<string, any>();
-  services.set("core.hooks", hooksService);
-  services.set("core.docker", docker);
-
-  const initFns: Array<() => void | Promise<void>> = [];
-  for (const plugin of plugins) {
-    if (plugin.registerConfidante) {
-      plugin.registerConfidante({
-        registerInit({ deps, init }) {
-          const resolved: Record<string, any> = {};
-          for (const [key, ref] of Object.entries(deps)) {
-            resolved[key] = services.get(ref.id);
-          }
-          initFns.push(() => init(resolved as any));
-        },
-      });
-    }
-  }
-  for (const fn of initFns) {
-    await fn();
-  }
+  const { startHooks, stopHooks, runInit } = initializePlugins(plugins, docker);
+  await runInit();
 
   const loop = new ConfidanteQueueLoop(client, config, logger, plugins, docker);
 
@@ -116,66 +129,64 @@ export async function startConfidante(
 /**
  * Confidante CLI script entry point.
  *
- * When `replay` is set, fetches the specified job from the gatekeeper,
- * displays its details, prompts for confirmation, and executes it.
- * Otherwise falls through to the normal queue loop.
+ * Uses `cac` for subcommand parsing:
+ *   - (default)          — Show help.
+ *   - `worker`           — Start the queue loop.
+ *   - `replay <id>`      — Replay a specific job by ID.
  */
 export async function confidanteScript(
-  options: ConfidanteScriptOptions,
+  options: ConfidanteOptions,
 ): Promise<void> {
-  if (options.replayJobId == null) {
-    return startConfidante(options);
-  }
+  const cli = cac("confidante");
 
+  cli.command("", "Show help").action(() => {
+    cli.outputHelp();
+  });
+
+  cli.command("worker", "Start the queue loop").action(async () => {
+    await startConfidante(options);
+  });
+
+  cli
+    .command("replay <id>", "Replay a specific job by ID")
+    .action(async (id: string) => {
+      const jobId = parseInt(id, 10);
+      if (isNaN(jobId)) {
+        console.error("Error: replay requires a numeric job ID.");
+        process.exit(1);
+      }
+      await handleReplayCommand(options, jobId);
+    });
+
+  cli.help();
+  cli.parse();
+}
+
+/**
+ * Replay a specific job by ID.
+ */
+async function handleReplayCommand(
+  options: ConfidanteOptions,
+  replayJobId: number,
+): Promise<void> {
   const config: ConfidanteConfig = { ...DEFAULT_CONFIG, ...options.config };
   const plugins = options.plugins ?? [];
   const logger = createLogger(config.logLevel);
   const client = new ConfidanteApiClient(config, logger);
   const docker = new DockerServiceImpl(logger);
 
-  // Initialize plugins
-  const startHooks: Array<() => Promise<void>> = [];
-  const stopHooks: Array<() => Promise<void>> = [];
-  const hooksService: ConfidanteHooks = {
-    register(hooks) {
-      if (hooks["confidante:start"])
-        startHooks.push(async () => hooks["confidante:start"]!());
-      if (hooks["confidante:stop"])
-        stopHooks.push(async () => hooks["confidante:stop"]!());
-    },
-  };
-
-  const services = new Map<string, any>();
-  services.set("core.hooks", hooksService);
-  services.set("core.docker", docker);
-
-  const initFns: Array<() => void | Promise<void>> = [];
-  for (const plugin of plugins) {
-    if (plugin.registerConfidante) {
-      plugin.registerConfidante({
-        registerInit({ deps, init }) {
-          const resolved: Record<string, any> = {};
-          for (const [key, ref] of Object.entries(deps)) {
-            resolved[key] = services.get(ref.id);
-          }
-          initFns.push(() => init(resolved as any));
-        },
-      });
-    }
-  }
-  for (const fn of initFns) {
-    await fn();
-  }
+  const { startHooks, stopHooks, runInit } = initializePlugins(plugins, docker);
+  await runInit();
 
   for (const fn of startHooks) {
     await fn();
   }
 
   // Fetch the job
-  const job = await client.getJob(options.replayJobId);
+  const job = await client.getJob(replayJobId);
   if (!job) {
-    logger.error("replay.job.not_found", { jobId: options.replayJobId });
-    console.error(`Job ${options.replayJobId} not found.`);
+    logger.error("replay.job.not_found", { jobId: replayJobId });
+    console.error(`Job ${replayJobId} not found.`);
     process.exitCode = 1;
     for (const fn of stopHooks) {
       await fn();
@@ -242,16 +253,14 @@ export async function confidanteScript(
 }
 
 function confirm(question: string): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
   return new Promise((resolve) => {
-    process.stdout.write(`${question} [y/N] `);
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.once("data", (data) => {
-      const key = data.toString().toLowerCase();
-      process.stdin.setRawMode(false);
-      process.stdin.pause();
-      process.stdout.write(key === "y" ? "y\n" : "n\n");
-      resolve(key === "y");
+    rl.question(`${question} [y/N] `, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase() === "y");
     });
   });
 }
