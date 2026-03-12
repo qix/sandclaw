@@ -267,7 +267,7 @@ export function createSendEmailTool(ctx: MuteworkerPluginContext) {
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ to, subject, text, job: `muteworker:${ctx.job.id}` }),
+          body: JSON.stringify({ to, subject, text, jobContext: { worker: "muteworker", jobId: ctx.job.id } }),
         },
       );
 

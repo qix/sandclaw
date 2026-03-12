@@ -314,7 +314,7 @@ export async function startGatekeeper(
         action: r.action,
         data: r.data,
         status: r.status,
-        job: r.job ?? undefined,
+        jobContext: r.job_context ? JSON.parse(r.job_context) : undefined,
         createdAt: r.created_at,
       }));
 
@@ -346,7 +346,7 @@ export async function startGatekeeper(
             action: r.action,
             data: r.data,
             status: r.status,
-            job: r.job ?? undefined,
+            jobContext: r.job_context ? JSON.parse(r.job_context) : undefined,
             createdAt: r.created_at,
             updatedAt: r.updated_at,
           })),

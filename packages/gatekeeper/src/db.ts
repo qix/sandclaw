@@ -26,7 +26,7 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
     });
   }
 
-  // Add job column to verification_requests if missing
+  // Add job_context column to verification_requests if missing, migrate from old job column
   if (await db.schema.hasTable("verification_requests")) {
     const cols = await db.raw(
       "PRAGMA table_info(verification_requests)",
@@ -36,6 +36,29 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
       await db.schema.alterTable("verification_requests", (t) => {
         t.text("job").nullable();
       });
+    }
+    const hasJobContext = cols.some((c: any) => c.name === "job_context");
+    if (!hasJobContext) {
+      await db.schema.alterTable("verification_requests", (t) => {
+        t.text("job_context").nullable();
+      });
+      // Migrate existing "muteworker:123" / "confidante:123" values
+      const rows = await db("verification_requests").whereNotNull("job");
+      for (const row of rows) {
+        const match = (row.job as string).match(
+          /^(muteworker|confidante):(\d+)$/,
+        );
+        if (match) {
+          await db("verification_requests")
+            .where("id", row.id)
+            .update({
+              job_context: JSON.stringify({
+                worker: match[1],
+                jobId: parseInt(match[2], 10),
+              }),
+            });
+        }
+      }
     }
   }
 

@@ -6,7 +6,7 @@ interface GwsExecPayload {
   requestId: string;
   command: string[];
   responseJobType?: string;
-  originContext?: { safeQueueContext?: unknown; userMessage?: string };
+  jobContext?: { worker: string; jobId: number };
 }
 
 export function createGwsConfidanteHandlers(
@@ -27,7 +27,7 @@ export function createGwsConfidanteHandlers(
         requestId,
         command,
         responseJobType = GWS_RESULT_JOB_TYPE,
-        originContext,
+        jobContext,
       } = payload;
 
       ctx.logger.info("gws.exec.executing", {
@@ -76,7 +76,7 @@ export function createGwsConfidanteHandlers(
             requestId,
             responseJobType,
             result,
-            ...(originContext ? { originContext } : {}),
+            ...(jobContext ? { jobContext } : {}),
           }),
         },
       );

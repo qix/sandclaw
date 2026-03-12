@@ -55,7 +55,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       to?: string;
       subject?: string;
       text?: string;
-      job?: string;
+      jobContext?: { worker: string; jobId: number };
     });
     if (!body.to) return c.json({ error: "to is required" }, 400);
     if (!body.subject) return c.json({ error: "subject is required" }, 400);
@@ -74,7 +74,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       action: "send_email",
       data: JSON.stringify(verificationData),
       status: "pending",
-      ...(body.job ? { job: body.job } : {}),
+      ...(body.jobContext ? { job_context: JSON.stringify(body.jobContext) } : {}),
       created_at: now,
       updated_at: now,
     });
@@ -182,7 +182,10 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
     if (watchEnabled) {
       // Check if email matches a queue
       const emailQueuePrompt = config.emailQueueDir
-        ? await matchEmailQueue(body.to ?? config.userEmail, config.emailQueueDir)
+        ? await matchEmailQueue(
+            body.to ?? config.userEmail,
+            config.emailQueueDir,
+          )
         : null;
 
       const [jobId] = await db("safe_queue").insert({
@@ -321,10 +324,7 @@ export async function matchEmailQueue(
 
     if (fileSlug === queueSlug) {
       try {
-        const content = await readFile(
-          path.join(emailQueueDir, file),
-          "utf8",
-        );
+        const content = await readFile(path.join(emailQueueDir, file), "utf8");
         return content;
       } catch {
         return null;

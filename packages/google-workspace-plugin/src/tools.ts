@@ -146,25 +146,6 @@ export function createExecTool(ctx: MuteworkerPluginContext) {
       const description = String(params.description ?? "").trim();
       if (!description) throw new Error("description is required");
 
-      // Build originContext from the originating safe_queue job so the
-      // result can be routed back to the correct channel.
-      let originContext: Record<string, unknown> | undefined;
-      if (ctx.job.context) {
-        let safeQueueContext: unknown;
-        try {
-          safeQueueContext = JSON.parse(ctx.job.context);
-        } catch {}
-        let userMessage: string | undefined;
-        try {
-          const jobData = JSON.parse(ctx.job.data);
-          if (typeof jobData.text === "string") userMessage = jobData.text;
-        } catch {}
-        originContext = {
-          safeQueueContext,
-          ...(userMessage ? { userMessage } : {}),
-        };
-      }
-
       const response = await fetch(
         `${ctx.gatekeeperInternalUrl}/api/google-workspace/request`,
         {
@@ -174,8 +155,7 @@ export function createExecTool(ctx: MuteworkerPluginContext) {
             command,
             description,
             responseJobType: GWS_RESULT_JOB_TYPE,
-            ...(originContext ? { originContext } : {}),
-            job: `muteworker:${ctx.job.id}`,
+            jobContext: { worker: "muteworker", jobId: ctx.job.id },
           }),
         },
       );

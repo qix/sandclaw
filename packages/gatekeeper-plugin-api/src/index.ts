@@ -24,6 +24,12 @@ export function createServiceRef<T>(config: { id: string }): ServiceRef<T> {
   return { id: config.id } as ServiceRef<T>;
 }
 
+/** Identifies the originating worker job for a verification request. */
+export interface JobContext {
+  worker: "muteworker" | "confidante";
+  jobId: number;
+}
+
 /** Event emitted by the muteworker to report agent execution status. */
 export interface AgentStatusEvent {
   jobId: number;

@@ -31,7 +31,7 @@ export function createRequestBrowseTool(ctx: MuteworkerPluginContext) {
             prompt,
             url,
             responseJobType: DEFAULT_BROWSER_RESULT_JOB_TYPE,
-            job: `muteworker:${ctx.job.id}`,
+            jobContext: { worker: "muteworker", jobId: ctx.job.id },
           }),
         },
       );

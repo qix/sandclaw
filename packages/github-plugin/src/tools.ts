@@ -34,7 +34,7 @@ export function createPullRequestTool(ctx: MuteworkerPluginContext) {
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ repo, head, title, body, job: `muteworker:${ctx.job.id}` }),
+          body: JSON.stringify({ repo, head, title, body, jobContext: { worker: "muteworker", jobId: ctx.job.id } }),
         },
       );
 

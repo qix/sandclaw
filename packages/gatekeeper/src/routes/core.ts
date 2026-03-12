@@ -134,7 +134,10 @@ export function registerCoreRoutes(
 
     const validEvents = ["started", "step", "completed", "failed"];
     if (!validEvents.includes(body.event)) {
-      return c.json({ error: `event must be one of: ${validEvents.join(", ")}` }, 400);
+      return c.json(
+        { error: `event must be one of: ${validEvents.join(", ")}` },
+        400,
+      );
     }
 
     const statusEvent: AgentStatusEvent = {
@@ -196,7 +199,7 @@ export function registerCoreRoutes(
         action: r.action,
         data: r.data,
         status: r.status,
-        job: r.job ?? undefined,
+        jobContext: r.job_context ? JSON.parse(r.job_context) : undefined,
         createdAt: r.created_at,
       })),
     });
@@ -228,7 +231,7 @@ export function registerCoreRoutes(
         action: r.action,
         data: r.data,
         status: r.status,
-        job: r.job ?? undefined,
+        jobContext: r.job_context ? JSON.parse(r.job_context) : undefined,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       })),
@@ -329,24 +332,38 @@ export function registerCoreRoutes(
     const body = await c.req.json<{
       requestId?: string;
       result?: string;
-      originContext?: {
-        safeQueueContext?: Record<string, unknown>;
-        userMessage?: string;
-      };
+      jobContext?: { worker: string; jobId: number };
     }>();
 
-    if (!body.requestId)
-      return c.json({ error: "requestId is required" }, 400);
+    if (!body.requestId) return c.json({ error: "requestId is required" }, 400);
     if (!body.result) return c.json({ error: "result is required" }, 400);
 
-    const sqCtx = (body.originContext?.safeQueueContext ?? {}) as Record<
-      string,
-      unknown
-    >;
+    // Fetch context from the originating safe_queue job by reference
+    let sqCtx: Record<string, unknown> = {};
+    let userMessage: string | undefined;
+
+    if (body.jobContext?.worker === "muteworker" && body.jobContext.jobId) {
+      const originJob = await db("safe_queue")
+        .where("id", body.jobContext.jobId)
+        .first();
+      if (originJob) {
+        if (originJob.context) {
+          try {
+            sqCtx = JSON.parse(originJob.context);
+          } catch {}
+        }
+        if (originJob.data) {
+          try {
+            const jobData = JSON.parse(originJob.data);
+            if (typeof jobData.text === "string") userMessage = jobData.text;
+          } catch {}
+        }
+      }
+    }
+
     const conversationId =
       typeof sqCtx.conversationId === "number" ? sqCtx.conversationId : null;
-    const channel =
-      typeof sqCtx.channel === "string" ? sqCtx.channel : null;
+    const channel = typeof sqCtx.channel === "string" ? sqCtx.channel : null;
 
     const promptParts: string[] = [];
 
@@ -373,10 +390,10 @@ export function registerCoreRoutes(
       `Request ID: ${body.requestId}`,
     );
 
-    if (body.originContext?.userMessage) {
+    if (userMessage) {
       promptParts.push(
         "",
-        `The user originally asked: "${body.originContext.userMessage}"`,
+        `The user originally asked: "${userMessage}"`,
       );
     }
 
@@ -390,8 +407,8 @@ export function registerCoreRoutes(
     }
 
     const prompt = promptParts.join("\n");
-    const context = body.originContext?.safeQueueContext
-      ? JSON.stringify(body.originContext.safeQueueContext)
+    const context = Object.keys(sqCtx).length > 0
+      ? JSON.stringify(sqCtx)
       : null;
     const now = Date.now();
 

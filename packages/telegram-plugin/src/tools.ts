@@ -90,7 +90,7 @@ export function createSendTelegramTool(ctx: MuteworkerPluginContext) {
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ chatId, text, job: `muteworker:${ctx.job.id}` }),
+          body: JSON.stringify({ chatId, text, jobContext: { worker: "muteworker", jobId: ctx.job.id } }),
         },
       );
 

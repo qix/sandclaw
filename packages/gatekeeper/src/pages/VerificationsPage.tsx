@@ -17,7 +17,7 @@ export interface VerificationRequest {
   action: string;
   data: string;
   status: string;
-  job?: string;
+  jobContext?: { worker: "muteworker" | "confidante"; jobId: number };
   createdAt: number;
   updatedAt?: number;
 }
@@ -96,17 +96,17 @@ function VerificationCard({
             {r.action}
           </span>
           <span style={{ color: colors.muted }}>#{r.id}</span>
-          {r.job && (
-            r.job.startsWith("muteworker:") ? (
+          {r.jobContext && (
+            r.jobContext.worker === "muteworker" ? (
               <a
-                href={`?page=agent-status&job=${encodeURIComponent(r.job.slice("muteworker:".length))}`}
+                href={`?page=agent-status&job=${encodeURIComponent(String(r.jobContext.jobId))}`}
                 style={{ color: colors.accent, fontSize: "0.8rem", textDecoration: "none" }}
               >
-                [{r.job}]
+                [{r.jobContext.worker}:{r.jobContext.jobId}]
               </a>
             ) : (
               <span style={{ color: colors.muted, fontSize: "0.8rem" }}>
-                [{r.job}]
+                [{r.jobContext.worker}:{r.jobContext.jobId}]
               </span>
             )
           )}

@@ -56,7 +56,7 @@ export function createTelegramJobHandlers(
             await fetch(`${ctx.gatekeeperInternalUrl}/api/telegram/send`, {
               method: "POST",
               headers: { "content-type": "application/json" },
-              body: JSON.stringify({ chatId: jobCtx.chatId, text: reply, job: `muteworker:${ctx.job.id}` }),
+              body: JSON.stringify({ chatId: jobCtx.chatId, text: reply, jobContext: { worker: "muteworker", jobId: ctx.job.id } }),
             });
             ctx.artifacts.push({
               type: "text",

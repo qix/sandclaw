@@ -13,7 +13,7 @@ export function registerRoutes(app: any, db: any) {
       command?: string;
       description?: string;
       responseJobType?: string;
-      originContext?: Record<string, unknown>;
+      jobContext?: { worker: string; jobId: number };
     };
 
     if (!body.command) return c.json({ error: "command is required" }, 400);
@@ -30,7 +30,6 @@ export function registerRoutes(app: any, db: any) {
       description: body.description,
       responseJobType,
       createdAt: new Date(now).toISOString(),
-      ...(body.originContext ? { originContext: body.originContext } : {}),
     };
 
     const [id] = await db("verification_requests").insert({
@@ -38,7 +37,7 @@ export function registerRoutes(app: any, db: any) {
       action: GWS_VERIFICATION_ACTION,
       data: JSON.stringify(verificationData),
       status: "pending",
-      ...((body as any).job ? { job: (body as any).job } : {}),
+      ...(body.jobContext ? { job_context: JSON.stringify(body.jobContext) } : {}),
       created_at: now,
       updated_at: now,
     });
@@ -65,6 +64,9 @@ export function registerRoutes(app: any, db: any) {
     }
 
     const verificationData = JSON.parse(request.data);
+    const jobContext = request.job_context
+      ? JSON.parse(request.job_context)
+      : null;
     const now = Date.now();
 
     await db("confidante_queue").insert({
@@ -73,9 +75,7 @@ export function registerRoutes(app: any, db: any) {
         requestId: verificationData.requestId,
         command: verificationData.command,
         responseJobType: verificationData.responseJobType,
-        ...(verificationData.originContext
-          ? { originContext: verificationData.originContext }
-          : {}),
+        ...(jobContext ? { jobContext } : {}),
       }),
       status: "pending",
       created_at: now,
