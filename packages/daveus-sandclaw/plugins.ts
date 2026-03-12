@@ -1,3 +1,5 @@
+import path from "path";
+import { homedir } from "os";
 import type { GatekeeperPlugin } from "@sandclaw/gatekeeper-plugin-api";
 import type { MuteworkerPlugin } from "@sandclaw/muteworker-plugin-api";
 import type { ConfidantePlugin } from "@sandclaw/confidante-plugin-api";
@@ -22,6 +24,7 @@ export type SandclawPlugin = GatekeeperPlugin &
   Partial<ConfidantePlugin>;
 
 const workDir = "/home/josh/code/daveus-sandclaw-workdir";
+const obsidianDir = path.join(homedir(), "obsidian/primary");
 
 export const plugins: SandclawPlugin[] = [
   // Core plugins (work out of the box)
@@ -45,7 +48,7 @@ export const plugins: SandclawPlugin[] = [
     operatorChatIds: ["8045164163"],
   }),
   createObsidianPlugin({
-    vaultRoot: "~/obsidian/primary",
+    vaultRoot: obsidianDir,
   }),
   createGmailPlugin({
     clientId: process.env.GMAIL_CLIENT_ID || "",
@@ -79,6 +82,7 @@ export const plugins: SandclawPlugin[] = [
     jmapHost: "api.fastmail.com",
     apiToken: process.env.FASTMAIL_READ_API_TOKEN || "",
     userEmail: process.env.FASTMAIL_EMAIL || "",
+    emailQueueDir: path.join(obsidianDir, "daveus/email-queue"),
   }),
   createBrowserPlugin(),
 ];

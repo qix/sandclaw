@@ -4,8 +4,8 @@ import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
 import type { EmailPluginConfig } from "./jmapClient";
-import { EmailPanel, EmailVerificationRenderer } from "./components";
-import { registerRoutes } from "./routes";
+import { EmailPanel, EmailQueuePanel, EmailVerificationRenderer } from "./components";
+import { registerRoutes, registerEmailQueueRoutes } from "./routes";
 import {
   createSendEmailTool,
   createListInboxTool,
@@ -15,7 +15,7 @@ import {
 import { emailJobHandlers } from "./jobHandlers";
 
 export type { EmailPluginConfig } from "./jmapClient";
-export { EmailPanel, EmailVerificationRenderer } from "./components";
+export { EmailPanel, EmailQueuePanel, EmailVerificationRenderer } from "./components";
 export {
   createSendEmailTool,
   createListInboxTool,
@@ -44,7 +44,20 @@ export function createEmailPlugin(config: EmailPluginConfig) {
           components.register("tabs:primary", EmailTab);
           components.register("page:email", EmailPanel);
 
-          routes.registerRoutes((app) => registerRoutes(app, db, config));
+          if (config.emailQueueDir) {
+            function EmailQueueTab() {
+              return <TabLink href="?page=email-queue" title="Email Queue" />;
+            }
+            components.register("tabs:primary", EmailQueueTab);
+            components.register("page:email-queue", EmailQueuePanel);
+          }
+
+          routes.registerRoutes((app) => {
+            registerRoutes(app, db, config);
+            if (config.emailQueueDir) {
+              registerEmailQueueRoutes(app, config.emailQueueDir);
+            }
+          });
         },
       });
     },

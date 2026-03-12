@@ -7,6 +7,8 @@ export interface EmailPluginConfig {
   userEmail: string;
   /** Polling interval for new messages in ms. Defaults to 30000. */
   pollIntervalMs?: number;
+  /** Directory containing email queue markdown files. */
+  emailQueueDir?: string;
 }
 
 export interface JmapEmail {

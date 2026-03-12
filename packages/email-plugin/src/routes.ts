@@ -1,3 +1,6 @@
+import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
+import path from "node:path";
+import { generateFileEditorScript } from "@sandclaw/ui";
 import {
   sendEmail,
   queryUnseenEmails,
@@ -135,6 +138,11 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       timestamp: h.timestamp,
     }));
 
+    // Check if email matches a queue
+    const emailQueuePrompt = config.emailQueueDir
+      ? await matchEmailQueue(body.to ?? config.userEmail, config.emailQueueDir)
+      : null;
+
     // Queue as a muteworker job
     const [jobId] = await db("safe_queue").insert({
       job_type: "email:email_received",
@@ -146,6 +154,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
         text: body.text ?? "",
         threadId: body.threadId ?? null,
         history: historyEntries,
+        ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
       }),
       context: JSON.stringify({ channel: "email", from: body.from }),
       status: "pending",
@@ -226,6 +235,173 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Email Queue matching
+// ---------------------------------------------------------------------------
+
+/**
+ * Given a "to" address (may include display names like "Name <email>"),
+ * check if any address matches a queue file.
+ * Emails to daveus.{queue}@yud.co.za match queue files where {queue} is the
+ * lowercased filename without extension and without spaces.
+ * Returns the file content (emailQueuePrompt) if matched, null otherwise.
+ */
+export async function matchEmailQueue(
+  toAddress: string,
+  emailQueueDir: string,
+): Promise<string | null> {
+  if (!emailQueueDir) return null;
+
+  // Extract raw email addresses from potentially formatted strings like "Name <email>, other@domain"
+  const emailPattern = /[\w.+-]+@[\w.-]+/g;
+  const emails = toAddress.toLowerCase().match(emailPattern) ?? [];
+
+  // Find the first email matching the queue pattern
+  let queueSlug: string | null = null;
+  for (const email of emails) {
+    const m = email.match(/^daveus\.([^@]+)@yud\.co\.za$/);
+    if (m) {
+      queueSlug = m[1];
+      break;
+    }
+  }
+  if (!queueSlug) return null;
+
+  let files: string[];
+  try {
+    files = await listDir(emailQueueDir);
+  } catch {
+    return null;
+  }
+
+  for (const file of files) {
+    // Derive the queue slug from the filename: strip extension, lowercase, remove spaces
+    const basename = path.basename(file, path.extname(file));
+    const fileSlug = basename.toLowerCase().replace(/\s+/g, "");
+
+    if (fileSlug === queueSlug) {
+      try {
+        const content = await readFile(
+          path.join(emailQueueDir, file),
+          "utf8",
+        );
+        return content;
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Email Queue file editor routes
+// ---------------------------------------------------------------------------
+
+async function listDir(dirPath: string): Promise<string[]> {
+  const entries = await readdir(dirPath, { withFileTypes: true });
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const abs = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        const sub = await listDir(abs);
+        return sub.map((f) => `${entry.name}/${f}`);
+      }
+      return entry.isFile() ? [entry.name] : [];
+    }),
+  );
+  return files.flat().sort((a, b) => a.localeCompare(b));
+}
+
+function validateRelativePath(inputPath: string, rootDir: string): string {
+  const normalized = inputPath.trim().replaceAll("\\", "/");
+  if (!normalized) throw new Error("file path cannot be empty");
+  if (path.isAbsolute(normalized))
+    throw new Error("file path must be relative");
+  const absolute = path.resolve(rootDir, normalized);
+  const relative = path.relative(rootDir, absolute);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("path escapes email queue directory");
+  }
+  return relative.replaceAll("\\", "/");
+}
+
+export function registerEmailQueueRoutes(app: any, emailQueueDir: string) {
+  const clientJs = generateFileEditorScript({
+    prefix: "email-queue",
+    apiBase: "/api/email/queue",
+    newFilePrompt: "New queue file name (e.g. Support.md):",
+    emptyMessage: "No email queue files yet",
+  });
+
+  app.get("/queue/client.js", (c: any) => {
+    return c.body(clientJs, 200, {
+      "Content-Type": "application/javascript",
+      "Cache-Control": "no-cache",
+    });
+  });
+
+  app.get("/queue/files", async (c: any) => {
+    const files = await listDir(emailQueueDir).catch((error) => {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+      throw error;
+    });
+    return c.json({ files });
+  });
+
+  app.get("/queue/file", async (c: any) => {
+    const filePath = c.req.query("path");
+    if (!filePath) return c.json({ error: "path is required" }, 400);
+
+    let relative: string;
+    try {
+      relative = validateRelativePath(filePath, emailQueueDir);
+    } catch (e) {
+      return c.json({ error: (e as Error).message }, 400);
+    }
+
+    const absolutePath = path.join(emailQueueDir, relative);
+    try {
+      const content = await readFile(absolutePath, "utf8");
+      return c.json({ path: relative, content });
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "ENOENT") {
+        return c.json({ error: "File not found" }, 404);
+      }
+      throw e;
+    }
+  });
+
+  app.post("/queue/file", async (c: any) => {
+    const body = (await c.req.json()) as {
+      path?: string;
+      content?: string;
+    };
+
+    const filePath = (body.path ?? "").trim();
+    if (!filePath) return c.json({ error: "path is required" }, 400);
+    if (typeof body.content !== "string")
+      return c.json({ error: "content is required" }, 400);
+
+    let relative: string;
+    try {
+      relative = validateRelativePath(filePath, emailQueueDir);
+    } catch (e) {
+      return c.json({ error: (e as Error).message }, 400);
+    }
+
+    const absolutePath = path.join(emailQueueDir, relative);
+    await mkdir(path.dirname(absolutePath), { recursive: true });
+    await writeFile(absolutePath, body.content, "utf8");
+
+    return c.json({
+      path: relative,
+      bytes: Buffer.byteLength(body.content, "utf8"),
+    });
+  });
+}
+
 async function startEmailPolling(
   config: EmailPluginConfig,
   db: any,
@@ -279,6 +455,11 @@ async function startEmailPolling(
           timestamp: h.timestamp,
         }));
 
+        // Check if email matches a queue
+        const emailQueuePrompt = config.emailQueueDir
+          ? await matchEmailQueue(email.to, config.emailQueueDir)
+          : null;
+
         await db("safe_queue").insert({
           job_type: "email:email_received",
           data: JSON.stringify({
@@ -289,6 +470,7 @@ async function startEmailPolling(
             text: email.textBody,
             threadId: email.threadId ?? null,
             history: historyEntries,
+            ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
           }),
           context: JSON.stringify({ channel: "email", from: email.from }),
           status: "pending",

@@ -19,7 +19,13 @@ export const emailJobHandlers = {
     if (!payload.from)
       throw new Error(`Job ${ctx.job.id} payload missing from`);
 
-    const prompt = buildEmailPrompt(payload);
+    const emailPrompt = buildEmailPrompt(payload);
+
+    // If an email queue prompt matched, prepend it as system-level context
+    const prompt = payload.emailQueuePrompt
+      ? `--- Email Queue Instructions ---\n${payload.emailQueuePrompt}\n--- End Email Queue Instructions ---\n\n${emailPrompt}`
+      : emailPrompt;
+
     await runAgent(prompt);
   },
 };

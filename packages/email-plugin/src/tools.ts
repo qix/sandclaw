@@ -12,6 +12,8 @@ export interface IncomingEmailPayload {
     text: string;
     timestamp: number;
   }>;
+  /** Markdown prompt from a matched email queue file. Added to the system prompt. */
+  emailQueuePrompt?: string;
 }
 
 export function buildEmailPrompt(payload: IncomingEmailPayload): string {
