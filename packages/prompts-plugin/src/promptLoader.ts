@@ -8,9 +8,19 @@ async function tryReadFile(filePath: string): Promise<string | null> {
   });
 }
 
+function escapeHTML(str: string) {
+  const p = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  };
+  return str.replace(/[&<>"']/g, ((s: keyof typeof p) => p[s]) as any);
+}
+
 function wrapPrompt(filename: string, content: string): string {
-  const name = filename.endsWith(".md") ? filename.slice(0, -3) : filename;
-  return `File: ${name}\n<PROMPTS>\n${content.trim()}\n</PROMPTS>`;
+  return `<PROMPT filename="${escapeHTML(filename)}">\n${content.trim()}\n</PROMPT>`;
 }
 
 /**

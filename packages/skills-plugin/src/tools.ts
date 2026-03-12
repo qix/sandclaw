@@ -61,35 +61,6 @@ export function createSkillTools(
       },
     },
     {
-      name: "list_skill_files",
-      label: "List Skill Files",
-      description:
-        "List all files available under skills/. Use this before reading or writing skill files.",
-      parameters: {
-        type: "object",
-        properties: {},
-        additionalProperties: false,
-      } as unknown as TSchema,
-      execute: async () => {
-        const files = await listDir(skillsDir).catch((error) => {
-          if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-          throw error;
-        });
-        return {
-          content: [
-            {
-              type: "text",
-              text:
-                files.length > 0
-                  ? files.join("\n")
-                  : "No skill files found in skills/.",
-            },
-          ],
-          details: { files },
-        };
-      },
-    },
-    {
       name: "read_skill_file",
       label: "Read Skill File",
       description:

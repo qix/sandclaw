@@ -27,23 +27,31 @@ async function tryReadFile(filePath: string): Promise<string | null> {
   });
 }
 
-function wrapSkill(filename: string, content: string): string {
-  const name = filename.endsWith(".md") ? filename.slice(0, -3) : filename;
-  return `File: ${name}\n<SKILLS>\n${content.trim()}\n</SKILLS>`;
+function extractDescription(content: string): string | null {
+  const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
+  if (!match) return null;
+  const descMatch = match[1].match(/^description:\s*"?([^"\n]+)"?\s*$/m);
+  return descMatch ? descMatch[1].trim() : null;
 }
 
 /**
- * Loads all skill files from `skillsDir` and wraps each in `<SKILLS>` tags.
+ * Loads skill filenames and frontmatter descriptions from `skillsDir`.
+ * Only the filename and description are included in the system prompt;
+ * the agent can use `read_skill_file` to fetch full content on demand.
  */
 export async function loadSkillsPrompt(skillsDir: string): Promise<string> {
   const filenames = await listFiles(skillsDir);
-  const skillPrompts = await Promise.all(
+  const entries = await Promise.all(
     filenames.map(async (filename) => {
       const content = await tryReadFile(path.join(skillsDir, filename));
       if (!content) return null;
-      return wrapSkill(filename, content);
+      const description = extractDescription(content);
+      return `- ${filename}: ${description ?? "(no description)"}`;
     }),
   );
 
-  return skillPrompts.filter((p): p is string => p !== null).join("\n");
+  const lines = entries.filter((e): e is string => e !== null);
+  if (lines.length === 0) return "";
+
+  return `<SKILLS>\nAvailable skills (use \`read_skill_file\` to fetch full details):\n${lines.join("\n")}\n</SKILLS>`;
 }
