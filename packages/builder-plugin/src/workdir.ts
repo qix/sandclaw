@@ -79,17 +79,34 @@ export async function prepareWorkDir(
     await run("git", ["clone", repo, workDir]);
   }
 
-  // Delete local branch if it already exists (e.g. from a previous retry)
-  try {
-    await run("git", ["branch", "-D", branchName], { cwd: workDir });
-  } catch {
-    // branch doesn't exist yet, that's fine
-  }
+  // Skip delete+checkout if already on the target branch
+  const currentBranch = (
+    await run("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+      cwd: workDir,
+      capture: true,
+    })
+  ).trim();
 
-  muted(`Creating branch ${branchName} from origin/${baseBranch}...`);
-  await run("git", ["checkout", "-b", branchName, `origin/${baseBranch}`], {
-    cwd: workDir,
-  });
+  if (currentBranch === branchName) {
+    muted(
+      `Already on branch ${branchName}, resetting to origin/${baseBranch}...`,
+    );
+    await run("git", ["reset", "--hard", `origin/${baseBranch}`], {
+      cwd: workDir,
+    });
+  } else {
+    // Delete local branch if it already exists (e.g. from a previous retry)
+    try {
+      await run("git", ["branch", "-D", branchName], { cwd: workDir });
+    } catch {
+      // branch doesn't exist yet, that's fine
+    }
+
+    muted(`Creating branch ${branchName} from origin/${baseBranch}...`);
+    await run("git", ["checkout", "-b", branchName, `origin/${baseBranch}`], {
+      cwd: workDir,
+    });
+  }
 
   const headBefore = (
     await run("git", ["rev-parse", "HEAD"], { cwd: workDir, capture: true })
@@ -152,5 +169,7 @@ export async function pushBranch(
   branchName: string,
 ): Promise<void> {
   muted(`Pushing branch ${branchName}...`);
-  await run("git", ["push", "origin", branchName], { cwd: workDir });
+  await run("git", ["push", "origin", `${branchName}:${branchName}`], {
+    cwd: workDir,
+  });
 }
