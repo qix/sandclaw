@@ -5,28 +5,30 @@ import {
   type SDKResultSuccess,
   type SDKResultError,
 } from "@anthropic-ai/claude-agent-sdk";
-import type { Artifact, ToolArgs } from "./tools/index.js";
-import { getMcpToolDefs } from "./tools/index.js";
+import type { MuteworkerConfig } from "./config.js";
+import type { Logger } from "./logger.js";
+import type { McpToolDef } from "./tools/index.js";
+
+export interface ClaudeRunOptions {
+  config: MuteworkerConfig;
+  logger: Logger;
+  jobId: number;
+  systemPrompt: string;
+  mcpToolDefs: McpToolDef[];
+  /** Called on each assistant turn. */
+  onStep?: () => void;
+}
 
 export interface ClaudeExecutionResult {
   reply: string | null;
-  artifacts: Artifact[];
   steps: number;
 }
 
 export async function runWithClaude(
   prompt: string,
-  toolArgs: ToolArgs,
+  options: ClaudeRunOptions,
 ): Promise<ClaudeExecutionResult | null> {
-  const { config } = toolArgs;
-  const systemPrompt = await toolArgs.buildSystemPrompt();
-  const artifacts: Artifact[] = [];
-
-  // Convert plugin tools to MCP tool definitions
-  const mcpToolDefs = getMcpToolDefs(artifacts, {
-    ...toolArgs,
-    context: prompt,
-  });
+  const { config, logger, jobId, systemPrompt, mcpToolDefs, onStep } = options;
 
   // Build MCP tools using the SDK's tool() helper
   const sdkTools = mcpToolDefs.map((def) =>
@@ -48,8 +50,8 @@ export async function runWithClaude(
   // Set up abort controller for job timeout
   const abortController = new AbortController();
   const timeoutHandle = setTimeout(() => {
-    toolArgs.logger.error("agent.timeout_abort", {
-      jobId: toolArgs.job.id,
+    logger.error("agent.timeout_abort", {
+      jobId,
       timeoutMs: config.jobTimeoutMs,
     });
     abortController.abort();
@@ -79,9 +81,8 @@ export async function runWithClaude(
 
     for await (const message of conversation) {
       if (message.type === "assistant") {
-        toolArgs.logger.debug("claude.step", {
-          jobId: toolArgs.job.id,
-        });
+        logger.debug("claude.step", { jobId });
+        onStep?.();
       }
 
       if (message.type === "result") {
@@ -92,8 +93,8 @@ export async function runWithClaude(
         } else {
           const error = message as SDKResultError;
           numTurns = error.num_turns;
-          toolArgs.logger.error("claude.result.error", {
-            jobId: toolArgs.job.id,
+          logger.error("claude.result.error", {
+            jobId,
             subtype: error.subtype,
             errors: error.errors,
           });
@@ -107,11 +108,10 @@ export async function runWithClaude(
     clearTimeout(timeoutHandle);
   }
 
-  if (!reply && artifacts.length === 0) return null;
+  if (!reply) return null;
 
   return {
     reply,
-    artifacts,
     steps: numTurns,
   };
 }

@@ -24,11 +24,23 @@ export function createServiceRef<T>(config: { id: string }): ServiceRef<T> {
   return { id: config.id } as ServiceRef<T>;
 }
 
+/** Event emitted by the muteworker to report agent execution status. */
+export interface AgentStatusEvent {
+  jobId: number;
+  event: "started" | "step" | "completed" | "failed";
+  prompt?: string;
+  systemPrompt?: string;
+  toolNames?: string[];
+  data?: Record<string, unknown>;
+  createdAt: number;
+}
+
 /** Hooks that plugins can register to react to gatekeeper lifecycle events. */
 export interface GatekeeperHooks {
   register(hooks: {
     "gatekeeper:start"?: () => void | Promise<void>;
     "gatekeeper:stop"?: () => void | Promise<void>;
+    "muteworker:agent-status"?: (event: AgentStatusEvent) => void | Promise<void>;
   }): void;
 }
 

@@ -8,7 +8,8 @@ import type { MuteworkerApiClient } from "./apiClient.js";
 import type { MuteworkerConfig } from "./config.js";
 import type { Logger } from "./logger.js";
 import { runWithClaude } from "./claudeRuntime.js";
-import type { Artifact, ToolArgs } from "./tools/index.js";
+import { getMcpToolDefs } from "./tools/index.js";
+import type { Artifact } from "./tools/index.js";
 import type { MuteworkerJobResult, MuteworkerQueueJob } from "./types.js";
 
 class ExecutionError extends Error {
@@ -32,6 +33,15 @@ export interface JobArgs {
   plugins: MuteworkerPlugin[];
   toolFactories: Array<(ctx: MuteworkerPluginContext) => any[]>;
   buildSystemPrompt: () => Promise<string>;
+  reportStatus?: (event: {
+    jobId: number;
+    event: string;
+    prompt?: string;
+    systemPrompt?: string;
+    toolNames?: string[];
+    data?: Record<string, unknown>;
+    createdAt?: number;
+  }) => void;
 }
 
 export async function executeMuteworkerJob(
@@ -40,6 +50,18 @@ export async function executeMuteworkerJob(
   const { config, logger, job } = args;
   const artifacts: Artifact[] = [];
   const startTime = Date.now();
+
+  // Fire-and-forget status reporter
+  const reportStatus = args.reportStatus
+    ? (ev: string, data?: Record<string, unknown>) => {
+        args.reportStatus!({
+          jobId: job.id,
+          event: ev,
+          data,
+          createdAt: Date.now(),
+        });
+      }
+    : undefined;
 
   logger.info("job.execution.started", {
     jobId: job.id,
@@ -57,19 +79,30 @@ export async function executeMuteworkerJob(
       artifacts,
     });
 
-    const toolArgs: ToolArgs = {
-      config: args.config,
-      logger: args.logger,
-      job: args.job,
-      toolFactories: args.toolFactories,
-      buildSystemPrompt: args.buildSystemPrompt,
-      context: job.data,
-    };
+    // Build system prompt, instantiate tools, and convert to MCP defs once upfront
+    const systemPrompt = await args.buildSystemPrompt();
+    const rawTools: any[] = [];
+    for (const factory of args.toolFactories) {
+      rawTools.push(...factory(pluginCtx));
+    }
+    const toolNames = rawTools.map((t: any) => t.name as string).filter(Boolean);
+    const mcpToolDefs = getMcpToolDefs(rawTools, { config, logger, job });
+
+    // Emit "started" event
+    reportStatus?.("started", {
+      prompt: job.data,
+      systemPrompt,
+      toolNames,
+    });
 
     const runAgent: RunAgentFn = async (prompt: string) => {
       const result = await runWithClaude(prompt, {
-        ...toolArgs,
-        context: prompt,
+        config,
+        logger,
+        jobId: job.id,
+        systemPrompt,
+        mcpToolDefs,
+        onStep: reportStatus ? () => reportStatus("step") : undefined,
       });
       return { reply: result?.reply ?? null };
     };
@@ -105,12 +138,15 @@ export async function executeMuteworkerJob(
       await withTimeout(runAgent(prompt), config.jobTimeoutMs);
     }
 
+    const durationMs = Date.now() - startTime;
+    reportStatus?.("completed", { durationMs });
+
     return {
       jobId: job.id,
       status: "success",
       summary: "Job completed",
       artifacts,
-      logs: { durationMs: Date.now() - startTime, steps: artifacts.length },
+      logs: { durationMs, steps: artifacts.length },
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
@@ -124,6 +160,8 @@ export async function executeMuteworkerJob(
       kind,
       error: message,
     });
+
+    reportStatus?.("failed", { durationMs, error: message });
 
     return {
       jobId: job.id,

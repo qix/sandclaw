@@ -1,10 +1,12 @@
 import type { Hono } from "hono";
 import type { Knex } from "knex";
+import type { AgentStatusEvent } from "@sandclaw/gatekeeper-plugin-api";
 
 export function registerCoreRoutes(
   app: Hono,
   db: Knex,
   onVerificationChange?: () => void,
+  agentStatusHooks?: Array<(event: AgentStatusEvent) => Promise<void>>,
 ): void {
   // --- Safe Queue (Muteworker) ---
 
@@ -112,6 +114,46 @@ export function registerCoreRoutes(
       context: job.context ?? null,
       status: job.status,
     });
+  });
+
+  // POST /api/muteworker-queue/agent-status — receive agent status event and fire hooks
+  app.post("/api/muteworker-queue/agent-status", async (c) => {
+    const body = await c.req.json<{
+      jobId?: number;
+      event?: string;
+      prompt?: string;
+      systemPrompt?: string;
+      toolNames?: string[];
+      data?: Record<string, unknown>;
+      createdAt?: number;
+    }>();
+
+    if (!body.jobId || !body.event) {
+      return c.json({ error: "jobId and event are required" }, 400);
+    }
+
+    const validEvents = ["started", "step", "completed", "failed"];
+    if (!validEvents.includes(body.event)) {
+      return c.json({ error: `event must be one of: ${validEvents.join(", ")}` }, 400);
+    }
+
+    const statusEvent: AgentStatusEvent = {
+      jobId: body.jobId,
+      event: body.event as AgentStatusEvent["event"],
+      prompt: body.prompt,
+      systemPrompt: body.systemPrompt,
+      toolNames: body.toolNames,
+      data: body.data,
+      createdAt: body.createdAt ?? Date.now(),
+    };
+
+    if (agentStatusHooks) {
+      for (const hook of agentStatusHooks) {
+        await hook(statusEvent);
+      }
+    }
+
+    return c.json({ success: true });
   });
 
   // --- Verifications ---

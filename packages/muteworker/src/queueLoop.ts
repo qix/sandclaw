@@ -70,6 +70,9 @@ export class MuteworkerQueueLoop {
           plugins: this.plugins,
           toolFactories: this.toolFactories,
           buildSystemPrompt: this.buildSystemPrompt,
+          reportStatus: (event) => {
+            this.client.postAgentStatus(event).catch(() => {});
+          },
         });
 
         assertValidJobResult(result);

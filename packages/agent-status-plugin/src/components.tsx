@@ -1,0 +1,410 @@
+import React from "react";
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  PageHeader,
+  StatusDot,
+  colors,
+} from "@sandclaw/ui";
+import type { AgentStatusEvent } from "@sandclaw/gatekeeper-plugin-api";
+
+interface AgentStatusPanelProps {
+  events: AgentStatusEvent[];
+}
+
+/** Group events by jobId, returning jobs with their events. */
+function groupByJob(events: AgentStatusEvent[]) {
+  const map = new Map<
+    number,
+    { jobId: number; events: AgentStatusEvent[] }
+  >();
+  for (const ev of events) {
+    let entry = map.get(ev.jobId);
+    if (!entry) {
+      entry = { jobId: ev.jobId, events: [] };
+      map.set(ev.jobId, entry);
+    }
+    entry.events.push(ev);
+  }
+  return Array.from(map.values());
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const s = (ms / 1000).toFixed(1);
+  return `${s}s`;
+}
+
+function formatTime(epochMs: number): string {
+  return new Date(epochMs).toLocaleTimeString();
+}
+
+export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
+  const jobs = groupByJob(events);
+
+  const activeJobs = jobs.filter((j) => {
+    const last = j.events[j.events.length - 1];
+    return last.event !== "completed" && last.event !== "failed";
+  });
+
+  const finishedJobs = jobs
+    .filter((j) => {
+      const last = j.events[j.events.length - 1];
+      return last.event === "completed" || last.event === "failed";
+    })
+    .reverse(); // Most recent first
+
+  return (
+    <div className="sc-section">
+      <PageHeader
+        title="Agent Status"
+        subtitle="Real-time observability for muteworker agent execution."
+      />
+
+      {/* Active Jobs */}
+      <Card>
+        <CardHeader>
+          <span style={{ fontWeight: 600, color: colors.text }}>
+            <StatusDot color={activeJobs.length > 0 ? "green" : "gray"} />{" "}
+            Active Jobs
+            <span
+              id="agent-status-active-count"
+              style={{
+                marginLeft: "0.5rem",
+                fontSize: "0.8rem",
+                color: colors.muted,
+              }}
+            >
+              ({activeJobs.length})
+            </span>
+          </span>
+        </CardHeader>
+        <CardBody>
+          <div id="agent-status-active" style={{ minHeight: "2rem" }}>
+            {activeJobs.length === 0 ? (
+              <p
+                style={{
+                  color: colors.muted,
+                  fontSize: "0.875rem",
+                  textAlign: "center",
+                  padding: "1rem 0",
+                }}
+              >
+                No active jobs
+              </p>
+            ) : (
+              activeJobs.map((j) => {
+                const started = j.events.find((e) => e.event === "started");
+                const stepCount = j.events.filter(
+                  (e) => e.event === "step",
+                ).length;
+                return (
+                  <div
+                    key={j.jobId}
+                    className="agent-status-job"
+                    data-job-id={j.jobId}
+                    style={{
+                      padding: "0.75rem",
+                      background: colors.surface,
+                      borderRadius: "0.5rem",
+                      border: `1px solid ${colors.border}`,
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>
+                        Job #{j.jobId}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: colors.muted }}>
+                        {started ? formatTime(started.createdAt) : ""}
+                      </span>
+                    </div>
+                    {started?.toolNames && (
+                      <div
+                        style={{
+                          fontSize: "0.75rem",
+                          color: colors.muted,
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        Tools: {started.toolNames.join(", ")}
+                      </div>
+                    )}
+                    <div
+                      style={{ fontSize: "0.8rem", color: colors.accent }}
+                      data-step-count
+                    >
+                      {stepCount} step{stepCount !== 1 ? "s" : ""} so
+                      far&hellip;
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Recent History */}
+      <div style={{ marginTop: "1rem" }}>
+        <Card>
+          <CardHeader>
+            <span style={{ fontWeight: 600, color: colors.text }}>
+              Recent History
+              <span
+                id="agent-status-history-count"
+                style={{
+                  marginLeft: "0.5rem",
+                  fontSize: "0.8rem",
+                  color: colors.muted,
+                }}
+              >
+                ({finishedJobs.length})
+              </span>
+            </span>
+          </CardHeader>
+          <CardBody>
+            <div id="agent-status-history">
+              {finishedJobs.length === 0 ? (
+                <p
+                  style={{
+                    color: colors.muted,
+                    fontSize: "0.875rem",
+                    textAlign: "center",
+                    padding: "1rem 0",
+                  }}
+                >
+                  No completed jobs yet
+                </p>
+              ) : (
+                finishedJobs.map((j) => {
+                  const started = j.events.find((e) => e.event === "started");
+                  const terminal = j.events[j.events.length - 1];
+                  const stepCount = j.events.filter(
+                    (e) => e.event === "step",
+                  ).length;
+                  const durationMs =
+                    terminal.data?.durationMs as number | undefined;
+                  const isSuccess = terminal.event === "completed";
+                  return (
+                    <div
+                      key={j.jobId}
+                      style={{
+                        padding: "0.75rem",
+                        background: colors.surface,
+                        borderRadius: "0.5rem",
+                        border: `1px solid ${colors.border}`,
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        <span
+                          style={{ fontWeight: 600, fontSize: "0.875rem" }}
+                        >
+                          Job #{j.jobId}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.75rem",
+                            color: isSuccess ? colors.success : colors.danger,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {isSuccess ? "Completed" : "Failed"}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.75rem",
+                          color: colors.muted,
+                          display: "flex",
+                          gap: "1rem",
+                        }}
+                      >
+                        <span>
+                          {stepCount} step{stepCount !== 1 ? "s" : ""}
+                        </span>
+                        {durationMs != null && (
+                          <span>{formatDuration(durationMs)}</span>
+                        )}
+                        {started && (
+                          <span>{formatTime(started.createdAt)}</span>
+                        )}
+                      </div>
+                      {!isSuccess && terminal.data?.error != null && (
+                        <div
+                          style={{
+                            fontSize: "0.75rem",
+                            color: colors.danger,
+                            marginTop: "0.25rem",
+                          }}
+                        >
+                          {String(terminal.data.error as string)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Client-side live update script */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+(function() {
+  var activeEl = document.getElementById('agent-status-active');
+  var historyEl = document.getElementById('agent-status-history');
+  var activeCountEl = document.getElementById('agent-status-active-count');
+  var historyCountEl = document.getElementById('agent-status-history-count');
+  if (!activeEl || !historyEl) return;
+
+  // Track jobs in memory: { jobId -> { events: [], el: DOM } }
+  var activeJobs = {};
+  var finishedCount = parseInt((historyCountEl && historyCountEl.textContent.replace(/[()]/g, '')) || '0', 10);
+
+  // Initialize active jobs from SSR
+  var ssrActive = activeEl.querySelectorAll('.agent-status-job');
+  for (var i = 0; i < ssrActive.length; i++) {
+    var el = ssrActive[i];
+    var jid = parseInt(el.getAttribute('data-job-id'), 10);
+    if (jid) activeJobs[jid] = { el: el };
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function formatDuration(ms) {
+    if (ms < 1000) return ms + 'ms';
+    return (ms / 1000).toFixed(1) + 's';
+  }
+
+  function formatTime(epochMs) {
+    return new Date(epochMs).toLocaleTimeString();
+  }
+
+  function updateActiveCount() {
+    var count = Object.keys(activeJobs).length;
+    if (activeCountEl) activeCountEl.textContent = '(' + count + ')';
+    // Update status dot
+    var dot = activeCountEl && activeCountEl.parentElement && activeCountEl.parentElement.querySelector('.sc-status-dot');
+    if (dot) {
+      dot.className = count > 0 ? 'sc-status-dot sc-status-dot-green' : 'sc-status-dot sc-status-dot-gray';
+    }
+    // Show/hide empty message
+    var empty = activeEl.querySelector('p');
+    if (count === 0 && !empty) {
+      activeEl.innerHTML = '<p style="color:${colors.muted};font-size:0.875rem;text-align:center;padding:1rem 0;">No active jobs</p>';
+    } else if (count > 0 && empty) {
+      empty.remove();
+    }
+  }
+
+  function createActiveJobEl(ev) {
+    var div = document.createElement('div');
+    div.className = 'agent-status-job';
+    div.setAttribute('data-job-id', ev.jobId);
+    div.style.cssText = 'padding:0.75rem;background:${colors.surface};border-radius:0.5rem;border:1px solid ${colors.border};margin-bottom:0.5rem;';
+    var toolsHtml = ev.toolNames && ev.toolNames.length
+      ? '<div style="font-size:0.75rem;color:${colors.muted};margin-bottom:0.25rem;">Tools: ' + escapeHtml(ev.toolNames.join(', ')) + '</div>'
+      : '';
+    div.innerHTML =
+      '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">' +
+        '<span style="font-weight:600;font-size:0.875rem;">Job #' + ev.jobId + '</span>' +
+        '<span style="font-size:0.75rem;color:${colors.muted};">' + formatTime(ev.createdAt) + '</span>' +
+      '</div>' +
+      toolsHtml +
+      '<div style="font-size:0.8rem;color:${colors.accent};" data-step-count>0 steps so far&hellip;</div>';
+    return div;
+  }
+
+  function createHistoryJobEl(ev, stepCount) {
+    var isSuccess = ev.event === 'completed';
+    var durationMs = ev.data && ev.data.durationMs;
+    var div = document.createElement('div');
+    div.style.cssText = 'padding:0.75rem;background:${colors.surface};border-radius:0.5rem;border:1px solid ${colors.border};margin-bottom:0.5rem;';
+    var errorHtml = !isSuccess && ev.data && ev.data.error
+      ? '<div style="font-size:0.75rem;color:${colors.danger};margin-top:0.25rem;">' + escapeHtml(String(ev.data.error)) + '</div>'
+      : '';
+    div.innerHTML =
+      '<div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;">' +
+        '<span style="font-weight:600;font-size:0.875rem;">Job #' + ev.jobId + '</span>' +
+        '<span style="font-size:0.75rem;color:' + (isSuccess ? '${colors.success}' : '${colors.danger}') + ';font-weight:600;">' + (isSuccess ? 'Completed' : 'Failed') + '</span>' +
+      '</div>' +
+      '<div style="font-size:0.75rem;color:${colors.muted};display:flex;gap:1rem;">' +
+        '<span>' + stepCount + ' step' + (stepCount !== 1 ? 's' : '') + '</span>' +
+        (durationMs != null ? '<span>' + formatDuration(durationMs) + '</span>' : '') +
+        '<span>' + formatTime(ev.createdAt) + '</span>' +
+      '</div>' +
+      errorHtml;
+    return div;
+  }
+
+  document.addEventListener('sc:ws:message', function(e) {
+    var data = e.detail;
+    if (data.type !== 'agent-status:update' || !data.event) return;
+    var ev = data.event;
+
+    if (ev.event === 'started') {
+      // Remove empty placeholder if present
+      var empty = activeEl.querySelector('p');
+      if (empty) empty.remove();
+      var el = createActiveJobEl(ev);
+      activeEl.appendChild(el);
+      activeJobs[ev.jobId] = { el: el, steps: 0 };
+      updateActiveCount();
+
+    } else if (ev.event === 'step') {
+      var job = activeJobs[ev.jobId];
+      if (job) {
+        job.steps = (job.steps || 0) + 1;
+        var stepEl = job.el.querySelector('[data-step-count]');
+        if (stepEl) {
+          stepEl.textContent = job.steps + ' step' + (job.steps !== 1 ? 's' : '') + ' so far\\u2026';
+        }
+      }
+
+    } else if (ev.event === 'completed' || ev.event === 'failed') {
+      var job = activeJobs[ev.jobId];
+      var stepCount = job ? (job.steps || 0) : 0;
+      if (job && job.el) job.el.remove();
+      delete activeJobs[ev.jobId];
+      updateActiveCount();
+
+      // Remove "no completed jobs" placeholder
+      var hEmpty = historyEl.querySelector('p');
+      if (hEmpty) hEmpty.remove();
+
+      // Prepend to history
+      var hEl = createHistoryJobEl(ev, stepCount);
+      historyEl.insertBefore(hEl, historyEl.firstChild);
+      finishedCount++;
+      if (historyCountEl) historyCountEl.textContent = '(' + finishedCount + ')';
+    }
+  });
+})();
+`,
+        }}
+      />
+    </div>
+  );
+}

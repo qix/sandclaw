@@ -18,6 +18,7 @@ import { createObsidianPlugin } from "@sandclaw/obsidian-plugin";
 import { createGmailPlugin } from "@sandclaw/gmail-plugin";
 import { createBuilderPlugin } from "@sandclaw/builder-plugin";
 import { createEmailPlugin } from "@sandclaw/email-plugin";
+import { createAgentStatusPlugin } from "@sandclaw/agent-status-plugin";
 
 export type SandclawPlugin = GatekeeperPlugin &
   MuteworkerPlugin &
@@ -86,4 +87,5 @@ export const plugins: SandclawPlugin[] = [
     emailQueueDir: path.join(obsidianDir, "daveus/email-queue"),
   }),
   createBrowserPlugin(),
+  createAgentStatusPlugin(),
 ];

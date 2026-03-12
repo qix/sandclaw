@@ -1,8 +1,4 @@
 import { z } from "zod";
-import {
-  createMuteworkerPluginContext,
-  type MuteworkerPluginContext,
-} from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerConfig } from "../config.js";
 import type { Logger } from "../logger.js";
 import {
@@ -21,27 +17,11 @@ export interface Artifact {
   value: string;
 }
 
-export interface ToolArgs {
+/** Dependencies needed by getMcpToolDefs / convertToMcpTool. */
+export interface ToolConversionArgs {
   config: MuteworkerConfig;
   logger: Logger;
   job: MuteworkerQueueJob;
-  toolFactories: Array<(ctx: MuteworkerPluginContext) => any[]>;
-  buildSystemPrompt: () => Promise<string>;
-  /** The user prompt string for the current job. */
-  context: string;
-}
-
-export function toPluginContext(
-  artifacts: Artifact[],
-  args: ToolArgs,
-): MuteworkerPluginContext {
-  return createMuteworkerPluginContext({
-    gatekeeperInternalUrl: args.config.gatekeeperInternalUrl,
-    gatekeeperExternalUrl: args.config.gatekeeperExternalUrl,
-    logger: args.logger,
-    job: args.job,
-    artifacts,
-  });
 }
 
 /**
@@ -137,23 +117,15 @@ export interface McpToolDef {
 }
 
 /**
- * Assemble plugin tools into MCP tool definitions.
+ * Convert pre-instantiated pi-agent tools into MCP tool definitions.
  *
- * Collects tools from all plugin factories, wraps each with loop detection,
- * and converts pi-agent style schemas to Zod shapes.
+ * Wraps each tool with loop detection and converts pi-agent style schemas
+ * to Zod shapes.
  */
 export function getMcpToolDefs(
-  artifacts: Artifact[],
-  args: ToolArgs,
+  rawTools: any[],
+  args: ToolConversionArgs,
 ): McpToolDef[] {
-  const ctx = toPluginContext(artifacts, args);
-
-  // Collect all raw pi-agent style tools from plugins
-  const rawTools: any[] = [];
-  for (const factory of args.toolFactories) {
-    rawTools.push(...factory(ctx));
-  }
-
   args.logger.info("tools.assembled", {
     jobId: args.job.id,
     toolCount: rawTools.length,
@@ -172,7 +144,7 @@ export function getMcpToolDefs(
  */
 function convertToMcpTool(
   piTool: any,
-  args: ToolArgs,
+  args: ToolConversionArgs,
   loopState: LoopDetectionState,
 ): McpToolDef {
   const name: string = piTool.name;

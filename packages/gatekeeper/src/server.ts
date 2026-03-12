@@ -9,6 +9,7 @@ import type { Knex } from "knex";
 import type {
   GatekeeperPlugin,
   GatekeeperHooks,
+  AgentStatusEvent,
   ComponentsService,
   RoutesService,
   WebSocketService,
@@ -75,12 +76,15 @@ export async function startGatekeeper(
   // 2. Plugin lifecycle: create services, run register + init
   const startHooks: Array<() => Promise<void>> = [];
   const stopHooks: Array<() => Promise<void>> = [];
+  const agentStatusHooks: Array<(event: AgentStatusEvent) => Promise<void>> = [];
   const hooksService: GatekeeperHooks = {
     register(hooks) {
       if (hooks["gatekeeper:start"])
         startHooks.push(async () => hooks["gatekeeper:start"]!());
       if (hooks["gatekeeper:stop"])
         stopHooks.push(async () => hooks["gatekeeper:stop"]!());
+      if (hooks["muteworker:agent-status"])
+        agentStatusHooks.push(async (event) => hooks["muteworker:agent-status"]!(event));
     },
   };
 
@@ -246,7 +250,7 @@ export async function startGatekeeper(
   }, 2000);
 
   // 3b. Register core API routes
-  registerCoreRoutes(app, db, notifyVerificationChange);
+  registerCoreRoutes(app, db, notifyVerificationChange, agentStatusHooks);
 
   // 4. Mount plugin routes under /api/<pluginId>/
   for (const { pluginId, handler } of allRouteHandlers) {

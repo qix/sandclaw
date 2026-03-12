@@ -55,6 +55,25 @@ export class MuteworkerApiClient {
     return body.job ?? null;
   }
 
+  async postAgentStatus(event: {
+    jobId: number;
+    event: string;
+    prompt?: string;
+    systemPrompt?: string;
+    toolNames?: string[];
+    data?: Record<string, unknown>;
+    createdAt?: number;
+  }): Promise<void> {
+    try {
+      await this.request("/api/muteworker-queue/agent-status", {
+        method: "POST",
+        body: JSON.stringify(event),
+      });
+    } catch {
+      // Status reporting must never break job execution
+    }
+  }
+
   async markComplete(jobId: number): Promise<void> {
     const response = await this.request("/api/muteworker-queue/complete", {
       method: "POST",
