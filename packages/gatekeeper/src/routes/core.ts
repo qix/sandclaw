@@ -130,7 +130,9 @@ export function registerCoreRoutes(
         createdAt: now,
       };
       for (const hook of agentStatusHooks) {
-        hook(queuedEvent).catch(() => {});
+        hook(queuedEvent).catch((err) =>
+          console.error("[agent-status] hook error:", err),
+        );
       }
     }
 
@@ -317,13 +319,20 @@ export function registerCoreRoutes(
         if (originJob.context) {
           try {
             sqCtx = JSON.parse(originJob.context);
-          } catch {}
+          } catch (err) {
+            console.error(
+              "[confidante/result] Failed to parse job context:",
+              err,
+            );
+          }
         }
         if (originJob.data) {
           try {
             const jobData = JSON.parse(originJob.data);
             if (typeof jobData.text === "string") userMessage = jobData.text;
-          } catch {}
+          } catch (err) {
+            console.error("[confidante/result] Failed to parse job data:", err);
+          }
         }
       }
     }
@@ -394,7 +403,9 @@ export function registerCoreRoutes(
         createdAt: now,
       };
       for (const hook of agentStatusHooks) {
-        hook(queuedEvent).catch(() => {});
+        hook(queuedEvent).catch((err) =>
+          console.error("[agent-status] hook error:", err),
+        );
       }
     }
 

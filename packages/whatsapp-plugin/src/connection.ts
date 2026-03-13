@@ -243,7 +243,9 @@ export async function connectWhatsApp(
       }
 
       // Refresh conversation list after storing the message
-      loadRecentConversations(db).catch(() => {});
+      loadRecentConversations(db).catch((err) =>
+        console.error("[whatsapp] Failed to load recent conversations:", err),
+      );
     }
   });
 }

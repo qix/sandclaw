@@ -3,7 +3,9 @@ import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
-import { resolveVaultRoot } from "./pathUtils";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { resolveVaultRoot, resolveVaultPath, tryReadFile } from "./pathUtils";
 import { ObsidianVaultIndex } from "./vaultIndex";
 import { ObsidianPanel, ObsidianVerificationRenderer } from "./components";
 import { registerRoutes } from "./routes";
@@ -42,8 +44,9 @@ export function createObsidianPlugin(config: ObsidianPluginConfig) {
           db: gatekeeperDeps.db,
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
+          verifications: gatekeeperDeps.verifications,
         },
-        init({ db, components, routes }) {
+        init({ db, components, routes, verifications }) {
           function ObsidianTab() {
             return <TabLink href="?page=obsidian" title="Obsidian" />;
           }
@@ -53,6 +56,22 @@ export function createObsidianPlugin(config: ObsidianPluginConfig) {
           routes.registerRoutes((app) =>
             registerRoutes(app, db, vaultRoot, vaultIndex),
           );
+
+          verifications.registerVerificationCallback(async (request) => {
+            const absPath = resolveVaultPath(vaultRoot, request.data.path);
+            if (!absPath) throw new Error("Invalid path in verification data");
+
+            const currentContent = (await tryReadFile(absPath)) ?? "";
+            if (currentContent !== request.data.previousContent) {
+              throw new Error(
+                "File changed since verification was created. Please re-request the write.",
+              );
+            }
+
+            await mkdir(path.dirname(absPath), { recursive: true });
+            await writeFile(absPath, request.data.nextContent, "utf8");
+            vaultIndex.markStale();
+          });
         },
       });
     },

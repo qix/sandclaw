@@ -93,7 +93,9 @@ export async function startGatekeeper(
     },
     fireAgentStatus(event) {
       for (const hook of agentStatusHooks) {
-        hook(event).catch(() => {});
+        hook(event).catch((err) =>
+          console.error("[agent-status] hook error:", err),
+        );
       }
     },
   };
@@ -516,7 +518,9 @@ export async function startGatekeeper(
                 if (msgHandler) msgHandler(ws, data);
               }
             }
-          } catch {}
+          } catch (err) {
+            console.error("[ws] Failed to parse message:", err);
+          }
         });
 
         // Notify plugin connect hooks

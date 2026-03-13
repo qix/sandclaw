@@ -6,6 +6,7 @@ import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
 import type { ConfidanteEnvironment } from "@sandclaw/confidante-plugin-api";
 import { BuilderPanel, BuilderVerificationRenderer } from "./components";
 import { registerRoutes, type BuilderPluginConfig } from "./routes";
+import { BUILDER_CONFIDANTE_JOB_TYPE } from "./constants";
 import { createRequestBuildTool } from "./tools";
 import { builderJobHandlers } from "./jobHandlers";
 import { createBuilderConfidanteHandlers } from "./confidanteHandlers";
@@ -56,8 +57,9 @@ export function createBuilderPlugin(options: BuilderPluginOptions) {
           hooks: gatekeeperDeps.hooks,
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
+          verifications: gatekeeperDeps.verifications,
         },
-        init({ db, hooks, components, routes }) {
+        init({ db, hooks, components, routes, verifications }) {
           function BuilderTab() {
             return <TabLink href="?page=builder" title="Builder" />;
           }
@@ -68,6 +70,18 @@ export function createBuilderPlugin(options: BuilderPluginOptions) {
             registerRoutes(app, db, config, (event) =>
               hooks.fireAgentStatus(event),
             ),
+          );
+
+          verifications.registerVerificationCallback(
+            async (request, { queueJob }) => {
+              await queueJob("confidante", BUILDER_CONFIDANTE_JOB_TYPE, {
+                requestId: request.data.requestId,
+                prompt: request.data.prompt,
+                responseJobType: request.data.responseJobType,
+                branch: request.data.branch,
+                image: request.data.image,
+              });
+            },
           );
         },
       });

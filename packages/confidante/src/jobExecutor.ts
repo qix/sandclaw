@@ -60,7 +60,9 @@ export async function executeConfidanteJob(
           ? val.slice(0, 200) + "…"
           : val;
     }
-  } catch {}
+  } catch (err) {
+    logger.warn("job.data_preview_parse_failed", { error: String(err) });
+  }
 
   logger.info("job.execution.started", {
     jobId: job.id,

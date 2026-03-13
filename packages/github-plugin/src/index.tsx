@@ -1,5 +1,9 @@
+import { execFile as execFileCb } from "node:child_process";
+import { promisify } from "node:util";
 import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
+
+const execFile = promisify(execFileCb);
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
 import { GithubVerificationRenderer } from "./components";
@@ -23,14 +27,47 @@ export function createGithubPlugin(options?: GithubPluginOptions) {
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({
-        deps: { db: gatekeeperDeps.db, routes: gatekeeperDeps.routes },
-        init({ db, routes }) {
+        deps: {
+          db: gatekeeperDeps.db,
+          routes: gatekeeperDeps.routes,
+          verifications: gatekeeperDeps.verifications,
+        },
+        init({ db, routes, verifications }) {
           routes.registerRoutes((app) =>
             registerRoutes(app, db, {
               autoPullPath: options?.autoPullPath,
               autoPullRepo: options?.autoPullRepo,
             }),
           );
+
+          verifications.registerVerificationCallback(async (request) => {
+            const data = request.data as {
+              repo: string;
+              prNumber: number;
+            };
+            await execFile("gh", [
+              "pr",
+              "merge",
+              String(data.prNumber),
+              "--repo",
+              data.repo,
+              "--rebase",
+              "--auto",
+            ]);
+            if (
+              options?.autoPullPath &&
+              options?.autoPullRepo &&
+              data.repo === options.autoPullRepo
+            ) {
+              try {
+                await execFile("git", ["pull"], {
+                  cwd: options.autoPullPath,
+                });
+              } catch (err) {
+                console.error("Auto-pull failed:", err);
+              }
+            }
+          });
         },
       });
     },

@@ -36,7 +36,9 @@ export function registerVerificationFormRoutes(
       createdAt: now,
     };
     for (const hook of agentStatusHooks) {
-      hook(queuedEvent).catch(() => {});
+      hook(queuedEvent).catch((err) =>
+        console.error("[agent-status] hook error:", err),
+      );
     }
 
     return { jobId };
@@ -54,19 +56,10 @@ export function registerVerificationFormRoutes(
 
     const callback = verificationCallbacks.get(request.plugin);
     if (callback) {
-      let parsedData: any;
-      try {
-        parsedData = JSON.parse(request.data);
-      } catch {
-        parsedData = request.data;
-      }
-
-      let jobContext: JobContext | undefined;
-      if (request.job_context) {
-        try {
-          jobContext = JSON.parse(request.job_context);
-        } catch {}
-      }
+      const parsedData = JSON.parse(request.data);
+      const jobContext: JobContext | undefined = request.job_context
+        ? JSON.parse(request.job_context)
+        : undefined;
 
       await callback(
         { id, action: request.action, data: parsedData, jobContext },
@@ -108,12 +101,8 @@ export function registerVerificationFormRoutes(
     }
 
     // Resolve the job context to find the originating job
-    let jobContext: { worker: string; jobId: number } | undefined;
-    if (request.job_context) {
-      try {
-        jobContext = JSON.parse(request.job_context);
-      } catch {}
-    }
+    const jobContext: { worker: string; jobId: number } | undefined =
+      request.job_context ? JSON.parse(request.job_context) : undefined;
 
     if (!jobContext?.jobId) {
       return c.redirect("/?page=verifications");

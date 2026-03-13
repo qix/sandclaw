@@ -71,7 +71,9 @@ export async function deliverMessage(db: any, chatId: string, text: string) {
     created_at: Date.now(),
   });
 
-  loadRecentConversations(db).catch(() => {});
+  loadRecentConversations(db).catch((err) =>
+    console.error("[telegram] Failed to load recent conversations:", err),
+  );
 }
 
 export async function connectTelegram(db: any, token: string) {
@@ -179,7 +181,9 @@ export async function connectTelegram(db: any, token: string) {
     console.log(`[telegram] Queued incoming message from ${displayName}`);
 
     // Refresh conversation list
-    loadRecentConversations(db).catch(() => {});
+    loadRecentConversations(db).catch((err) =>
+      console.error("[telegram] Failed to load recent conversations:", err),
+    );
   });
 
   // Handle polling errors gracefully

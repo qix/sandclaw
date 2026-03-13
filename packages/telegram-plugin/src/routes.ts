@@ -115,8 +115,12 @@ export function registerRoutes(
     if (autoApprove) {
       try {
         await deliverMessage(db, chatId, text);
-      } catch {
-        return c.json({ error: "Telegram bot not connected" }, 503);
+      } catch (err) {
+        console.error("[telegram] Failed to deliver message:", err);
+        return c.json(
+          { error: `Telegram send failed: ${(err as Error).message}` },
+          503,
+        );
       }
     }
 
@@ -124,33 +128,5 @@ export function registerRoutes(
       verificationRequestId: id,
       verificationStatus: autoApprove ? "approved" : "pending",
     });
-  });
-
-  // POST /approve/:id — approve a pending send request and deliver the message
-  app.post("/approve/:id", async (c: any) => {
-    const id = parseInt(c.req.param("id"), 10);
-    if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
-
-    const request = await db("verification_requests").where("id", id).first();
-    if (!request || request.status !== "pending") {
-      return c.json({ error: "Not found or already resolved" }, 404);
-    }
-    if (request.plugin !== "telegram" || request.action !== "send_message") {
-      return c.json({ error: "Not a Telegram send request" }, 400);
-    }
-
-    const { chatId, text } = JSON.parse(request.data);
-
-    try {
-      await deliverMessage(db, chatId, text);
-    } catch {
-      return c.json({ error: "Telegram bot not connected" }, 503);
-    }
-
-    await db("verification_requests")
-      .where("id", id)
-      .update({ status: "approved", updated_at: Date.now() });
-
-    return c.json({ success: true, verificationStatus: "approved" });
   });
 }

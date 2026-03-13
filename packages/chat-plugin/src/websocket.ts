@@ -115,7 +115,9 @@ export function onChatConnect(ws: any, db: DbHandle) {
         ws.send(JSON.stringify({ type: "chat-plugin:history", messages }));
       }
     })
-    .catch(() => {});
+    .catch((err) =>
+      console.error("[chat] Failed to send history to client:", err),
+    );
 }
 
 /** Called when a `chat-plugin:message` WS message arrives from a client. */

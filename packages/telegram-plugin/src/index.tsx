@@ -7,6 +7,7 @@ import { tgState } from "./state";
 import {
   connectTelegram,
   disconnectTelegram,
+  deliverMessage,
   loadRecentConversations,
 } from "./connection";
 import { TelegramPanel, TelegramVerificationRenderer } from "./components";
@@ -50,8 +51,9 @@ export function buildTelegramPlugin(
           hooks: gatekeeperDeps.hooks,
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
+          verifications: gatekeeperDeps.verifications,
         },
-        async init({ db, hooks, components, routes }) {
+        async init({ db, hooks, components, routes, verifications }) {
           function TelegramTab() {
             const { statusColor } = useTelegramStatus();
             return (
@@ -94,6 +96,10 @@ export function buildTelegramPlugin(
           routes.registerRoutes((app) =>
             registerRoutes(app, db, operatorChatIds),
           );
+
+          verifications.registerVerificationCallback(async (request) => {
+            await deliverMessage(db, request.data.chatId, request.data.text);
+          });
 
           hooks.register({
             async "gatekeeper:start"() {

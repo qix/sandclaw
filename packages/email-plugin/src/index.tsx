@@ -3,7 +3,7 @@ import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
-import type { EmailPluginConfig } from "./jmapClient";
+import { sendEmail, type EmailPluginConfig } from "./jmapClient";
 import {
   EmailPanel,
   EmailQueuePanel,
@@ -64,8 +64,9 @@ export function createEmailPlugin(config: EmailPluginConfig) {
           hooks: gatekeeperDeps.hooks,
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
+          verifications: gatekeeperDeps.verifications,
         },
-        init({ db, hooks, components, routes }) {
+        init({ db, hooks, components, routes, verifications }) {
           function EmailTab() {
             return <TabLink href="?page=email" title="Email" />;
           }
@@ -85,6 +86,28 @@ export function createEmailPlugin(config: EmailPluginConfig) {
             if (config.emailQueueDir) {
               registerEmailQueueRoutes(app, config.emailQueueDir);
             }
+          });
+
+          verifications.registerVerificationCallback(async (request) => {
+            const result = await sendEmail(
+              config,
+              request.data.to,
+              request.data.subject,
+              request.data.text,
+            );
+            const now = Date.now();
+            await db("conversation_message").insert({
+              conversation_id: 0,
+              plugin: "email",
+              channel: request.data.to,
+              message_id: result.messageId,
+              from: config.userEmail,
+              to: request.data.to,
+              timestamp: Math.floor(now / 1000),
+              direction: "sent",
+              text: request.data.text,
+              created_at: now,
+            });
           });
 
           hooks.register({

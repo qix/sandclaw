@@ -32,7 +32,9 @@ export function createTelegramJobHandlers(
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ chatId: payload.chatId }),
-        }).catch(() => {});
+        }).catch((err) =>
+          console.error("[telegram] Failed to send typing action:", err),
+        );
       await sendTyping();
       const typingInterval = setInterval(sendTyping, 4000);
 

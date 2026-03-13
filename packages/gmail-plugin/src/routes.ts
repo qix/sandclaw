@@ -43,53 +43,6 @@ export function registerRoutes(app: any, db: any, config: GmailPluginConfig) {
     });
   });
 
-  // POST /approve/:id — approve and send an email
-  app.post("/approve/:id", async (c: any) => {
-    const id = parseInt(c.req.param("id"), 10);
-    if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
-
-    const request = await db("verification_requests").where("id", id).first();
-    if (
-      !request ||
-      request.status !== "pending" ||
-      request.plugin !== "gmail"
-    ) {
-      return c.json({ error: "Not found or already resolved" }, 404);
-    }
-
-    const data = JSON.parse(request.data);
-
-    try {
-      const result = await sendEmail(config, data.to, data.subject, data.text);
-
-      await db("verification_requests")
-        .where("id", id)
-        .update({ status: "approved", updated_at: Date.now() });
-
-      // Store sent message in conversation history
-      const now = Date.now();
-      await db("conversation_message").insert({
-        conversation_id: 0, // Resolved later
-        plugin: "gmail",
-        channel: data.to,
-        message_id: result.messageId,
-        from: config.userEmail,
-        to: data.to,
-        timestamp: Math.floor(now / 1000),
-        direction: "sent",
-        text: data.text,
-        created_at: now,
-      });
-
-      return c.json({ success: true, messageId: result.messageId });
-    } catch (e) {
-      return c.json(
-        { error: `Failed to send email: ${(e as Error).message}` },
-        500,
-      );
-    }
-  });
-
   // POST /receive — webhook/manual trigger to queue an incoming email as a job
   app.post("/receive", async (c: any) => {
     const body = (await c.req.json()) as {
@@ -158,8 +111,8 @@ export function registerRoutes(app: any, db: any, config: GmailPluginConfig) {
   });
 
   // Start email polling if configured
-  startEmailPolling(config, db, config.pollIntervalMs ?? 30000).catch(() => {
-    // Polling failed to start — likely missing credentials
+  startEmailPolling(config, db, config.pollIntervalMs ?? 30000).catch((err) => {
+    console.error("[gmail] Polling failed to start:", err);
   });
 }
 
@@ -269,8 +222,8 @@ async function startEmailPolling(
       }
 
       lastChecked = Date.now();
-    } catch {
-      // Polling error — will retry on next interval
+    } catch (err) {
+      console.error("[gmail] Polling error:", err);
     }
   };
 

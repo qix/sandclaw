@@ -27,7 +27,9 @@ export async function deliverMessage(db: any, jid: string, text: string) {
     created_at: Date.now(),
   });
 
-  loadRecentConversations(db).catch(() => {});
+  loadRecentConversations(db).catch((err) =>
+    console.error("[whatsapp] Failed to load recent conversations:", err),
+  );
 }
 
 export function registerRoutes(
@@ -100,8 +102,12 @@ export function registerRoutes(
     if (autoApprove) {
       try {
         await deliverMessage(db, jid, text);
-      } catch {
-        return c.json({ error: "WhatsApp not connected" }, 503);
+      } catch (err) {
+        console.error("[whatsapp] Failed to deliver message:", err);
+        return c.json(
+          { error: `WhatsApp send failed: ${(err as Error).message}` },
+          503,
+        );
       }
     }
 
@@ -109,33 +115,5 @@ export function registerRoutes(
       verificationRequestId: id,
       verificationStatus: autoApprove ? "approved" : "pending",
     });
-  });
-
-  // POST /approve/:id — approve a pending send request and deliver the message
-  app.post("/approve/:id", async (c: any) => {
-    const id = parseInt(c.req.param("id"), 10);
-    if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
-
-    const request = await db("verification_requests").where("id", id).first();
-    if (!request || request.status !== "pending") {
-      return c.json({ error: "Not found or already resolved" }, 404);
-    }
-    if (request.plugin !== "whatsapp" || request.action !== "send_message") {
-      return c.json({ error: "Not a WhatsApp send request" }, 400);
-    }
-
-    const { jid, text } = JSON.parse(request.data);
-
-    try {
-      await deliverMessage(db, jid, text);
-    } catch {
-      return c.json({ error: "WhatsApp not connected" }, 503);
-    }
-
-    await db("verification_requests")
-      .where("id", id)
-      .update({ status: "approved", updated_at: Date.now() });
-
-    return c.json({ success: true, verificationStatus: "approved" });
   });
 }

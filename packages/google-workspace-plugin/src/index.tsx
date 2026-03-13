@@ -9,6 +9,7 @@ import {
   GoogleWorkspaceVerificationRenderer,
 } from "./components";
 import { registerRoutes } from "./routes";
+import { GWS_CONFIDANTE_JOB_TYPE } from "./constants";
 import { createReadTool, createExecTool } from "./tools";
 import { createGwsConfidanteHandlers } from "./confidanteHandlers";
 
@@ -34,11 +35,25 @@ export function createGoogleWorkspacePlugin(
           db: gatekeeperDeps.db,
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
+          verifications: gatekeeperDeps.verifications,
         },
-        init({ db, components, routes }) {
+        init({ db, components, routes, verifications }) {
           components.register("page:google-workspace", GoogleWorkspacePanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db));
+
+          verifications.registerVerificationCallback(
+            async (request, { queueJob }) => {
+              await queueJob("confidante", GWS_CONFIDANTE_JOB_TYPE, {
+                requestId: request.data.requestId,
+                command: request.data.command,
+                responseJobType: request.data.responseJobType,
+                ...(request.jobContext
+                  ? { jobContext: request.jobContext }
+                  : {}),
+              });
+            },
+          );
         },
       });
     },

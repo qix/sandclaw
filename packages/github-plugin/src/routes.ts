@@ -76,8 +76,8 @@ export function registerRoutes(
         repo,
       ]);
       diff = stdout;
-    } catch {
-      // Non-fatal — verification will just show no diff
+    } catch (err) {
+      console.error("[github] Failed to fetch PR diff:", err);
     }
 
     const now = Date.now();
@@ -110,59 +110,5 @@ export function registerRoutes(
       prNumber,
       status: "pending",
     });
-  });
-
-  // POST /approve/:id — approve and auto-merge the PR
-  app.post("/approve/:id", async (c: any) => {
-    const id = parseInt(c.req.param("id"), 10);
-    if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
-
-    const request = await db("verification_requests").where("id", id).first();
-    if (!request || request.status !== "pending") {
-      return c.json({ error: "Not found or already resolved" }, 404);
-    }
-    if (
-      request.plugin !== GITHUB_PLUGIN_ID ||
-      request.action !== GITHUB_PR_CREATED_ACTION
-    ) {
-      return c.json({ error: "Not a GitHub PR request" }, 400);
-    }
-
-    const data = JSON.parse(request.data) as { repo: string; prNumber: number };
-
-    try {
-      await execFile("gh", [
-        "pr",
-        "merge",
-        String(data.prNumber),
-        "--repo",
-        data.repo,
-        "--rebase",
-        "--auto",
-      ]);
-    } catch (err: any) {
-      const message = err.stderr || err.message || "Unknown error";
-      return c.json({ error: `gh pr merge failed: ${message}` }, 500);
-    }
-
-    await db("verification_requests")
-      .where("id", id)
-      .update({ status: "approved", updated_at: Date.now() });
-
-    // Auto-pull the local repo if configured and the repo matches
-    if (
-      options?.autoPullPath &&
-      options?.autoPullRepo &&
-      data.repo === options.autoPullRepo
-    ) {
-      try {
-        await execFile("git", ["pull"], { cwd: options.autoPullPath });
-      } catch (err) {
-        // Non-fatal — the merge itself succeeded
-        console.error("Auto-pull failed:", err);
-      }
-    }
-
-    return c.json({ success: true });
   });
 }

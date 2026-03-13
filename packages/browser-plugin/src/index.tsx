@@ -6,6 +6,7 @@ import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
 import type { ConfidanteEnvironment } from "@sandclaw/confidante-plugin-api";
 import { BrowserPanel, BrowserVerificationRenderer } from "./components";
 import { registerRoutes, type BrowserPluginConfig } from "./routes";
+import { BROWSER_CONFIDANTE_JOB_TYPE } from "./constants";
 import { createRequestBrowseTool } from "./tools";
 import { browserJobHandlers } from "./jobHandlers";
 import { createBrowserConfidanteHandlers } from "./confidanteHandlers";
@@ -39,8 +40,9 @@ export function createBrowserPlugin(options: BrowserPluginOptions = {}) {
           db: gatekeeperDeps.db,
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
+          verifications: gatekeeperDeps.verifications,
         },
-        init({ db, components, routes }) {
+        init({ db, components, routes, verifications }) {
           function BrowserTab() {
             return <TabLink href="?page=browser" title="Browser" />;
           }
@@ -48,6 +50,18 @@ export function createBrowserPlugin(options: BrowserPluginOptions = {}) {
           components.register("page:browser", BrowserPanel);
 
           routes.registerRoutes((app) => registerRoutes(app, db, config));
+
+          verifications.registerVerificationCallback(
+            async (request, { queueJob }) => {
+              await queueJob("confidante", BROWSER_CONFIDANTE_JOB_TYPE, {
+                requestId: request.data.requestId,
+                prompt: request.data.prompt,
+                url: request.data.url,
+                responseJobType: request.data.responseJobType,
+                image: request.data.image,
+              });
+            },
+          );
         },
       });
     },

@@ -100,53 +100,6 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
     });
   });
 
-  // POST /approve/:id — approve and send an email
-  app.post("/approve/:id", async (c: any) => {
-    const id = parseInt(c.req.param("id"), 10);
-    if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
-
-    const request = await db("verification_requests").where("id", id).first();
-    if (
-      !request ||
-      request.status !== "pending" ||
-      request.plugin !== "email"
-    ) {
-      return c.json({ error: "Not found or already resolved" }, 404);
-    }
-
-    const data = JSON.parse(request.data);
-
-    try {
-      const result = await sendEmail(config, data.to, data.subject, data.text);
-
-      await db("verification_requests")
-        .where("id", id)
-        .update({ status: "approved", updated_at: Date.now() });
-
-      // Store sent message in conversation history
-      const now = Date.now();
-      await db("conversation_message").insert({
-        conversation_id: 0,
-        plugin: "email",
-        channel: data.to,
-        message_id: result.messageId,
-        from: config.userEmail,
-        to: data.to,
-        timestamp: Math.floor(now / 1000),
-        direction: "sent",
-        text: data.text,
-        created_at: now,
-      });
-
-      return c.json({ success: true, messageId: result.messageId });
-    } catch (e) {
-      return c.json(
-        { error: `Failed to send email: ${(e as Error).message}` },
-        500,
-      );
-    }
-  });
-
   // POST /receive — webhook/manual trigger to queue an incoming email as a job
   app.post("/receive", async (c: any) => {
     const body = (await c.req.json()) as {
@@ -531,7 +484,8 @@ export async function matchEmailQueue(
   let files: string[];
   try {
     files = await listDir(emailQueueDir);
-  } catch {
+  } catch (err) {
+    console.error("[email] Failed to list email queue dir:", err);
     return null;
   }
 
@@ -544,7 +498,8 @@ export async function matchEmailQueue(
       try {
         const content = await readFile(path.join(emailQueueDir, file), "utf8");
         return content;
-      } catch {
+      } catch (err) {
+        console.error(`[email] Failed to read queue file ${file}:`, err);
         return null;
       }
     }
@@ -767,8 +722,8 @@ export async function startEmailPolling(
 
       // Mark all as read
       await markAsRead(config, newIds);
-    } catch {
-      // Polling error — will retry on next interval
+    } catch (err) {
+      console.error("[email] Polling error:", err);
     }
   };
 

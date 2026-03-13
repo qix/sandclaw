@@ -10,7 +10,7 @@ import {
   loadRecentConversations,
 } from "./connection";
 import { WhatsAppPanel, WhatsAppVerificationRenderer } from "./components";
-import { registerRoutes } from "./routes";
+import { registerRoutes, deliverMessage } from "./routes";
 import { migrations } from "./migrations";
 import { createSendWhatsappTool } from "./tools";
 import { createWhatsappJobHandlers } from "./jobHandlers";
@@ -51,8 +51,9 @@ export function buildWhatsappPlugin(
           hooks: gatekeeperDeps.hooks,
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
+          verifications: gatekeeperDeps.verifications,
         },
-        async init({ db, hooks, components, routes }) {
+        async init({ db, hooks, components, routes, verifications }) {
           function WhatsAppTab() {
             const { statusColor } = useWhatsAppStatus();
             return (
@@ -93,6 +94,10 @@ export function buildWhatsappPlugin(
           components.register("provider", WhatsAppProvider);
 
           routes.registerRoutes((app) => registerRoutes(app, db, operatorJids));
+
+          verifications.registerVerificationCallback(async (request) => {
+            await deliverMessage(db, request.data.jid, request.data.text);
+          });
 
           hooks.register({
             "gatekeeper:start": async () => {
