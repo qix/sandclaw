@@ -65,7 +65,6 @@ interface ObsidianReadResponse {
 interface ObsidianWriteRequest {
   path: string;
   content: string;
-  append?: boolean; // Default false (overwrite)
 }
 
 interface ObsidianDiffLine {
@@ -84,7 +83,7 @@ interface ObsidianDiffPreview {
 
 interface ObsidianWriteVerificationData {
   path: string; // Vault-relative path
-  mode: "overwrite" | "append";
+  mode: "overwrite";
   previousContent: string; // Current file content at verification creation time
   nextContent: string; // Resulting content after the write is applied
   previousBytes: number;
@@ -201,15 +200,14 @@ When `POST /api/obsidian/approve/[id]` is called, the module re-reads the curren
 ```json
 {
   "path": "notes/meetings/2026-01.md",
-  "content": "# January Meetings\n\nUpdated content...",
-  "append": false
+  "content": "# January Meetings\n\nUpdated content..."
 }
 ```
 
 **What it does:**
 
 1. Reads the current file content (or `""` if new file).
-2. Computes `nextContent` (append or overwrite).
+2. Computes `nextContent` (overwrites existing content).
 3. Generates a line-by-line diff preview.
 4. Creates a `verification_request` with all of the above.
 

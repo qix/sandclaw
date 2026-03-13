@@ -141,7 +141,6 @@ export function registerRoutes(
     const body = (await c.req.json()) as {
       path?: string;
       content?: string;
-      append?: boolean;
       jobContext?: { worker: string; jobId: number };
     };
     let notePath = (body.path ?? "").trim();
@@ -169,16 +168,13 @@ export function registerRoutes(
     if (!absPath) return c.json({ error: "path escapes vault" }, 400);
 
     const relPath = path.relative(vaultRoot, absPath).replace(/\\/g, "/");
-    const append = body.append === true;
     const previousContent = (await tryReadFile(absPath)) ?? "";
-    const nextContent = append ? previousContent + body.content : body.content;
-    const mode = append ? "append" : "overwrite";
+    const nextContent = body.content;
     const diff = computeDiff(previousContent, nextContent);
     const now = Date.now();
 
     const verificationData = {
       path: relPath,
-      mode,
       previousContent,
       nextContent,
       previousBytes: Buffer.byteLength(previousContent, "utf8"),
@@ -203,7 +199,6 @@ export function registerRoutes(
       {
         verificationRequestId: id,
         path: relPath,
-        mode,
         status: "pending",
         diff: {
           added: diff.added,

@@ -38,7 +38,7 @@ export function ObsidianVerificationRenderer({
   data,
 }: VerificationRendererProps) {
   const filePath = data?.path ?? "unknown";
-  const mode = data?.mode ?? "overwrite";
+  const mode = "overwrite";
   const diff = data?.diff as
     | {
         lines?: Array<{ type: string; text: string }>;
@@ -84,10 +84,8 @@ export function ObsidianVerificationRenderer({
             borderRadius: "9999px",
             fontSize: "0.75rem",
             fontWeight: 600,
-            background:
-              mode === "append" ? colors.badgeAmberBg : colors.badgeIndigoBg,
-            color:
-              mode === "append" ? colors.badgeAmberFg : colors.badgeIndigoFg,
+            background: colors.badgeIndigoBg,
+            color: colors.badgeIndigoFg,
           }}
         >
           {mode}

@@ -204,13 +204,14 @@ export function createWriteTool(ctx: MuteworkerPluginContext) {
     name: "obsidian_write",
     label: "Write Obsidian Note",
     description:
-      "Create a verification request to write text to an Obsidian note. A human must approve the diff before the file is changed.",
+      "Create a verification request to write text to an Obsidian note. " +
+      "The entire note will be overwritten, so be sure to read the note first if you want to preserve existing content. " +
+      "No changes will be made until a human approves the verification request.",
     parameters: {
       type: "object",
       properties: {
         path: { type: "string" },
         content: { type: "string" },
-        append: { type: "boolean" },
       },
       required: ["path", "content"],
       additionalProperties: false,
@@ -229,7 +230,6 @@ export function createWriteTool(ctx: MuteworkerPluginContext) {
           body: JSON.stringify({
             path: notePath,
             content: params.content,
-            append: params.append === true,
             jobContext: { worker: "muteworker", jobId: ctx.job.id },
           }),
         },
@@ -246,7 +246,7 @@ export function createWriteTool(ctx: MuteworkerPluginContext) {
       ctx.artifacts.push({
         type: "text",
         label: "Obsidian Write Request",
-        value: `${data.path} (${data.mode})`,
+        value: data.path,
       });
 
       return {
@@ -257,7 +257,7 @@ export function createWriteTool(ctx: MuteworkerPluginContext) {
               `Queued Obsidian write verification #${data.verificationRequestId}.`,
               "No file has been changed yet.",
               `Path: ${data.path}`,
-              `Mode: ${data.mode}`,
+              `Mode: overwrite`,
               `Diff: +${data.diff.added} -${data.diff.removed} =${data.diff.unchanged}`,
               `Open ${ctx.gatekeeperExternalUrl} to review and approve this change.`,
             ].join("\n"),
