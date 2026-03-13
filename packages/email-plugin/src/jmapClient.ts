@@ -11,6 +11,8 @@ export interface EmailPluginConfig {
   pollIntervalMs?: number;
   /** Directory containing email queue markdown files. */
   emailQueueDir?: string;
+  /** Path to a markdown file whose content is prepended to every email processing prompt. */
+  systemPromptFile?: string;
 }
 
 export interface JmapEmail {

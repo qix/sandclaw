@@ -6,8 +6,8 @@ export function createRequestBuildTool(ctx: MuteworkerPluginContext) {
     name: "request_build",
     label: "Request Build",
     description:
-      "Create a build request that must be human-approved before the Confidante agent executes it. " +
-      "Use this to request code changes such as adding features, fixing bugs, or refactoring.",
+      "This allows the agent to update itself or its plugins. If the operator requests features or changes made to itself or any of its plugins, simply provide the prompt for the changes. " +
+      "The builder will have a lot more context, so the agent does not need to ask follow-up questions.",
     parameters: {
       type: "object",
       properties: {

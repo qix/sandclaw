@@ -41,11 +41,19 @@ export interface RunAgentResult {
   reply: string | null;
 }
 
+export interface RunAgentOptions {
+  /** Additional system prompt prepended to the base system prompt for this run. */
+  systemPrompt?: string;
+}
+
 /**
  * Runs the Pi agent with the given prompt and the assembled tool set.
  * Returns the agent's final reply text (or null).
  */
-export type RunAgentFn = (prompt: string) => Promise<RunAgentResult>;
+export type RunAgentFn = (
+  prompt: string,
+  options?: RunAgentOptions,
+) => Promise<RunAgentResult>;
 
 // ---------------------------------------------------------------------------
 // Dependency Injection (Backstage-style, parallel to gatekeeper-plugin-api)

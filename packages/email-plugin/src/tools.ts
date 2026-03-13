@@ -14,6 +14,8 @@ export interface IncomingEmailPayload {
   }>;
   /** Markdown prompt from a matched email queue file. Added to the system prompt. */
   emailQueuePrompt?: string;
+  /** Path to a system prompt file to prepend to the agent's system prompt. */
+  systemPromptFile?: string;
 }
 
 export function buildEmailPrompt(payload: IncomingEmailPayload): string {

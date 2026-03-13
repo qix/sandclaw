@@ -3,6 +3,7 @@ import {
   type MuteworkerPlugin,
   type MuteworkerPluginContext,
   type RunAgentFn,
+  type RunAgentOptions,
 } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerApiClient } from "./apiClient.js";
 import type { MuteworkerConfig } from "./config.js";
@@ -98,12 +99,19 @@ export async function executeMuteworkerJob(
       toolNames,
     });
 
-    const runAgent: RunAgentFn = async (prompt: string) => {
+    const runAgent: RunAgentFn = async (
+      prompt: string,
+      opts?: RunAgentOptions,
+    ) => {
+      const effectiveSystemPrompt = opts?.systemPrompt
+        ? `${opts.systemPrompt}\n\n${systemPrompt}`
+        : systemPrompt;
+
       const result = await runWithClaude(prompt, {
         config,
         logger,
         jobId: job.id,
-        systemPrompt,
+        systemPrompt: effectiveSystemPrompt,
         mcpToolDefs,
         onStep: reportStatus ? () => reportStatus("step") : undefined,
       });

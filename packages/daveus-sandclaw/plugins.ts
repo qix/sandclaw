@@ -81,6 +81,7 @@ export const plugins: SandclawPlugin[] = [
     writeApiToken: process.env.FASTMAIL_WRITE_API_TOKEN || "",
     userEmail: process.env.FASTMAIL_EMAIL || "",
     emailQueueDir: path.join(obsidianDir, "daveus/email-queue"),
+    systemPromptFile: path.join(obsidianDir, "daveus/prompts/EMAIL.md"),
   }),
   createBrowserPlugin(),
   createAgentStatusPlugin(),

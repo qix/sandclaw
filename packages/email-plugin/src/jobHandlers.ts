@@ -1,6 +1,8 @@
+import { readFile } from "node:fs/promises";
 import type {
   MuteworkerPluginContext,
   RunAgentFn,
+  RunAgentOptions,
 } from "@sandclaw/muteworker-plugin-api";
 import { buildEmailPrompt, type IncomingEmailPayload } from "./tools";
 
@@ -26,6 +28,12 @@ export const emailJobHandlers = {
       ? `--- Email Queue Instructions ---\n${payload.emailQueuePrompt}\n--- End Email Queue Instructions ---\n\n${emailPrompt}`
       : emailPrompt;
 
-    await runAgent(prompt);
+    // Read system prompt file if configured
+    const options: RunAgentOptions = {};
+    if (payload.systemPromptFile) {
+      options.systemPrompt = await readFile(payload.systemPromptFile, "utf8");
+    }
+
+    await runAgent(prompt, options);
   },
 };
