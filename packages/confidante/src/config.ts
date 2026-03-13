@@ -17,7 +17,7 @@ export const DEFAULT_CONFIG: ConfidanteConfig = {
   gatekeeperInternalUrl: "http://localhost:3000",
   pollIntervalMs: 3000,
   longPollTimeoutMs: 25000,
-  jobTimeoutMs: 120000,
+  jobTimeoutMs: 15 * 60_000, // 15 minutes
   dockerImage: "node:22-alpine",
   logLevel: "info",
 };

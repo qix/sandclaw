@@ -43,6 +43,16 @@ export async function executeBuild(
 ): Promise<void> {
   const { workDir, repo } = config;
 
+  /** Helper to report a build step to agent status. */
+  function reportStep(stepName: string, data?: Record<string, unknown>) {
+    ctx.reportStatus?.({
+      jobId: ctx.job.id,
+      event: "step",
+      data: { step: stepName, ...data },
+      createdAt: Date.now(),
+    });
+  }
+
   let payload: BuildRequestPayload;
   try {
     payload = JSON.parse(ctx.job.data);
@@ -72,6 +82,7 @@ export async function executeBuild(
   });
 
   // Step 1: Prepare working directory — fetch origin/main, create builder branch
+  reportStep("prepare_workdir", { repo, branch });
   const outputBranch = `builder-${ctx.job.id}`;
   await prepareWorkDir({
     repo,
@@ -81,6 +92,7 @@ export async function executeBuild(
   });
 
   // Step 2: npm outside of docker
+  reportStep("npm_install");
   ctx.logger.info("builder.build.npm_install", {
     jobId: ctx.job.id,
     requestId,
@@ -88,6 +100,7 @@ export async function executeBuild(
   await run("npm", ["install"], { cwd: workDir });
 
   // Step 3: Run claude in Docker with proxy (cm-style prompt interception)
+  reportStep("running_claude", { prompt: prompt.slice(0, 200) });
   ctx.logger.info("builder.build.running_claude", {
     jobId: ctx.job.id,
     requestId,
@@ -112,6 +125,7 @@ export async function executeBuild(
     capture: true,
   });
 
+  reportStep("claude_completed");
   ctx.logger.info("builder.build.claude_completed", {
     jobId: ctx.job.id,
     requestId,
@@ -120,6 +134,7 @@ export async function executeBuild(
   // Step 4: Detect and commit changes
   // Use proxy-collected prompts as the commit message for better traceability
   // (these are the actual user prompts extracted from API calls, not the raw input)
+  reportStep("detect_and_commit");
   const commitMessage =
     prompt + "\n\nCreated by claude with output:\n" + claudeOutput;
   const commitResult = await detectAndCommitChanges(workDir, commitMessage);
@@ -136,6 +151,7 @@ export async function executeBuild(
   let prUrl: string | undefined;
 
   if (commitResult.changed) {
+    reportStep("push_branch", { branch: outputBranch });
     await pushBranch(workDir, outputBranch);
 
     ctx.logger.info("builder.build.pushed", {
@@ -145,6 +161,7 @@ export async function executeBuild(
 
     const ghRepo = extractGitHubRepo(repo);
     if (ghRepo) {
+      reportStep("create_pr", { repo: ghRepo, branch: outputBranch });
       const prResponse = await fetch(
         `${ctx.gatekeeperInternalUrl}/api/github/create-pr`,
         {
@@ -183,6 +200,10 @@ export async function executeBuild(
   }
 
   // Step 6: Build result summary and post back to gatekeeper
+  reportStep("post_result", {
+    changed: commitResult.changed,
+    prUrl: prUrl ?? null,
+  });
   const resultParts = [
     `Build completed.`,
     commitResult.changed

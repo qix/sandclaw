@@ -89,6 +89,11 @@ export async function startGatekeeper(
           hooks["muteworker:agent-status"]!(event),
         );
     },
+    fireAgentStatus(event) {
+      for (const hook of agentStatusHooks) {
+        hook(event).catch(() => {});
+      }
+    },
   };
 
   // Component registry: maps names like "tabs:channels", "tabs:primary", "page:whatsapp" to components

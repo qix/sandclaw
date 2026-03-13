@@ -53,17 +53,22 @@ export function createBuilderPlugin(options: BuilderPluginOptions) {
       env.registerInit({
         deps: {
           db: gatekeeperDeps.db,
+          hooks: gatekeeperDeps.hooks,
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
         },
-        init({ db, components, routes }) {
+        init({ db, hooks, components, routes }) {
           function BuilderTab() {
             return <TabLink href="?page=builder" title="Builder" />;
           }
           components.register("tabs:primary", BuilderTab);
           components.register("page:builder", BuilderPanel);
 
-          routes.registerRoutes((app) => registerRoutes(app, db, config));
+          routes.registerRoutes((app) =>
+            registerRoutes(app, db, config, (event) =>
+              hooks.fireAgentStatus(event),
+            ),
+          );
         },
       });
     },

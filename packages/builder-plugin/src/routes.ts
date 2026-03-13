@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { AgentStatusEvent } from "@sandclaw/gatekeeper-plugin-api";
 import {
   BUILDER_VERIFICATION_ACTION,
   BUILDER_CONFIDANTE_JOB_TYPE,
@@ -9,6 +10,7 @@ export function registerRoutes(
   app: any,
   db: any,
   pluginConfig: BuilderPluginConfig,
+  fireAgentStatus?: (event: AgentStatusEvent) => void,
 ) {
   // POST /request — create a verification request for a build
   app.post("/request", async (c: any) => {
@@ -72,7 +74,7 @@ export function registerRoutes(
     const verificationData = JSON.parse(request.data);
     const now = Date.now();
 
-    await db("job_queue").insert({
+    const [jobId] = await db("job_queue").insert({
       executor: "confidante",
       job_type: BUILDER_CONFIDANTE_JOB_TYPE,
       data: JSON.stringify({
@@ -85,6 +87,13 @@ export function registerRoutes(
       status: "pending",
       created_at: now,
       updated_at: now,
+    });
+
+    fireAgentStatus?.({
+      jobId,
+      event: "queued",
+      data: { jobType: BUILDER_CONFIDANTE_JOB_TYPE, executor: "confidante" },
+      createdAt: now,
     });
 
     await db("verification_requests")
@@ -118,6 +127,13 @@ export function registerRoutes(
       status: "pending",
       created_at: now,
       updated_at: now,
+    });
+
+    fireAgentStatus?.({
+      jobId,
+      event: "queued",
+      data: { jobType, executor: "muteworker" },
+      createdAt: now,
     });
 
     return c.json({ success: true, jobId });

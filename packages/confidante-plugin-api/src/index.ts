@@ -39,6 +39,14 @@ export interface DockerService {
   ): Promise<DockerRunResult>;
 }
 
+/** Callback for reporting agent status events back to the gatekeeper. */
+export type ReportStatusFn = (event: {
+  jobId: number;
+  event: string;
+  data?: Record<string, unknown>;
+  createdAt?: number;
+}) => void;
+
 /**
  * Context object passed to every confidante handler.
  */
@@ -49,6 +57,8 @@ export interface ConfidantePluginContext {
   job: ConfidantePluginJob;
   /** Built-in Docker service for running work inside containers. */
   docker: DockerService;
+  /** Report an agent status event (step, etc.) back to the gatekeeper. Fire-and-forget. */
+  reportStatus?: ReportStatusFn;
 }
 
 // ---------------------------------------------------------------------------

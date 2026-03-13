@@ -120,6 +120,20 @@ export function registerCoreRoutes(
     });
 
     const job = await db("job_queue").where("id", id).first();
+
+    // Fire "queued" agent status event
+    if (agentStatusHooks) {
+      const queuedEvent: AgentStatusEvent = {
+        jobId: job.id,
+        event: "queued",
+        data: { jobType: body.jobType, executor: body.executor },
+        createdAt: now,
+      };
+      for (const hook of agentStatusHooks) {
+        hook(queuedEvent).catch(() => {});
+      }
+    }
+
     return c.json({
       id: job.id,
       jobType: job.job_type,
@@ -146,7 +160,7 @@ export function registerCoreRoutes(
       return c.json({ error: "jobId and event are required" }, 400);
     }
 
-    const validEvents = ["started", "step", "completed", "failed"];
+    const validEvents = ["queued", "started", "step", "completed", "failed"];
     if (!validEvents.includes(body.event)) {
       return c.json(
         { error: `event must be one of: ${validEvents.join(", ")}` },
@@ -370,6 +384,19 @@ export function registerCoreRoutes(
       created_at: now,
       updated_at: now,
     });
+
+    // Fire "queued" agent status event
+    if (agentStatusHooks) {
+      const queuedEvent: AgentStatusEvent = {
+        jobId,
+        event: "queued",
+        data: { jobType: "confidante:result", executor: "muteworker" },
+        createdAt: now,
+      };
+      for (const hook of agentStatusHooks) {
+        hook(queuedEvent).catch(() => {});
+      }
+    }
 
     return c.json({ success: true, jobId });
   });

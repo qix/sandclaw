@@ -47,11 +47,33 @@ export async function executeConfidanteJob(
   const { config, logger, job, reportStatus } = args;
   const startTime = Date.now();
 
-  logger.info("job.execution.started", { jobId: job.id, jobType: job.jobType });
+  // Parse job data for logging (best-effort)
+  let jobDataPreview: Record<string, unknown> | undefined;
+  try {
+    const parsed = JSON.parse(job.data);
+    // Include a subset of fields for visibility without flooding logs
+    jobDataPreview = {};
+    for (const key of Object.keys(parsed).slice(0, 6)) {
+      const val = parsed[key];
+      jobDataPreview[key] =
+        typeof val === "string" && val.length > 200
+          ? val.slice(0, 200) + "…"
+          : val;
+    }
+  } catch {}
+
+  logger.info("job.execution.started", {
+    jobId: job.id,
+    jobType: job.jobType,
+    ...(jobDataPreview ? { jobData: jobDataPreview } : {}),
+  });
   reportStatus?.({
     jobId: job.id,
     event: "started",
-    data: { jobType: job.jobType },
+    data: {
+      jobType: job.jobType,
+      ...(jobDataPreview ? { jobData: jobDataPreview } : {}),
+    },
     createdAt: startTime,
   });
 
@@ -61,6 +83,7 @@ export async function executeConfidanteJob(
       logger,
       job,
       docker: args.docker,
+      reportStatus,
     };
 
     // Find a plugin that handles this job type
@@ -84,10 +107,16 @@ export async function executeConfidanteJob(
     }
 
     const durationMs = Date.now() - startTime;
+    logger.info("job.execution.completed", {
+      jobId: job.id,
+      jobType: job.jobType,
+      durationMs,
+      hasResult: typeof result === "string",
+    });
     reportStatus?.({
       jobId: job.id,
       event: "completed",
-      data: { durationMs },
+      data: { durationMs, jobType: job.jobType },
       createdAt: Date.now(),
     });
 

@@ -285,12 +285,17 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
               </p>
             ) : (
               activeJobs.map((j) => {
+                const queued = j.events.find((e) => e.event === "queued");
                 const started = j.events.find((e) => e.event === "started");
                 const stepCount = j.events.filter(
                   (e) => e.event === "step",
                 ).length;
-                const jobType = started?.data?.jobType as string | undefined;
+                const isQueued = !started && !!queued;
+                const jobType =
+                  (started?.data?.jobType as string | undefined) ??
+                  (queued?.data?.jobType as string | undefined);
                 const jobData = started?.data?.prompt as string | undefined;
+                const firstEvent = queued ?? started;
                 return (
                   <a
                     key={j.jobId}
@@ -333,20 +338,21 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                       <span
                         style={{ fontSize: "0.75rem", color: colors.muted }}
                       >
-                        {started ? formatTime(started.createdAt) : ""}
+                        {firstEvent ? formatTime(firstEvent.createdAt) : ""}
                       </span>
                     </div>
                     {jobData && <CollapsibleJson data={jobData} />}
                     <div
                       style={{
                         fontSize: "0.8rem",
-                        color: colors.accent,
+                        color: isQueued ? colors.muted : colors.accent,
                         marginTop: "0.5rem",
                       }}
                       data-step-count
                     >
-                      {stepCount} step{stepCount !== 1 ? "s" : ""} so
-                      far&hellip;
+                      {isQueued
+                        ? "Queued\u2026"
+                        : `${stepCount} step${stepCount !== 1 ? "s" : ""} so far\u2026`}
                     </div>
                   </a>
                 );
@@ -609,21 +615,61 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
     return a;
   }
 
+  function createQueuedJobEl(ev) {
+    var a = document.createElement('a');
+    a.className = 'agent-status-job';
+    a.setAttribute('data-job-id', ev.jobId);
+    a.href = '?page=agent-status&job=' + ev.jobId;
+    a.style.cssText = 'display:block;padding:0.75rem;background:${colors.surface};border-radius:0.5rem;border:1px solid ${colors.border};margin-bottom:0.5rem;text-decoration:none;color:inherit;';
+    var jobType = ev.data && ev.data.jobType;
+    var jobTypeHtml = jobType
+      ? '<span style="margin-left:0.5rem;font-size:0.75rem;color:${colors.accent};font-weight:500;">' + escapeHtml(jobType) + '</span>'
+      : '';
+    a.innerHTML =
+      '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">' +
+        '<span style="font-weight:600;font-size:0.875rem;">Job #' + ev.jobId + jobTypeHtml + '</span>' +
+        '<span style="font-size:0.75rem;color:${colors.muted};">' + formatTime(ev.createdAt) + '</span>' +
+      '</div>' +
+      '<div style="font-size:0.8rem;color:${colors.muted};margin-top:0.5rem;" data-step-count>Queued\\u2026</div>';
+    return a;
+  }
+
   document.addEventListener('sc:ws:message', function(e) {
     var data = e.detail;
     if (data.type !== 'agent-status:update' || !data.event) return;
     var ev = data.event;
 
-    if (ev.event === 'started') {
+    if (ev.event === 'queued') {
       // Remove empty placeholder if present
       var empty = activeEl.querySelector('p');
       if (empty) empty.remove();
+      var el = createQueuedJobEl(ev);
+      activeEl.appendChild(el);
+      activeJobs[ev.jobId] = {
+        el: el,
+        steps: 0,
+        queued: true,
+        jobType: ev.data && ev.data.jobType || null,
+        jobData: null
+      };
+      updateActiveCount();
+
+    } else if (ev.event === 'started') {
+      var existing = activeJobs[ev.jobId];
+      if (existing && existing.queued) {
+        // Upgrade queued job to started
+        if (existing.el) existing.el.remove();
+      } else {
+        // Remove empty placeholder if present
+        var empty = activeEl.querySelector('p');
+        if (empty) empty.remove();
+      }
       var el = createActiveJobEl(ev);
       activeEl.appendChild(el);
       activeJobs[ev.jobId] = {
         el: el,
         steps: 0,
-        jobType: ev.data && ev.data.jobType || null,
+        jobType: ev.data && ev.data.jobType || (existing && existing.jobType) || null,
         jobData: ev.data && ev.data.prompt || null
       };
       updateActiveCount();
@@ -670,12 +716,14 @@ export function AgentJobDetailPanel({
   jobId,
   events,
 }: AgentJobDetailPanelProps) {
+  const queued = events.find((e) => e.event === "queued");
   const started = events.find((e) => e.event === "started");
   const terminal = events.find(
     (e) => e.event === "completed" || e.event === "failed",
   );
   const stepCount = events.filter((e) => e.event === "step").length;
   const isFinished = !!terminal;
+  const isQueued = !started && !!queued;
   const isSuccess = terminal?.event === "completed";
   const durationMs = terminal?.data?.durationMs as number | undefined;
 
@@ -686,7 +734,9 @@ export function AgentJobDetailPanel({
         subtitle={
           isFinished
             ? `${isSuccess ? "Completed" : "Failed"} after ${stepCount} step${stepCount !== 1 ? "s" : ""}${durationMs != null ? ` in ${formatDuration(durationMs)}` : ""}`
-            : `In progress — ${stepCount} step${stepCount !== 1 ? "s" : ""} so far`
+            : isQueued
+              ? "Queued — waiting for executor"
+              : `In progress — ${stepCount} step${stepCount !== 1 ? "s" : ""} so far`
         }
       />
 
@@ -708,7 +758,15 @@ export function AgentJobDetailPanel({
         <CardHeader>
           <span style={{ fontWeight: 600, color: colors.text }}>
             <StatusDot
-              color={isFinished ? (isSuccess ? "gray" : "red") : "green"}
+              color={
+                isFinished
+                  ? isSuccess
+                    ? "gray"
+                    : "red"
+                  : isQueued
+                    ? "yellow"
+                    : "green"
+              }
             />{" "}
             Summary
           </span>
@@ -738,6 +796,7 @@ export function AgentJobDetailPanel({
               {stepCount} step{stepCount !== 1 ? "s" : ""}
             </span>
             {durationMs != null && <span>{formatDuration(durationMs)}</span>}
+            {queued && <span>Queued: {formatTime(queued.createdAt)}</span>}
             {started && <span>Started: {formatTime(started.createdAt)}</span>}
             {terminal && <span>Ended: {formatTime(terminal.createdAt)}</span>}
           </div>

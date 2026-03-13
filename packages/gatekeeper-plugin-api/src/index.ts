@@ -33,7 +33,7 @@ export interface JobContext {
 /** Event emitted by the muteworker to report agent execution status. */
 export interface AgentStatusEvent {
   jobId: number;
-  event: "started" | "step" | "completed" | "failed";
+  event: "queued" | "started" | "step" | "completed" | "failed";
   prompt?: string;
   systemPrompt?: string;
   toolNames?: string[];
@@ -50,6 +50,8 @@ export interface GatekeeperHooks {
       event: AgentStatusEvent,
     ) => void | Promise<void>;
   }): void;
+  /** Fire an agent status event to all registered hooks. Fire-and-forget. */
+  fireAgentStatus(event: AgentStatusEvent): void;
 }
 
 // ---------------------------------------------------------------------------
