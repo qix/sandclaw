@@ -1,3 +1,4 @@
+import type { VerificationsService } from "@sandclaw/gatekeeper-plugin-api";
 import { waState } from "./state";
 import {
   getOrCreateConversationId,
@@ -36,6 +37,7 @@ export function registerRoutes(
   app: any,
   db: any,
   operatorJids: ReadonlySet<string>,
+  verifications: VerificationsService,
 ) {
   // GET /settings/watch-inbox — read current toggle state
   app.get("/settings/watch-inbox", async (c: any) => {
@@ -87,33 +89,20 @@ export function registerRoutes(
       return c.json({ error: "jid and text are required" }, 400);
     }
 
-    const autoApprove = operatorJids.has(jid);
-    const now = Date.now();
-    const [id] = await db("verification_requests").insert({
-      plugin: "whatsapp",
-      action: "send_message",
-      data: JSON.stringify({ jid, text }),
-      status: autoApprove ? "approved" : "pending",
-      ...(jobContext ? { job_context: JSON.stringify(jobContext) } : {}),
-      created_at: now,
-      updated_at: now,
-    });
-
-    if (autoApprove) {
-      try {
-        await deliverMessage(db, jid, text);
-      } catch (err) {
-        console.error("[whatsapp] Failed to deliver message:", err);
-        return c.json(
-          { error: `WhatsApp send failed: ${(err as Error).message}` },
-          503,
-        );
-      }
+    try {
+      const { id, status } = await verifications.requestVerification({
+        action: "send_message",
+        data: { jid, text },
+        jobContext,
+        autoApprove: operatorJids.has(jid),
+      });
+      return c.json({ verificationRequestId: id, verificationStatus: status });
+    } catch (err) {
+      console.error("[whatsapp] Failed to deliver message:", err);
+      return c.json(
+        { error: `WhatsApp send failed: ${(err as Error).message}` },
+        503,
+      );
     }
-
-    return c.json({
-      verificationRequestId: id,
-      verificationStatus: autoApprove ? "approved" : "pending",
-    });
   });
 }

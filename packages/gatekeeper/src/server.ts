@@ -156,6 +156,37 @@ export async function startGatekeeper(
   // Verification callback registry (pluginId → callback)
   const verificationCallbacks = new Map<string, VerificationCallback>();
 
+  /** Insert a job into the queue and fire a "queued" agent status event. */
+  async function queueJob(
+    executor: "muteworker" | "confidante",
+    jobType: string,
+    data: any,
+  ): Promise<{ jobId: number }> {
+    const now = Date.now();
+    const [jobId] = await db("job_queue").insert({
+      executor,
+      job_type: jobType,
+      data: typeof data === "string" ? data : JSON.stringify(data),
+      status: "pending",
+      created_at: now,
+      updated_at: now,
+    });
+
+    const queuedEvent: AgentStatusEvent = {
+      jobId,
+      event: "queued",
+      data: { jobType, executor },
+      createdAt: now,
+    };
+    for (const hook of agentStatusHooks) {
+      hook(queuedEvent).catch((err) =>
+        console.error("[agent-status] hook error:", err),
+      );
+    }
+
+    return { jobId };
+  }
+
   const services = new Map<string, any>();
   services.set("core.db", db);
   services.set("core.hooks", hooksService);
@@ -188,6 +219,35 @@ export async function startGatekeeper(
     const verificationsService: VerificationsService = {
       registerVerificationCallback(callback) {
         verificationCallbacks.set(pluginId, callback);
+      },
+
+      async requestVerification(options) {
+        const { action, data, jobContext, autoApprove } = options;
+        const now = Date.now();
+        const [id] = await db("verification_requests").insert({
+          plugin: pluginId,
+          action,
+          data: JSON.stringify(data),
+          status: "pending",
+          ...(jobContext ? { job_context: JSON.stringify(jobContext) } : {}),
+          created_at: now,
+          updated_at: now,
+        });
+
+        if (autoApprove) {
+          const callback = verificationCallbacks.get(pluginId);
+          if (callback) {
+            await callback({ id, action, data, jobContext }, { queueJob });
+          }
+          await db("verification_requests")
+            .where("id", id)
+            .update({ status: "approved", updated_at: Date.now() });
+          notifyVerificationChange();
+          return { id, status: "approved" as const };
+        }
+
+        notifyVerificationChange();
+        return { id, status: "pending" as const };
       },
     };
 
@@ -288,7 +348,7 @@ export async function startGatekeeper(
     db,
     notifyVerificationChange,
     verificationCallbacks,
-    agentStatusHooks,
+    queueJob,
   );
 
   // 6. Favicon

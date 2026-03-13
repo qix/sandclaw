@@ -1,7 +1,6 @@
 import type { Hono } from "hono";
 import type { Knex } from "knex";
 import type {
-  AgentStatusEvent,
   VerificationCallback,
   JobContext,
 } from "@sandclaw/gatekeeper-plugin-api";
@@ -11,39 +10,12 @@ export function registerVerificationFormRoutes(
   db: Knex,
   onVerificationChange: (() => void) | undefined,
   verificationCallbacks: Map<string, VerificationCallback>,
-  agentStatusHooks: Array<(event: AgentStatusEvent) => Promise<void>>,
-): void {
-  /** Insert a job into the queue and fire a "queued" agent status event. */
-  async function queueJob(
+  queueJob: (
     executor: "muteworker" | "confidante",
     jobType: string,
     data: any,
-  ): Promise<{ jobId: number }> {
-    const now = Date.now();
-    const [jobId] = await db("job_queue").insert({
-      executor,
-      job_type: jobType,
-      data: typeof data === "string" ? data : JSON.stringify(data),
-      status: "pending",
-      created_at: now,
-      updated_at: now,
-    });
-
-    const queuedEvent: AgentStatusEvent = {
-      jobId,
-      event: "queued",
-      data: { jobType, executor },
-      createdAt: now,
-    };
-    for (const hook of agentStatusHooks) {
-      hook(queuedEvent).catch((err) =>
-        console.error("[agent-status] hook error:", err),
-      );
-    }
-
-    return { jobId };
-  }
-
+  ) => Promise<{ jobId: number }>,
+): void {
   // POST /verifications/approve/:id — call the plugin's verification callback, then redirect
   app.post("/verifications/approve/:id", async (c) => {
     const id = parseInt(c.req.param("id"), 10);

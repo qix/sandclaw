@@ -100,6 +100,20 @@ export type VerificationCallback = (
 export interface VerificationsService {
   /** Register a callback that runs when a verification for this plugin is approved. */
   registerVerificationCallback(callback: VerificationCallback): void;
+
+  /**
+   * Create a verification request for this plugin.
+   *
+   * When `autoApprove` is true the registered verification callback is invoked
+   * immediately and the request is stored as "approved".  If the callback
+   * throws, the error propagates to the caller and the request stays "pending".
+   */
+  requestVerification(options: {
+    action: string;
+    data: any;
+    jobContext?: JobContext;
+    autoApprove?: boolean;
+  }): Promise<{ id: number; status: "pending" | "approved" }>;
 }
 
 /** Core service refs available to all plugins. */

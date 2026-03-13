@@ -93,7 +93,9 @@ export function buildWhatsappPlugin(
           components.register("page:whatsapp", WhatsAppPanel);
           components.register("provider", WhatsAppProvider);
 
-          routes.registerRoutes((app) => registerRoutes(app, db, operatorJids));
+          routes.registerRoutes((app) =>
+            registerRoutes(app, db, operatorJids, verifications),
+          );
 
           verifications.registerVerificationCallback(async (request) => {
             await deliverMessage(db, request.data.jid, request.data.text);
