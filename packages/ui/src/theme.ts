@@ -163,6 +163,9 @@ main.sc-main {
 .sc-btn-success:hover { background: oklch(0.60 0.17 152); }
 .sc-btn-danger { background: ${colors.danger}; color: oklch(1 0 0); }
 .sc-btn-danger:hover { background: ${colors.dangerHover}; }
+.sc-btn-secondary { background: ${colors.muted}; color: oklch(1 0 0); opacity: 0.8; }
+.sc-btn-secondary:hover { opacity: 1; }
+.sc-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* --- Status dot --- */
 .sc-status-dot {
