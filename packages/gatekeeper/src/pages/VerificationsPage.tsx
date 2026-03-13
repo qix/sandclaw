@@ -153,6 +153,15 @@ function VerificationCard({
               Reject
             </Button>
           </form>
+          <form method="post" action={`/verifications/requeue/${r.id}`}>
+            <Button
+              type="submit"
+              variant="secondary"
+              disabled={!r.jobContext}
+            >
+              Requeue
+            </Button>
+          </form>
         </CardFooter>
       )}
     </Card>
