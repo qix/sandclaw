@@ -1,12 +1,48 @@
 import type { Hono } from "hono";
 import type { Knex } from "knex";
+import type {
+  AgentStatusEvent,
+  VerificationCallback,
+  JobContext,
+} from "@sandclaw/gatekeeper-plugin-api";
 
 export function registerVerificationFormRoutes(
   app: Hono,
   db: Knex,
-  onVerificationChange?: () => void,
+  onVerificationChange: (() => void) | undefined,
+  verificationCallbacks: Map<string, VerificationCallback>,
+  agentStatusHooks: Array<(event: AgentStatusEvent) => Promise<void>>,
 ): void {
-  // POST /verifications/approve/:id — forward to the plugin's approve endpoint, then redirect
+  /** Insert a job into the queue and fire a "queued" agent status event. */
+  async function queueJob(
+    executor: "muteworker" | "confidante",
+    jobType: string,
+    data: any,
+  ): Promise<{ jobId: number }> {
+    const now = Date.now();
+    const [jobId] = await db("job_queue").insert({
+      executor,
+      job_type: jobType,
+      data: typeof data === "string" ? data : JSON.stringify(data),
+      status: "pending",
+      created_at: now,
+      updated_at: now,
+    });
+
+    const queuedEvent: AgentStatusEvent = {
+      jobId,
+      event: "queued",
+      data: { jobType, executor },
+      createdAt: now,
+    };
+    for (const hook of agentStatusHooks) {
+      hook(queuedEvent).catch(() => {});
+    }
+
+    return { jobId };
+  }
+
+  // POST /verifications/approve/:id — call the plugin's verification callback, then redirect
   app.post("/verifications/approve/:id", async (c) => {
     const id = parseInt(c.req.param("id"), 10);
     if (!id || isNaN(id)) return c.redirect("/?page=verifications");
@@ -16,16 +52,32 @@ export function registerVerificationFormRoutes(
       return c.redirect("/?page=verifications");
     }
 
-    // Try the plugin-specific approve endpoint (it may deliver the message, etc.)
-    const pluginApproveUrl = `/api/${request.plugin}/approve/${id}`;
-    const res = await app.request(pluginApproveUrl, { method: "POST" });
+    const callback = verificationCallbacks.get(request.plugin);
+    if (callback) {
+      let parsedData: any;
+      try {
+        parsedData = JSON.parse(request.data);
+      } catch {
+        parsedData = request.data;
+      }
 
-    // If the plugin doesn't have an approve endpoint, fall back to a direct DB update
-    if (res.status === 404) {
-      await db("verification_requests")
-        .where("id", id)
-        .update({ status: "approved", updated_at: Date.now() });
+      let jobContext: JobContext | undefined;
+      if (request.job_context) {
+        try {
+          jobContext = JSON.parse(request.job_context);
+        } catch {}
+      }
+
+      await callback(
+        { id, action: request.action, data: parsedData, jobContext },
+        { queueJob },
+      );
     }
+
+    // If the callback exits without error, mark as approved
+    await db("verification_requests")
+      .where("id", id)
+      .update({ status: "approved", updated_at: Date.now() });
 
     onVerificationChange?.();
     return c.redirect("/?page=verifications");

@@ -81,6 +81,27 @@ export interface NotifyService {
   notifyCountChange(): void;
 }
 
+/** Helper functions passed to a verification callback when a request is approved. */
+export interface VerificationHelpers {
+  /** Insert a job into the queue and log a "queued" agent status event. */
+  queueJob(
+    executor: "muteworker" | "confidante",
+    jobType: string,
+    data: any,
+  ): Promise<{ jobId: number }>;
+}
+
+/** Callback invoked when a verification request belonging to this plugin is approved. */
+export type VerificationCallback = (
+  request: { id: number; action: string; data: any; jobContext?: JobContext },
+  helpers: VerificationHelpers,
+) => Promise<void>;
+
+export interface VerificationsService {
+  /** Register a callback that runs when a verification for this plugin is approved. */
+  registerVerificationCallback(callback: VerificationCallback): void;
+}
+
 /** Core service refs available to all plugins. */
 export const gatekeeperDeps = {
   db: createServiceRef<Knex>({ id: "core.db" }),
@@ -89,6 +110,9 @@ export const gatekeeperDeps = {
   routes: createServiceRef<RoutesService>({ id: "core.routes" }),
   ws: createServiceRef<WebSocketService>({ id: "core.ws" }),
   notify: createServiceRef<NotifyService>({ id: "core.notify" }),
+  verifications: createServiceRef<VerificationsService>({
+    id: "core.verifications",
+  }),
 };
 
 type ResolveDeps<T extends Record<string, ServiceRef<any>>> = {

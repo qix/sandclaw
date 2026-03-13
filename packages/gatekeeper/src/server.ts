@@ -14,6 +14,8 @@ import type {
   RoutesService,
   WebSocketService,
   NotifyService,
+  VerificationsService,
+  VerificationCallback,
   VerificationRendererProps,
 } from "@sandclaw/gatekeeper-plugin-api";
 import type { ComponentType } from "react";
@@ -149,6 +151,9 @@ export async function startGatekeeper(
     },
   };
 
+  // Verification callback registry (pluginId → callback)
+  const verificationCallbacks = new Map<string, VerificationCallback>();
+
   const services = new Map<string, any>();
   services.set("core.db", db);
   services.set("core.hooks", hooksService);
@@ -177,9 +182,17 @@ export async function startGatekeeper(
       },
     };
 
-    // Clone services map with per-plugin routes service
+    // Create per-plugin VerificationsService
+    const verificationsService: VerificationsService = {
+      registerVerificationCallback(callback) {
+        verificationCallbacks.set(pluginId, callback);
+      },
+    };
+
+    // Clone services map with per-plugin services
     const pluginServices = new Map(services);
     pluginServices.set("core.routes", routesService);
+    pluginServices.set("core.verifications", verificationsService);
 
     plugin.registerGateway({
       registerInit({ deps, init }) {
@@ -268,7 +281,13 @@ export async function startGatekeeper(
   }
 
   // 5. Form-action routes for the Verifications page
-  registerVerificationFormRoutes(app, db, notifyVerificationChange);
+  registerVerificationFormRoutes(
+    app,
+    db,
+    notifyVerificationChange,
+    verificationCallbacks,
+    agentStatusHooks,
+  );
 
   // 6. Favicon
   const faviconPath = resolve(
