@@ -202,9 +202,6 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
           threadId: body.threadId ?? null,
           history: historyEntries,
           ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
-          ...(config.systemPromptFile
-            ? { systemPromptFile: config.systemPromptFile }
-            : {}),
         }),
         context: JSON.stringify({ channel: "email", from: body.from }),
         status: "pending",
@@ -551,9 +548,6 @@ export async function startEmailPolling(
               threadId: email.threadId ?? null,
               history: historyEntries,
               ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
-              ...(config.systemPromptFile
-                ? { systemPromptFile: config.systemPromptFile }
-                : {}),
             }),
             context: JSON.stringify({ channel: "email", from: email.from }),
             status: "pending",

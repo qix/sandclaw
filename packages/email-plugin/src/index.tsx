@@ -20,7 +20,7 @@ import {
   createSearchEmailsTool,
   createReadEmailTool,
 } from "./tools";
-import { emailJobHandlers } from "./jobHandlers";
+import { createEmailJobHandlers } from "./jobHandlers";
 import { migrations } from "./migrations";
 
 export type { EmailPluginConfig } from "./jmapClient";
@@ -41,7 +41,9 @@ export function createEmailPlugin(config: EmailPluginConfig) {
     id: "email" as const,
     verificationRenderer: EmailVerificationRenderer,
 
-    jobHandlers: emailJobHandlers,
+    jobHandlers: createEmailJobHandlers({
+      systemPromptFile: config.systemPromptFile,
+    }),
     migrations,
 
     registerGateway(env: PluginEnvironment) {
