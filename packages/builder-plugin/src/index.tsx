@@ -25,6 +25,8 @@ export interface BuilderPluginOptions {
   image?: string;
   /** Override for docker mount arguments  */
   dockerArgsOverride?: string[];
+  /** Path to a file whose content is passed as the system prompt to claude inside the container. */
+  systemPromptFile?: string;
 }
 
 export function createBuilderPlugin(options: BuilderPluginOptions) {
@@ -44,6 +46,7 @@ export function createBuilderPlugin(options: BuilderPluginOptions) {
       workDir: config.workDir,
       repo: config.repo,
       dockerArgsOverride: options.dockerArgsOverride,
+      systemPromptFile: options.systemPromptFile,
     }),
 
     registerGateway(env: PluginEnvironment) {

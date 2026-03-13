@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import type { ConfidantePluginContext } from "@sandclaw/confidante-plugin-api";
 import { runDockerCommand } from "@sandclaw/confidante-util";
 import { runDockerClaude } from "./docker";
@@ -21,6 +22,7 @@ export interface BuildConfig {
   workDir: string;
   repo: string;
   dockerArgsOverride?: string[];
+  systemPromptFile?: string;
 }
 
 /**
@@ -91,11 +93,24 @@ export async function executeBuild(
     requestId,
   });
 
-  const claudeOutput = await run(
-    "devcontainer",
-    ["exec", "claude", "--dangerously-skip-permissions", "--print", prompt],
-    { cwd: workDir, capture: true },
-  );
+  const claudeArgs = [
+    "exec",
+    "claude",
+    "--dangerously-skip-permissions",
+    "--print",
+  ];
+
+  if (config.systemPromptFile) {
+    const systemPrompt = await readFile(config.systemPromptFile, "utf-8");
+    claudeArgs.push("--system-prompt", systemPrompt);
+  }
+
+  claudeArgs.push(prompt);
+
+  const claudeOutput = await run("devcontainer", claudeArgs, {
+    cwd: workDir,
+    capture: true,
+  });
 
   ctx.logger.info("builder.build.claude_completed", {
     jobId: ctx.job.id,
