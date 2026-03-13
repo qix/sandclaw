@@ -166,6 +166,20 @@ function initializePlugins(plugins: MuteworkerPlugin[]) {
 }
 
 /**
+ * Merge CLI flag overrides into MuteworkerOptions.
+ */
+function applyCliOverrides(
+  base: MuteworkerOptions,
+  cliOpts: { modelId?: string },
+): MuteworkerOptions {
+  if (!cliOpts.modelId) return base;
+  return {
+    ...base,
+    config: { ...base.config, modelId: cliOpts.modelId },
+  };
+}
+
+/**
  * Muteworker CLI script entry point.
  *
  * Uses `cac` for subcommand parsing:
@@ -184,9 +198,13 @@ export async function muteworkerScript(
     cli.outputHelp();
   });
 
-  cli.command("worker", "Start the queue loop").action(async (opts: {}) => {
-    await startMuteworker(options);
-  });
+  cli
+    .command("worker", "Start the queue loop")
+    .option("--model-id <modelId>", "Override the model ID from config")
+    .action(async (opts: { modelId?: string }) => {
+      const merged = applyCliOverrides(options, opts);
+      await startMuteworker(merged);
+    });
 
   cli
     .command("system-prompt", "Generate and print the system prompt")
@@ -209,13 +227,15 @@ export async function muteworkerScript(
 
   cli
     .command("replay <id>", "Replay a specific job by ID")
-    .action(async (id: string) => {
+    .option("--model-id <modelId>", "Override the model ID from config")
+    .action(async (id: string, opts: { modelId?: string }) => {
       const jobId = parseInt(id, 10);
       if (isNaN(jobId)) {
         console.error("Error: replay requires a numeric job ID.");
         process.exit(1);
       }
-      await handleReplayCommand(options, jobId);
+      const merged = applyCliOverrides(options, opts);
+      await handleReplayCommand(merged, jobId);
     });
 
   cli.help();
