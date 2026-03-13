@@ -92,6 +92,7 @@ export async function executeMuteworkerJob(
 
     // Emit "started" event
     reportStatus?.("started", {
+      jobType: job.jobType,
       prompt: job.data,
       systemPrompt,
       toolNames,

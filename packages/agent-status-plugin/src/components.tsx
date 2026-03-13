@@ -32,6 +32,69 @@ function groupByJob(events: AgentStatusEvent[]) {
   return Array.from(map.values());
 }
 
+/** Render the first N lines of a JSON string, with collapse if truncated. */
+function CollapsibleJson({
+  data,
+  maxLines = 3,
+}: {
+  data: string;
+  maxLines?: number;
+}) {
+  let pretty: string;
+  try {
+    pretty = JSON.stringify(JSON.parse(data), null, 2);
+  } catch {
+    pretty = data;
+  }
+  const lines = pretty.split("\n");
+  const truncated = lines.length > maxLines;
+  const preview = truncated
+    ? lines.slice(0, maxLines).join("\n") + "\n…"
+    : pretty;
+
+  if (!truncated) {
+    return (
+      <pre
+        className="sc-pre"
+        style={{ fontSize: "0.75rem", margin: "0.25rem 0 0" }}
+      >
+        {pretty}
+      </pre>
+    );
+  }
+
+  return (
+    <details style={{ margin: "0.25rem 0 0" }}>
+      <summary
+        style={{
+          cursor: "pointer",
+          fontSize: "0.75rem",
+          color: colors.muted,
+          userSelect: "none",
+        }}
+      >
+        <pre
+          className="sc-pre"
+          style={{
+            fontSize: "0.75rem",
+            margin: 0,
+            display: "inline",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {preview}
+        </pre>
+      </summary>
+      <pre
+        className="sc-pre"
+        style={{ fontSize: "0.75rem", margin: "0.25rem 0 0" }}
+      >
+        {pretty}
+      </pre>
+    </details>
+  );
+}
+
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   const s = (ms / 1000).toFixed(1);
@@ -101,17 +164,23 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                 const stepCount = j.events.filter(
                   (e) => e.event === "step",
                 ).length;
+                const jobType = started?.data?.jobType as string | undefined;
+                const jobData = started?.data?.prompt as string | undefined;
                 return (
-                  <div
+                  <a
                     key={j.jobId}
+                    href={`?page=agent-status&job=${j.jobId}`}
                     className="agent-status-job"
                     data-job-id={j.jobId}
                     style={{
+                      display: "block",
                       padding: "0.75rem",
                       background: colors.surface,
                       borderRadius: "0.5rem",
                       border: `1px solid ${colors.border}`,
                       marginBottom: "0.5rem",
+                      textDecoration: "none",
+                      color: "inherit",
                     }}
                   >
                     <div
@@ -123,6 +192,18 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                     >
                       <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>
                         Job #{j.jobId}
+                        {jobType && (
+                          <span
+                            style={{
+                              marginLeft: "0.5rem",
+                              fontSize: "0.75rem",
+                              color: colors.accent,
+                              fontWeight: 500,
+                            }}
+                          >
+                            {jobType}
+                          </span>
+                        )}
                       </span>
                       <span
                         style={{ fontSize: "0.75rem", color: colors.muted }}
@@ -130,25 +211,19 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                         {started ? formatTime(started.createdAt) : ""}
                       </span>
                     </div>
-                    {started?.toolNames && (
-                      <div
-                        style={{
-                          fontSize: "0.75rem",
-                          color: colors.muted,
-                          marginBottom: "0.25rem",
-                        }}
-                      >
-                        Tools: {started.toolNames.join(", ")}
-                      </div>
-                    )}
+                    {jobData && <CollapsibleJson data={jobData} />}
                     <div
-                      style={{ fontSize: "0.8rem", color: colors.accent }}
+                      style={{
+                        fontSize: "0.8rem",
+                        color: colors.accent,
+                        marginTop: "0.5rem",
+                      }}
                       data-step-count
                     >
                       {stepCount} step{stepCount !== 1 ? "s" : ""} so
                       far&hellip;
                     </div>
-                  </div>
+                  </a>
                 );
               })
             )}
@@ -198,15 +273,21 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                     | number
                     | undefined;
                   const isSuccess = terminal.event === "completed";
+                  const jobType = started?.data?.jobType as string | undefined;
+                  const jobData = started?.data?.prompt as string | undefined;
                   return (
-                    <div
+                    <a
                       key={j.jobId}
+                      href={`?page=agent-status&job=${j.jobId}`}
                       style={{
+                        display: "block",
                         padding: "0.75rem",
                         background: colors.surface,
                         borderRadius: "0.5rem",
                         border: `1px solid ${colors.border}`,
                         marginBottom: "0.5rem",
+                        textDecoration: "none",
+                        color: "inherit",
                       }}
                     >
                       <div
@@ -218,6 +299,18 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                       >
                         <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>
                           Job #{j.jobId}
+                          {jobType && (
+                            <span
+                              style={{
+                                marginLeft: "0.5rem",
+                                fontSize: "0.75rem",
+                                color: colors.accent,
+                                fontWeight: 500,
+                              }}
+                            >
+                              {jobType}
+                            </span>
+                          )}
                         </span>
                         <span
                           style={{
@@ -229,12 +322,14 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                           {isSuccess ? "Completed" : "Failed"}
                         </span>
                       </div>
+                      {jobData && <CollapsibleJson data={jobData} />}
                       <div
                         style={{
                           fontSize: "0.75rem",
                           color: colors.muted,
                           display: "flex",
                           gap: "1rem",
+                          marginTop: "0.5rem",
                         }}
                       >
                         <span>
@@ -258,7 +353,7 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                           {String(terminal.data.error as string)}
                         </div>
                       )}
-                    </div>
+                    </a>
                   );
                 })
               )}
@@ -322,44 +417,71 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
     }
   }
 
-  function createActiveJobEl(ev) {
-    var div = document.createElement('div');
-    div.className = 'agent-status-job';
-    div.setAttribute('data-job-id', ev.jobId);
-    div.style.cssText = 'padding:0.75rem;background:${colors.surface};border-radius:0.5rem;border:1px solid ${colors.border};margin-bottom:0.5rem;';
-    var toolsHtml = ev.toolNames && ev.toolNames.length
-      ? '<div style="font-size:0.75rem;color:${colors.muted};margin-bottom:0.25rem;">Tools: ' + escapeHtml(ev.toolNames.join(', ')) + '</div>'
-      : '';
-    div.innerHTML =
-      '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">' +
-        '<span style="font-weight:600;font-size:0.875rem;">Job #' + ev.jobId + '</span>' +
-        '<span style="font-size:0.75rem;color:${colors.muted};">' + formatTime(ev.createdAt) + '</span>' +
-      '</div>' +
-      toolsHtml +
-      '<div style="font-size:0.8rem;color:${colors.accent};" data-step-count>0 steps so far&hellip;</div>';
-    return div;
+  function makeCollapsibleJson(str) {
+    var pretty;
+    try { pretty = JSON.stringify(JSON.parse(str), null, 2); } catch(e) { pretty = str; }
+    var lines = pretty.split('\\n');
+    if (lines.length <= 3) {
+      return '<pre class="sc-pre" style="font-size:0.75rem;margin:0.25rem 0 0;">' + escapeHtml(pretty) + '</pre>';
+    }
+    var preview = escapeHtml(lines.slice(0, 3).join('\\n') + '\\n\\u2026');
+    var full = escapeHtml(pretty);
+    return '<details style="margin:0.25rem 0 0;">' +
+      '<summary style="cursor:pointer;font-size:0.75rem;color:${colors.muted};user-select:none;">' +
+        '<pre class="sc-pre" style="font-size:0.75rem;margin:0;display:inline;white-space:pre-wrap;">' + preview + '</pre>' +
+      '</summary>' +
+      '<pre class="sc-pre" style="font-size:0.75rem;margin:0.25rem 0 0;">' + full + '</pre>' +
+    '</details>';
   }
 
-  function createHistoryJobEl(ev, stepCount) {
+  function createActiveJobEl(ev) {
+    var a = document.createElement('a');
+    a.className = 'agent-status-job';
+    a.setAttribute('data-job-id', ev.jobId);
+    a.href = '?page=agent-status&job=' + ev.jobId;
+    a.style.cssText = 'display:block;padding:0.75rem;background:${colors.surface};border-radius:0.5rem;border:1px solid ${colors.border};margin-bottom:0.5rem;text-decoration:none;color:inherit;';
+    var jobType = ev.data && ev.data.jobType;
+    var jobData = ev.data && ev.data.prompt;
+    var jobTypeHtml = jobType
+      ? '<span style="margin-left:0.5rem;font-size:0.75rem;color:${colors.accent};font-weight:500;">' + escapeHtml(jobType) + '</span>'
+      : '';
+    var jobDataHtml = jobData ? makeCollapsibleJson(jobData) : '';
+    a.innerHTML =
+      '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">' +
+        '<span style="font-weight:600;font-size:0.875rem;">Job #' + ev.jobId + jobTypeHtml + '</span>' +
+        '<span style="font-size:0.75rem;color:${colors.muted};">' + formatTime(ev.createdAt) + '</span>' +
+      '</div>' +
+      jobDataHtml +
+      '<div style="font-size:0.8rem;color:${colors.accent};margin-top:0.5rem;" data-step-count>0 steps so far&hellip;</div>';
+    return a;
+  }
+
+  function createHistoryJobEl(ev, stepCount, jobType, jobData) {
     var isSuccess = ev.event === 'completed';
     var durationMs = ev.data && ev.data.durationMs;
-    var div = document.createElement('div');
-    div.style.cssText = 'padding:0.75rem;background:${colors.surface};border-radius:0.5rem;border:1px solid ${colors.border};margin-bottom:0.5rem;';
+    var a = document.createElement('a');
+    a.href = '?page=agent-status&job=' + ev.jobId;
+    a.style.cssText = 'display:block;padding:0.75rem;background:${colors.surface};border-radius:0.5rem;border:1px solid ${colors.border};margin-bottom:0.5rem;text-decoration:none;color:inherit;';
+    var jobTypeHtml = jobType
+      ? '<span style="margin-left:0.5rem;font-size:0.75rem;color:${colors.accent};font-weight:500;">' + escapeHtml(jobType) + '</span>'
+      : '';
+    var jobDataHtml = jobData ? makeCollapsibleJson(jobData) : '';
     var errorHtml = !isSuccess && ev.data && ev.data.error
       ? '<div style="font-size:0.75rem;color:${colors.danger};margin-top:0.25rem;">' + escapeHtml(String(ev.data.error)) + '</div>'
       : '';
-    div.innerHTML =
+    a.innerHTML =
       '<div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;">' +
-        '<span style="font-weight:600;font-size:0.875rem;">Job #' + ev.jobId + '</span>' +
+        '<span style="font-weight:600;font-size:0.875rem;">Job #' + ev.jobId + jobTypeHtml + '</span>' +
         '<span style="font-size:0.75rem;color:' + (isSuccess ? '${colors.success}' : '${colors.danger}') + ';font-weight:600;">' + (isSuccess ? 'Completed' : 'Failed') + '</span>' +
       '</div>' +
-      '<div style="font-size:0.75rem;color:${colors.muted};display:flex;gap:1rem;">' +
+      jobDataHtml +
+      '<div style="font-size:0.75rem;color:${colors.muted};display:flex;gap:1rem;margin-top:0.5rem;">' +
         '<span>' + stepCount + ' step' + (stepCount !== 1 ? 's' : '') + '</span>' +
         (durationMs != null ? '<span>' + formatDuration(durationMs) + '</span>' : '') +
         '<span>' + formatTime(ev.createdAt) + '</span>' +
       '</div>' +
       errorHtml;
-    return div;
+    return a;
   }
 
   document.addEventListener('sc:ws:message', function(e) {
@@ -373,7 +495,12 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
       if (empty) empty.remove();
       var el = createActiveJobEl(ev);
       activeEl.appendChild(el);
-      activeJobs[ev.jobId] = { el: el, steps: 0 };
+      activeJobs[ev.jobId] = {
+        el: el,
+        steps: 0,
+        jobType: ev.data && ev.data.jobType || null,
+        jobData: ev.data && ev.data.prompt || null
+      };
       updateActiveCount();
 
     } else if (ev.event === 'step') {
@@ -389,6 +516,8 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
     } else if (ev.event === 'completed' || ev.event === 'failed') {
       var job = activeJobs[ev.jobId];
       var stepCount = job ? (job.steps || 0) : 0;
+      var jobType = job ? job.jobType : null;
+      var jobData = job ? job.jobData : null;
       if (job && job.el) job.el.remove();
       delete activeJobs[ev.jobId];
       updateActiveCount();
@@ -398,7 +527,7 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
       if (hEmpty) hEmpty.remove();
 
       // Prepend to history
-      var hEl = createHistoryJobEl(ev, stepCount);
+      var hEl = createHistoryJobEl(ev, stepCount, jobType, jobData);
       historyEl.insertBefore(hEl, historyEl.firstChild);
       finishedCount++;
       if (historyCountEl) historyCountEl.textContent = '(' + finishedCount + ')';
