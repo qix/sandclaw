@@ -7,18 +7,24 @@ import type { EmailPluginConfig } from "./jmapClient";
 import {
   EmailPanel,
   EmailQueuePanel,
+  EmailPluginVerificationRenderer,
   EmailVerificationRenderer,
+  CalendarResponseVerificationRenderer,
 } from "./components";
 import {
   registerRoutes,
   registerEmailQueueRoutes,
   startEmailPolling,
+  startCalendarInvitePolling,
 } from "./routes";
 import {
   createSendEmailTool,
   createListInboxTool,
   createSearchEmailsTool,
   createReadEmailTool,
+  createListCalendarInvitesTool,
+  createReadCalendarEventTool,
+  createRespondCalendarInviteTool,
 } from "./tools";
 import { createEmailJobHandlers } from "./jobHandlers";
 import { migrations } from "./migrations";
@@ -27,19 +33,24 @@ export type { EmailPluginConfig } from "./jmapClient";
 export {
   EmailPanel,
   EmailQueuePanel,
+  EmailPluginVerificationRenderer,
   EmailVerificationRenderer,
+  CalendarResponseVerificationRenderer,
 } from "./components";
 export {
   createSendEmailTool,
   createListInboxTool,
   createSearchEmailsTool,
   createReadEmailTool,
+  createListCalendarInvitesTool,
+  createReadCalendarEventTool,
+  createRespondCalendarInviteTool,
 } from "./tools";
 
 export function createEmailPlugin(config: EmailPluginConfig) {
   return {
     id: "email" as const,
-    verificationRenderer: EmailVerificationRenderer,
+    verificationRenderer: EmailPluginVerificationRenderer,
 
     jobHandlers: createEmailJobHandlers({
       systemPromptFile: config.systemPromptFile,
@@ -77,8 +88,19 @@ export function createEmailPlugin(config: EmailPluginConfig) {
           });
 
           hooks.register({
-            "gatekeeper:start": () =>
-              startEmailPolling(config, db, config.pollIntervalMs ?? 30000),
+            "gatekeeper:start": async () => {
+              await startEmailPolling(
+                config,
+                db,
+                config.pollIntervalMs ?? 30000,
+              );
+              await startCalendarInvitePolling(
+                config,
+                db,
+                config.pollIntervalMs ?? 30000,
+                { systemPromptFile: config.systemPromptFile },
+              );
+            },
           });
         },
       });
@@ -93,6 +115,9 @@ export function createEmailPlugin(config: EmailPluginConfig) {
             createListInboxTool(ctx),
             createSearchEmailsTool(ctx),
             createReadEmailTool(ctx),
+            createListCalendarInvitesTool(ctx),
+            createReadCalendarEventTool(ctx),
+            createRespondCalendarInviteTool(ctx),
           ]);
         },
       });

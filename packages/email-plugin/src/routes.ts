@@ -10,10 +10,23 @@ import {
   markAsRead,
   type EmailPluginConfig,
 } from "./jmapClient";
+import {
+  queryCalendarInvites,
+  getCalendarEvent,
+  respondToCalendarInvite,
+  formatDuration,
+} from "./calendarClient";
 
 async function isWatchInboxEnabled(db: any): Promise<boolean> {
   const row = await db("plugin_kv")
     .where({ plugin: "email", key: "watch_inbox" })
+    .first();
+  return row?.value === "true";
+}
+
+async function isWatchCalendarEnabled(db: any): Promise<boolean> {
+  const row = await db("plugin_kv")
+    .where({ plugin: "email", key: "watch_calendar" })
     .first();
   return row?.value === "true";
 }
@@ -290,6 +303,193 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
     } catch (e) {
       return c.json(
         { error: `Failed to read email: ${(e as Error).message}` },
+        500,
+      );
+    }
+  });
+
+  // =========================================================================
+  // Calendar invite routes
+  // =========================================================================
+
+  // GET /settings/watch-calendar — read calendar watch toggle state
+  app.get("/settings/watch-calendar", async (c: any) => {
+    const enabled = await isWatchCalendarEnabled(db);
+    return c.json({ enabled });
+  });
+
+  // POST /settings/watch-calendar — update calendar watch toggle state
+  app.post("/settings/watch-calendar", async (c: any) => {
+    const body = await c.req.json();
+    const enabled = !!body.enabled;
+
+    const existing = await db("plugin_kv")
+      .where({ plugin: "email", key: "watch_calendar" })
+      .first();
+
+    if (existing) {
+      await db("plugin_kv")
+        .where({ plugin: "email", key: "watch_calendar" })
+        .update({ value: String(enabled) });
+    } else {
+      await db("plugin_kv").insert({
+        plugin: "email",
+        key: "watch_calendar",
+        value: String(enabled),
+      });
+    }
+
+    return c.json({ enabled });
+  });
+
+  // GET /calendar/invites — list pending calendar invitations
+  app.get("/calendar/invites", async (c: any) => {
+    try {
+      const invites = await queryCalendarInvites(config);
+      return c.json({ invites });
+    } catch (e) {
+      return c.json(
+        {
+          error: `Failed to fetch calendar invites: ${(e as Error).message}`,
+        },
+        500,
+      );
+    }
+  });
+
+  // GET /calendar/event/:id — read a calendar event by ID
+  app.get("/calendar/event/:id", async (c: any) => {
+    const id = c.req.param("id");
+    if (!id) return c.json({ error: "Event ID is required" }, 400);
+
+    try {
+      const event = await getCalendarEvent(config, id);
+      if (!event) {
+        return c.json({ error: "Calendar event not found" }, 404);
+      }
+      return c.json({ event });
+    } catch (e) {
+      return c.json(
+        {
+          error: `Failed to read calendar event: ${(e as Error).message}`,
+        },
+        500,
+      );
+    }
+  });
+
+  // POST /calendar/respond — create a verification request for a calendar response
+  app.post("/calendar/respond", async (c: any) => {
+    const body = (await c.req.json()) as {
+      eventId?: string;
+      response?: string;
+      jobContext?: { worker: string; jobId: number };
+    };
+    if (!body.eventId) return c.json({ error: "eventId is required" }, 400);
+    if (
+      !body.response ||
+      !["accepted", "declined", "tentative"].includes(body.response)
+    ) {
+      return c.json(
+        { error: 'response must be "accepted", "declined", or "tentative"' },
+        400,
+      );
+    }
+
+    // Fetch event details for the verification UI
+    let eventTitle = "(unknown event)";
+    let organizer = "";
+    let start = "";
+    try {
+      const event = await getCalendarEvent(config, body.eventId);
+      if (event) {
+        eventTitle = event.title;
+        organizer = event.organizer
+          ? event.organizer.name || event.organizer.email
+          : "";
+        start = event.start
+          ? `${event.start}${event.timeZone ? ` (${event.timeZone})` : ""}`
+          : "";
+      }
+    } catch {
+      // Continue with unknown details
+    }
+
+    const now = Date.now();
+    const verificationData = {
+      eventId: body.eventId,
+      response: body.response,
+      eventTitle,
+      organizer,
+      start,
+    };
+
+    const [id] = await db("verification_requests").insert({
+      plugin: "email",
+      action: "calendar_respond",
+      data: JSON.stringify(verificationData),
+      status: "pending",
+      ...(body.jobContext
+        ? { job_context: JSON.stringify(body.jobContext) }
+        : {}),
+      created_at: now,
+      updated_at: now,
+    });
+
+    return c.json({
+      verificationRequestId: id,
+      verificationStatus: "pending",
+    });
+  });
+
+  // POST /calendar/approve/:id — approve and execute a calendar response
+  app.post("/calendar/approve/:id", async (c: any) => {
+    const id = parseInt(c.req.param("id"), 10);
+    if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
+
+    const request = await db("verification_requests").where("id", id).first();
+    if (
+      !request ||
+      request.status !== "pending" ||
+      request.plugin !== "email" ||
+      request.action !== "calendar_respond"
+    ) {
+      return c.json({ error: "Not found or already resolved" }, 404);
+    }
+
+    const data = JSON.parse(request.data);
+
+    try {
+      await respondToCalendarInvite(config, data.eventId, data.response);
+
+      await db("verification_requests")
+        .where("id", id)
+        .update({ status: "approved", updated_at: Date.now() });
+
+      return c.json({ success: true });
+    } catch (e) {
+      return c.json(
+        {
+          error: `Failed to respond to invite: ${(e as Error).message}`,
+        },
+        500,
+      );
+    }
+  });
+
+  // GET /calendar/seen — list seen calendar invites from DB
+  app.get("/calendar/seen", async (c: any) => {
+    try {
+      const limit = parseInt(c.req.query("limit") ?? "50", 10);
+      const rows = await db("calendar_invite_seen")
+        .orderBy("first_seen_at", "desc")
+        .limit(limit);
+      return c.json({ invites: rows });
+    } catch (e) {
+      return c.json(
+        {
+          error: `Failed to fetch calendar invites: ${(e as Error).message}`,
+        },
         500,
       );
     }
@@ -573,4 +773,98 @@ export async function startEmailPolling(
   };
 
   setInterval(poll, intervalMs);
+}
+
+export async function startCalendarInvitePolling(
+  config: EmailPluginConfig,
+  db: any,
+  intervalMs: number,
+  options?: { systemPromptFile?: string },
+): Promise<void> {
+  if (!config.apiToken) return;
+
+  const poll = async () => {
+    try {
+      const watchEnabled = await isWatchCalendarEnabled(db);
+      if (!watchEnabled) return;
+
+      const invites = await queryCalendarInvites(config);
+      if (invites.length === 0) return;
+
+      for (const invite of invites) {
+        // Check if we've already seen this invite (by event_id)
+        const existing = await db("calendar_invite_seen")
+          .where("event_id", invite.id)
+          .first();
+
+        if (existing) continue;
+
+        const now = Date.now();
+
+        const organizer = invite.organizer
+          ? invite.organizer.name
+            ? `${invite.organizer.name} <${invite.organizer.email}>`
+            : invite.organizer.email
+          : "Unknown";
+
+        const attendees = invite.participants
+          .filter((p) => !p.roles.includes("owner"))
+          .map(
+            (p) =>
+              `${p.name || p.email} (${p.participationStatus}${p.isSelf ? ", you" : ""})`,
+          )
+          .join(", ");
+
+        // Record in calendar_invite_seen to prevent re-notification
+        const [seenId] = await db("calendar_invite_seen").insert({
+          event_id: invite.id,
+          title: invite.title,
+          organizer_email: invite.organizer?.email ?? "",
+          start_time: invite.start
+            ? `${invite.start}${invite.timeZone ? ` (${invite.timeZone})` : ""}`
+            : "",
+          participation_status: "needs-action",
+          first_seen_at: now,
+          notified_at: now,
+        });
+
+        // Create a job for the muteworker to process this invite
+        const [jobId] = await db("job_queue").insert({
+          executor: "muteworker",
+          job_type: "email:calendar_invite_received",
+          data: JSON.stringify({
+            eventId: invite.id,
+            title: invite.title,
+            organizer,
+            start: invite.start,
+            timeZone: invite.timeZone,
+            duration: invite.duration ? formatDuration(invite.duration) : "",
+            location: invite.location,
+            description: invite.description,
+            participants: attendees,
+            ...(options?.systemPromptFile
+              ? { systemPromptFile: options.systemPromptFile }
+              : {}),
+          }),
+          context: JSON.stringify({
+            channel: "calendar",
+            from: invite.organizer?.email ?? "unknown",
+          }),
+          status: "pending",
+          created_at: now,
+          updated_at: now,
+        });
+
+        // Link the job to the calendar_invite_seen record
+        await db("calendar_invite_seen")
+          .where("id", seenId)
+          .update({ job_id: jobId });
+      }
+    } catch {
+      // Polling error — will retry on next interval
+    }
+  };
+
+  // Use a longer interval for calendar polling (default: 60s)
+  setInterval(poll, Math.max(intervalMs, 60000));
 }

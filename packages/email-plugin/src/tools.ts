@@ -1,4 +1,70 @@
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
+import type { JmapCalendarEvent } from "./calendarClient";
+
+export interface CalendarInvitePayload {
+  eventId: string;
+  title: string;
+  organizer: string;
+  start: string;
+  timeZone: string;
+  duration: string;
+  location: string;
+  description: string;
+  participants: string;
+  /** Path to a system prompt file to prepend to the agent's system prompt. */
+  systemPromptFile?: string;
+}
+
+export function buildCalendarInvitePrompt(
+  payload: CalendarInvitePayload,
+): string {
+  return [
+    "--- Calendar Invite Received ---",
+    `Title: ${payload.title}`,
+    `Organizer: ${payload.organizer}`,
+    `When: ${payload.start}${payload.timeZone ? ` (${payload.timeZone})` : ""}`,
+    payload.duration ? `Duration: ${payload.duration}` : "",
+    payload.location ? `Location: ${payload.location}` : "",
+    payload.participants ? `Participants: ${payload.participants}` : "",
+    payload.description ? `\nDescription:\n${payload.description}` : "",
+    `Event ID: ${payload.eventId}`,
+    "---------------------------------",
+    "",
+    "A calendar invitation needs your attention. You can use respond_calendar_invite to accept, decline, or tentatively accept it.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function formatCalendarEventText(e: JmapCalendarEvent): string {
+  const organizer = e.organizer
+    ? e.organizer.name
+      ? `${e.organizer.name} <${e.organizer.email}>`
+      : e.organizer.email
+    : "Unknown";
+
+  const attendees = e.participants
+    .filter((p) => !p.roles.includes("owner"))
+    .map(
+      (p) =>
+        `${p.name || p.email} (${p.participationStatus}${p.isSelf ? ", you" : ""})`,
+    )
+    .join(", ");
+
+  return [
+    `Title: ${e.title}`,
+    `Organizer: ${organizer}`,
+    `Start: ${e.start}${e.timeZone ? ` (${e.timeZone})` : ""}`,
+    e.duration ? `Duration: ${e.duration}` : "",
+    e.location ? `Location: ${e.location}` : "",
+    `Status: ${e.status}`,
+    attendees ? `Attendees: ${attendees}` : "",
+    `Event ID: ${e.id}`,
+    e.description ? `\nDescription:\n${e.description}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
 
 export interface IncomingEmailPayload {
   messageId: string;
@@ -303,6 +369,176 @@ export function createSendEmailTool(ctx: MuteworkerPluginContext) {
             `Open ${ctx.gatekeeperExternalUrl} to approve request #${result.verificationRequestId}.`,
           ].join("\n")
         : `Email sent to ${to}.`;
+
+      return {
+        content: [{ type: "text", text: replyText }],
+        details: result,
+      };
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Calendar tools
+// ---------------------------------------------------------------------------
+
+export function createListCalendarInvitesTool(ctx: MuteworkerPluginContext) {
+  return {
+    name: "list_calendar_invites",
+    label: "List Calendar Invites (JMAP)",
+    description:
+      "List pending calendar invitations that need a response (accept/decline/tentative). Returns event titles, organizers, times, and IDs. Use read_calendar_event for full details or respond_calendar_invite to respond.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: false,
+    } as any,
+    execute: async (_toolCallId: string, _params: any) => {
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/email/calendar/invites`,
+      );
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(
+          `Calendar invites fetch failed (${response.status}): ${body.slice(0, 200)}`,
+        );
+      }
+
+      const result = (await response.json()) as {
+        invites: JmapCalendarEvent[];
+      };
+
+      if (result.invites.length === 0) {
+        return {
+          content: [{ type: "text", text: "No pending calendar invitations." }],
+        };
+      }
+
+      const lines = result.invites.map((e) => {
+        const organizer = e.organizer
+          ? e.organizer.name || e.organizer.email
+          : "Unknown";
+        return `[${e.id}] "${e.title}" from ${organizer} | ${e.start}${e.timeZone ? ` (${e.timeZone})` : ""}${e.location ? ` | ${e.location}` : ""}`;
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `${result.invites.length} pending calendar invitation(s):\n\n${lines.join("\n")}`,
+          },
+        ],
+      };
+    },
+  };
+}
+
+export function createReadCalendarEventTool(ctx: MuteworkerPluginContext) {
+  return {
+    name: "read_calendar_event",
+    label: "Read Calendar Event (JMAP)",
+    description:
+      "Read the full details of a calendar event by its ID, including participants and their response status.",
+    parameters: {
+      type: "object",
+      properties: {
+        event_id: {
+          type: "string",
+          description: "The calendar event ID to read",
+        },
+      },
+      required: ["event_id"],
+      additionalProperties: false,
+    } as any,
+    execute: async (_toolCallId: string, params: any) => {
+      const { event_id } = params;
+
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/email/calendar/event/${encodeURIComponent(event_id)}`,
+      );
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(
+          `Calendar event read failed (${response.status}): ${body.slice(0, 200)}`,
+        );
+      }
+
+      const result = (await response.json()) as { event: JmapCalendarEvent };
+      const text = formatCalendarEventText(result.event);
+
+      return {
+        content: [{ type: "text", text }],
+      };
+    },
+  };
+}
+
+export function createRespondCalendarInviteTool(ctx: MuteworkerPluginContext) {
+  return {
+    name: "respond_calendar_invite",
+    label: "Respond to Calendar Invite (JMAP)",
+    description:
+      'Accept, decline, or tentatively accept a calendar invitation. The response requires human verification before being sent. Use "accepted", "declined", or "tentative".',
+    parameters: {
+      type: "object",
+      properties: {
+        event_id: {
+          type: "string",
+          description: "The calendar event ID to respond to",
+        },
+        response: {
+          type: "string",
+          enum: ["accepted", "declined", "tentative"],
+          description: 'Your response: "accepted", "declined", or "tentative"',
+        },
+      },
+      required: ["event_id", "response"],
+      additionalProperties: false,
+    } as any,
+    execute: async (_toolCallId: string, params: any) => {
+      const { event_id, response: inviteResponse } = params;
+
+      const res = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/email/calendar/respond`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            eventId: event_id,
+            response: inviteResponse,
+            jobContext: { worker: "muteworker", jobId: ctx.job.id },
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(
+          `Calendar respond failed (${res.status}): ${body.slice(0, 200)}`,
+        );
+      }
+
+      const result = (await res.json()) as {
+        verificationRequestId?: number;
+        verificationStatus?: string;
+      };
+
+      ctx.artifacts.push({
+        type: "text",
+        label: `Calendar: ${inviteResponse}`,
+        value: event_id,
+      });
+
+      const needsVerification = result.verificationStatus === "pending";
+      const replyText = needsVerification
+        ? [
+            `Calendar invite response "${inviteResponse}" queued and pending verification.`,
+            `Open ${ctx.gatekeeperExternalUrl} to approve request #${result.verificationRequestId}.`,
+          ].join("\n")
+        : `Calendar invite response "${inviteResponse}" sent.`;
 
       return {
         content: [{ type: "text", text: replyText }],

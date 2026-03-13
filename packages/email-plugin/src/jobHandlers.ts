@@ -4,7 +4,12 @@ import type {
   RunAgentFn,
   RunAgentOptions,
 } from "@sandclaw/muteworker-plugin-api";
-import { buildEmailPrompt, type IncomingEmailPayload } from "./tools";
+import {
+  buildEmailPrompt,
+  buildCalendarInvitePrompt,
+  type IncomingEmailPayload,
+  type CalendarInvitePayload,
+} from "./tools";
 
 export function createEmailJobHandlers(options: { systemPromptFile?: string }) {
   return {
@@ -36,6 +41,37 @@ export function createEmailJobHandlers(options: { systemPromptFile?: string }) {
           options.systemPromptFile,
           "utf8",
         );
+      }
+
+      await runAgent(prompt, agentOptions);
+    },
+
+    async "email:calendar_invite_received"(
+      ctx: MuteworkerPluginContext,
+      runAgent: RunAgentFn,
+    ) {
+      let payload: CalendarInvitePayload;
+      try {
+        payload = JSON.parse(ctx.job.data) as CalendarInvitePayload;
+      } catch {
+        throw new Error(`Job ${ctx.job.id} has invalid JSON in data`);
+      }
+
+      if (!payload.eventId)
+        throw new Error(`Job ${ctx.job.id} payload missing eventId`);
+
+      const prompt = buildCalendarInvitePrompt(payload);
+
+      // Read system prompt file if configured
+      const agentOptions: RunAgentOptions = {};
+      const systemPromptFile =
+        payload.systemPromptFile || options.systemPromptFile;
+      if (systemPromptFile) {
+        try {
+          agentOptions.systemPrompt = await readFile(systemPromptFile, "utf8");
+        } catch {
+          // System prompt file not found — continue without it
+        }
       }
 
       await runAgent(prompt, agentOptions);

@@ -29,18 +29,19 @@ export interface JmapEmail {
 // Session cache
 // ---------------------------------------------------------------------------
 
-interface JmapSession {
+export interface JmapSession {
   apiUrl: string;
   accountId: string;
   inboxId: string;
   draftsId: string;
+  calendarAccountId: string | null;
   fetchedAt: number;
 }
 
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
 let cachedSession: JmapSession | null = null;
 
-function formatAddress(
+export function formatAddress(
   addrs: Array<{ name?: string; email: string }> | undefined,
 ): string {
   if (!addrs?.length) return "";
@@ -53,7 +54,7 @@ function formatAddress(
 // Low-level JMAP helpers
 // ---------------------------------------------------------------------------
 
-async function discoverSession(
+export async function discoverSession(
   config: EmailPluginConfig,
 ): Promise<JmapSession> {
   if (cachedSession && Date.now() - cachedSession.fetchedAt < SESSION_TTL_MS) {
@@ -79,6 +80,10 @@ async function discoverSession(
 
   if (!accountId) throw new Error("No JMAP mail account found in session");
 
+  // Check for calendar capability
+  const calendarAccountId =
+    session.primaryAccounts["urn:ietf:params:jmap:calendars"] ?? null;
+
   // Fetch mailbox IDs
   const mbRes = await jmapCallRaw(session.apiUrl, config.apiToken, [
     ["Mailbox/get", { accountId, properties: ["id", "name", "role"] }, "mb"],
@@ -100,6 +105,7 @@ async function discoverSession(
     accountId,
     inboxId: inbox.id,
     draftsId: drafts?.id ?? inbox.id,
+    calendarAccountId,
     fetchedAt: Date.now(),
   };
 
@@ -116,7 +122,7 @@ const JMAP_USING = [
   // "urn:ietf:params:jmap:submission",
 ];
 
-async function jmapCallRaw(
+export async function jmapCallRaw(
   apiUrl: string,
   apiToken: string,
   methodCalls: Array<[string, Record<string, unknown>, string]>,

@@ -13,4 +13,18 @@ export async function migrations(knex: any): Promise<void> {
       t.text("job_context");
     });
   }
+
+  if (!(await knex.schema.hasTable("calendar_invite_seen"))) {
+    await knex.schema.createTable("calendar_invite_seen", (t: any) => {
+      t.increments("id");
+      t.text("event_id").notNullable().unique();
+      t.text("title");
+      t.text("organizer_email");
+      t.text("start_time");
+      t.text("participation_status");
+      t.integer("first_seen_at");
+      t.integer("notified_at");
+      t.integer("job_id");
+    });
+  }
 }

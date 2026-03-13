@@ -106,6 +106,157 @@ export function EmailPanel() {
         }}
       />
       <section style={{ marginTop: "1rem" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            marginTop: "0.75rem",
+          }}
+        >
+          <button
+            id="sc-calendar-watch-toggle"
+            type="button"
+            role="switch"
+            aria-checked="false"
+            style={{
+              position: "relative",
+              width: "44px",
+              height: "24px",
+              borderRadius: "12px",
+              border: `1px solid ${colors.border}`,
+              background: colors.surface,
+              cursor: "pointer",
+              padding: 0,
+              flexShrink: 0,
+              transition: "background 0.2s",
+            }}
+          >
+            <span
+              id="sc-calendar-watch-knob"
+              style={{
+                position: "absolute",
+                top: "2px",
+                left: "2px",
+                width: "18px",
+                height: "18px",
+                borderRadius: "50%",
+                background: colors.muted,
+                transition: "transform 0.2s, background 0.2s",
+              }}
+            />
+          </button>
+          <label
+            htmlFor="sc-calendar-watch-toggle"
+            style={{ fontSize: "0.9rem", cursor: "pointer" }}
+          >
+            Watch calendar invites
+          </label>
+          <span
+            id="sc-calendar-watch-status"
+            style={{ fontSize: "0.8rem", color: colors.muted }}
+          />
+        </div>
+      </section>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `(function(){
+  var btn = document.getElementById('sc-calendar-watch-toggle');
+  var knob = document.getElementById('sc-calendar-watch-knob');
+  var status = document.getElementById('sc-calendar-watch-status');
+  var enabled = false;
+  var accent = '${colors.accent}';
+  var surface = '${colors.surface}';
+  var muted = '${colors.muted}';
+
+  function render() {
+    btn.setAttribute('aria-checked', String(enabled));
+    btn.style.background = enabled ? accent : surface;
+    knob.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
+    knob.style.background = enabled ? '#fff' : muted;
+    status.textContent = '';
+  }
+
+  fetch('/api/email/settings/watch-calendar')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ enabled = d.enabled; render(); })
+    .catch(function(){ status.textContent = 'Failed to load'; });
+
+  btn.addEventListener('click', function(){
+    enabled = !enabled;
+    render();
+    status.textContent = 'Saving...';
+    fetch('/api/email/settings/watch-calendar', {
+      method: 'POST',
+      headers: {'content-type':'application/json'},
+      body: JSON.stringify({enabled: enabled})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ enabled = d.enabled; render(); })
+    .catch(function(){ enabled = !enabled; render(); status.textContent = 'Save failed'; });
+  });
+})();`,
+        }}
+      />
+      <section style={{ marginTop: "1rem" }}>
+        <h3>Calendar Invites</h3>
+        <div id="sc-calendar-invites-list">
+          <p style={{ color: colors.muted, fontSize: "0.85rem" }}>
+            Loading&hellip;
+          </p>
+        </div>
+      </section>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `(function(){
+  var container = document.getElementById('sc-calendar-invites-list');
+  var accent = '${colors.accent}';
+  var muted = '${colors.muted}';
+  var border = '${colors.border}';
+
+  fetch('/api/email/calendar/seen')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var invites = d.invites || [];
+      if (invites.length === 0) {
+        container.innerHTML = '<p style="color:' + muted + ';font-size:0.85rem">No calendar invites seen yet.</p>';
+        return;
+      }
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">';
+      html += '<thead><tr>';
+      html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">Title</th>';
+      html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">Organizer</th>';
+      html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">When</th>';
+      html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">Status</th>';
+      html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">Job</th>';
+      html += '</tr></thead><tbody>';
+      invites.forEach(function(inv){
+        var jobCell = '';
+        if (inv.job_id) {
+          jobCell = '<a href="?page=agent-status&job=' + encodeURIComponent(inv.job_id) + '" style="color:' + accent + ';text-decoration:none;font-size:0.8rem">#' + inv.job_id + '</a>';
+        }
+        html += '<tr style="border-bottom:1px solid ' + border + '">';
+        html += '<td style="padding:0.4rem 0.75rem">' + escapeHtml(inv.title || '(no title)') + '</td>';
+        html += '<td style="padding:0.4rem 0.75rem;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">' + escapeHtml(inv.organizer_email || '') + '</td>';
+        html += '<td style="padding:0.4rem 0.75rem;white-space:nowrap;color:' + muted + '">' + escapeHtml(inv.start_time || '') + '</td>';
+        html += '<td style="padding:0.4rem 0.75rem">' + escapeHtml(inv.participation_status || '') + '</td>';
+        html += '<td style="padding:0.4rem 0.75rem">' + jobCell + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    })
+    .catch(function(){ container.innerHTML = '<p style="color:' + muted + ';font-size:0.85rem">Failed to load calendar invites.</p>'; });
+
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(s));
+    return d.innerHTML;
+  }
+})();`,
+        }}
+      />
+      <section style={{ marginTop: "1rem" }}>
         <h3>Received Emails</h3>
         <div id="sc-email-received-list">
           <p style={{ color: colors.muted, fontSize: "0.85rem" }}>
@@ -320,6 +471,16 @@ export function EmailQueuePanel() {
   );
 }
 
+export function EmailPluginVerificationRenderer({
+  action,
+  data,
+}: VerificationRendererProps) {
+  if (action === "calendar_respond") {
+    return <CalendarResponseVerificationRenderer action={action} data={data} />;
+  }
+  return <EmailVerificationRenderer action={action} data={data} />;
+}
+
 export function EmailVerificationRenderer({ data }: VerificationRendererProps) {
   const to = data?.to ?? "";
   const from = data?.from ?? "";
@@ -400,6 +561,117 @@ export function EmailVerificationRenderer({ data }: VerificationRendererProps) {
       >
         {text}
       </div>
+    </div>
+  );
+}
+
+export function CalendarResponseVerificationRenderer({
+  data,
+}: VerificationRendererProps) {
+  const eventTitle = data?.eventTitle ?? "(unknown event)";
+  const organizer = data?.organizer ?? "";
+  const start = data?.start ?? "";
+  const response = data?.response ?? "";
+
+  const responseLabel =
+    response === "accepted"
+      ? "Accept"
+      : response === "declined"
+        ? "Decline"
+        : response === "tentative"
+          ? "Tentatively Accept"
+          : response;
+
+  return (
+    <div>
+      <table
+        style={{
+          fontSize: "0.85rem",
+          marginBottom: "0.75rem",
+          borderCollapse: "collapse",
+          color: colors.text,
+        }}
+      >
+        <tbody>
+          <tr>
+            <td
+              style={{
+                padding: "0.2rem 0.75rem 0.2rem 0",
+                color: colors.muted,
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                verticalAlign: "top",
+              }}
+            >
+              Event
+            </td>
+            <td style={{ padding: "0.2rem 0", fontWeight: 600 }}>
+              {eventTitle}
+            </td>
+          </tr>
+          {organizer && (
+            <tr>
+              <td
+                style={{
+                  padding: "0.2rem 0.75rem 0.2rem 0",
+                  color: colors.muted,
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  verticalAlign: "top",
+                }}
+              >
+                Organizer
+              </td>
+              <td style={{ padding: "0.2rem 0", fontFamily: "monospace" }}>
+                {organizer}
+              </td>
+            </tr>
+          )}
+          {start && (
+            <tr>
+              <td
+                style={{
+                  padding: "0.2rem 0.75rem 0.2rem 0",
+                  color: colors.muted,
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  verticalAlign: "top",
+                }}
+              >
+                When
+              </td>
+              <td style={{ padding: "0.2rem 0" }}>{start}</td>
+            </tr>
+          )}
+          <tr>
+            <td
+              style={{
+                padding: "0.2rem 0.75rem 0.2rem 0",
+                color: colors.muted,
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                verticalAlign: "top",
+              }}
+            >
+              Response
+            </td>
+            <td
+              style={{
+                padding: "0.2rem 0",
+                fontWeight: 600,
+                color:
+                  response === "accepted"
+                    ? colors.success
+                    : response === "declined"
+                      ? colors.danger
+                      : colors.warning,
+              }}
+            >
+              {responseLabel}
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
