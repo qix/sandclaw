@@ -32,6 +32,141 @@ function groupByJob(events: AgentStatusEvent[]) {
   return Array.from(map.values());
 }
 
+/* ── Syntax-highlight colors for JSON tree (dark theme) ── */
+const jsonColors = {
+  key: "oklch(0.80 0.12 60)", // warm amber for keys
+  string: "oklch(0.75 0.16 152)", // green
+  number: "oklch(0.78 0.14 230)", // blue
+  bool: "oklch(0.74 0.16 320)", // purple
+  null: "oklch(0.65 0.025 270)", // muted gray, italic
+  bracket: "oklch(0.65 0.025 270)",
+};
+
+/** Render a single JSON value (primitive). */
+function JsonPrimitive({ data }: { data: unknown }) {
+  if (data === null)
+    return (
+      <span style={{ color: jsonColors.null, fontStyle: "italic" }}>null</span>
+    );
+  if (typeof data === "boolean")
+    return <span style={{ color: jsonColors.bool }}>{String(data)}</span>;
+  if (typeof data === "number")
+    return <span style={{ color: jsonColors.number }}>{data}</span>;
+  if (typeof data === "string") {
+    const display = data.length > 300 ? data.slice(0, 300) + "…" : data;
+    return (
+      <span style={{ color: jsonColors.string }}>&quot;{display}&quot;</span>
+    );
+  }
+  return <span>{String(data)}</span>;
+}
+
+/**
+ * Recursive collapsible JSON tree using native <details>/<summary>.
+ * Works with SSR (no hydration needed).
+ */
+function JsonNode({
+  data,
+  name,
+  level = 0,
+}: {
+  data: unknown;
+  name?: string;
+  level?: number;
+}): React.ReactElement {
+  const keyEl = name != null && (
+    <>
+      <span style={{ color: jsonColors.key }}>{name}</span>
+      <span style={{ color: colors.muted }}>: </span>
+    </>
+  );
+
+  // Primitives — single line
+  if (data === null || typeof data !== "object") {
+    return (
+      <div style={{ lineHeight: 1.6 }}>
+        {keyEl}
+        <JsonPrimitive data={data} />
+      </div>
+    );
+  }
+
+  const isArray = Array.isArray(data);
+  const entries: [string, unknown][] = isArray
+    ? (data as unknown[]).map((v, i) => [String(i), v])
+    : Object.entries(data as Record<string, unknown>);
+
+  // Empty collection
+  if (entries.length === 0) {
+    return (
+      <div style={{ lineHeight: 1.6 }}>
+        {keyEl}
+        <span style={{ color: jsonColors.bracket }}>
+          {isArray ? "[]" : "{}"}
+        </span>
+      </div>
+    );
+  }
+
+  const label = isArray
+    ? `Array[${entries.length}]`
+    : `{${entries.length} key${entries.length !== 1 ? "s" : ""}}`;
+
+  return (
+    <details open={level < 2}>
+      <summary
+        style={{
+          cursor: "pointer",
+          userSelect: "none",
+          lineHeight: 1.6,
+        }}
+      >
+        {keyEl}
+        <span style={{ color: jsonColors.bracket }}>{label}</span>
+      </summary>
+      <div
+        style={{
+          paddingLeft: "1.25rem",
+          borderLeft: `1px solid ${colors.border}`,
+          marginLeft: "0.5rem",
+        }}
+      >
+        {entries.map(([k, v]) => (
+          <JsonNode key={k} data={v} name={k} level={(level ?? 0) + 1} />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+/** Collapsible JSON tree view inside a styled box. */
+function JsonTreeView({ data }: { data: string | Record<string, unknown> }) {
+  let parsed: unknown;
+  if (typeof data === "string") {
+    try {
+      parsed = JSON.parse(data);
+    } catch {
+      parsed = data;
+    }
+  } else {
+    parsed = data;
+  }
+
+  return (
+    <div
+      className="sc-pre"
+      style={{
+        fontSize: "0.75rem",
+        margin: "0.25rem 0 0",
+        overflow: "auto",
+        maxHeight: "24rem",
+      }}
+    >
+      <JsonNode data={parsed} level={0} />
+    </div>
+  );
+}
+
 /** Render the first N lines of a JSON string, with collapse if truncated. */
 function CollapsibleJson({
   data,
@@ -52,46 +187,36 @@ function CollapsibleJson({
     ? lines.slice(0, maxLines).join("\n") + "\n…"
     : pretty;
 
+  const boxStyle: React.CSSProperties = {
+    fontSize: "0.75rem",
+    margin: "0.25rem 0 0",
+    overflow: "auto",
+    maxHeight: "20rem",
+  };
+
   if (!truncated) {
     return (
-      <pre
-        className="sc-pre"
-        style={{ fontSize: "0.75rem", margin: "0.25rem 0 0" }}
-      >
+      <pre className="sc-pre" style={boxStyle}>
         {pretty}
       </pre>
     );
   }
 
   return (
-    <details style={{ margin: "0.25rem 0 0" }}>
-      <summary
-        style={{
-          cursor: "pointer",
-          fontSize: "0.75rem",
-          color: colors.muted,
-          userSelect: "none",
-        }}
-      >
-        <pre
-          className="sc-pre"
+    <div className="sc-pre" style={boxStyle}>
+      <details style={{ margin: 0 }}>
+        <summary
           style={{
-            fontSize: "0.75rem",
-            margin: 0,
-            display: "inline",
-            whiteSpace: "pre-wrap",
+            cursor: "pointer",
+            color: colors.muted,
+            userSelect: "none",
           }}
         >
           {preview}
-        </pre>
-      </summary>
-      <pre
-        className="sc-pre"
-        style={{ fontSize: "0.75rem", margin: "0.25rem 0 0" }}
-      >
+        </summary>
         {pretty}
-      </pre>
-    </details>
+      </details>
+    </div>
   );
 }
 
@@ -422,16 +547,16 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
     try { pretty = JSON.stringify(JSON.parse(str), null, 2); } catch(e) { pretty = str; }
     var lines = pretty.split('\\n');
     if (lines.length <= 3) {
-      return '<pre class="sc-pre" style="font-size:0.75rem;margin:0.25rem 0 0;">' + escapeHtml(pretty) + '</pre>';
+      return '<pre class="sc-pre" style="font-size:0.75rem;margin:0.25rem 0 0;overflow:auto;max-height:20rem;">' + escapeHtml(pretty) + '</pre>';
     }
     var preview = escapeHtml(lines.slice(0, 3).join('\\n') + '\\n\\u2026');
     var full = escapeHtml(pretty);
-    return '<details style="margin:0.25rem 0 0;">' +
-      '<summary style="cursor:pointer;font-size:0.75rem;color:${colors.muted};user-select:none;">' +
-        '<pre class="sc-pre" style="font-size:0.75rem;margin:0;display:inline;white-space:pre-wrap;">' + preview + '</pre>' +
-      '</summary>' +
-      '<pre class="sc-pre" style="font-size:0.75rem;margin:0.25rem 0 0;">' + full + '</pre>' +
-    '</details>';
+    return '<div class="sc-pre" style="font-size:0.75rem;margin:0.25rem 0 0;overflow:auto;max-height:20rem;">' +
+      '<details style="margin:0;">' +
+        '<summary style="cursor:pointer;color:${colors.muted};user-select:none;">' + preview + '</summary>' +
+        full +
+      '</details>' +
+    '</div>';
   }
 
   function createActiveJobEl(ev) {
@@ -699,12 +824,7 @@ export function AgentJobDetailPanel({
                     </span>
                   </div>
                   {ev.data && Object.keys(ev.data).length > 0 && (
-                    <pre
-                      className="sc-pre"
-                      style={{ fontSize: "0.75rem", margin: "0.25rem 0 0" }}
-                    >
-                      {JSON.stringify(ev.data, null, 2)}
-                    </pre>
+                    <JsonTreeView data={ev.data as Record<string, unknown>} />
                   )}
                 </div>
               ))

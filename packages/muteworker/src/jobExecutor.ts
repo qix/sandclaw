@@ -52,17 +52,17 @@ export async function executeMuteworkerJob(
   const artifacts: Artifact[] = [];
   const startTime = Date.now();
 
+  const jobData = JSON.parse(job.data);
+
   // Fire-and-forget status reporter
-  const reportStatus = args.reportStatus
-    ? (ev: string, data?: Record<string, unknown>) => {
-        args.reportStatus!({
-          jobId: job.id,
-          event: ev,
-          data,
-          createdAt: Date.now(),
-        });
-      }
-    : undefined;
+  const reportStatus = (ev: string, data?: Record<string, unknown>) => {
+    args.reportStatus!({
+      jobId: job.id,
+      event: ev,
+      ...data,
+      createdAt: Date.now(),
+    });
+  };
 
   logger.info("job.execution.started", {
     jobId: job.id,
@@ -92,9 +92,8 @@ export async function executeMuteworkerJob(
     const mcpToolDefs = getMcpToolDefs(rawTools, { config, logger, job });
 
     // Emit "started" event
-    reportStatus?.("started", {
-      jobType: job.jobType,
-      prompt: job.data,
+    reportStatus("started", {
+      data: jobData,
       systemPrompt,
       toolNames,
     });
@@ -113,7 +112,7 @@ export async function executeMuteworkerJob(
         jobId: job.id,
         systemPrompt: effectiveSystemPrompt,
         mcpToolDefs,
-        onStep: reportStatus ? () => reportStatus("step") : undefined,
+        onStep: () => reportStatus("step"),
       });
       return { reply: result?.reply ?? null };
     };
@@ -129,28 +128,18 @@ export async function executeMuteworkerJob(
       }
     }
 
-    // Default handler: run Claude agent with the raw job data as the prompt
     if (!handled) {
-      const prompt = job.data;
-      if (!prompt) {
-        return {
-          jobId: job.id,
-          status: "success",
-          summary: "No job data provided",
-          artifacts,
-          logs: { durationMs: Date.now() - startTime, steps: 0 },
-        };
-      }
-
-      logger.info("job.execution.default_handler", {
+      return {
         jobId: job.id,
-        jobType: job.jobType,
-      });
-      await withTimeout(runAgent(prompt), config.jobTimeoutMs);
+        status: "failed",
+        summary: "No job handler found",
+        artifacts,
+        logs: { durationMs: Date.now() - startTime, steps: 0 },
+      };
     }
 
     const durationMs = Date.now() - startTime;
-    reportStatus?.("completed", { durationMs });
+    reportStatus("completed", { data: { durationMs } });
 
     return {
       jobId: job.id,
@@ -172,7 +161,7 @@ export async function executeMuteworkerJob(
       error: message,
     });
 
-    reportStatus?.("failed", { durationMs, error: message });
+    reportStatus("failed", { data: { durationMs, error: message } });
 
     return {
       jobId: job.id,
