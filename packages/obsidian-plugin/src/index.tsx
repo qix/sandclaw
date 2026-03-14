@@ -1,5 +1,4 @@
-import React from "react";
-import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
+import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
@@ -7,7 +6,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveVaultRoot, resolveVaultPath, tryReadFile } from "./pathUtils";
 import { ObsidianVaultIndex } from "./vaultIndex";
-import { ObsidianPanel, ObsidianVerificationRenderer } from "./components";
+import { ObsidianVerificationRenderer } from "./components";
 import { registerRoutes } from "./routes";
 import {
   createSearchTool,
@@ -42,17 +41,10 @@ export function createObsidianPlugin(config: ObsidianPluginConfig) {
       env.registerInit({
         deps: {
           db: gatekeeperDeps.db,
-          components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
           verifications: gatekeeperDeps.verifications,
         },
-        init({ db, components, routes, verifications }) {
-          function ObsidianTab() {
-            return <TabLink href="?page=obsidian" title="Obsidian" />;
-          }
-          components.register("tabs:primary", ObsidianTab);
-          components.register("page:obsidian", ObsidianPanel);
-
+        init({ db, routes, verifications }) {
           routes.registerRoutes((app) =>
             registerRoutes(app, db, vaultRoot, vaultIndex),
           );
