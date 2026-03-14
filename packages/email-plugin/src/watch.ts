@@ -44,86 +44,88 @@ export async function startEmailPolling(
       const emails = await getEmails(config, newIds);
 
       for (const email of emails) {
-        const now = Date.now();
-        const receivedAt = Math.floor(
-          new Date(email.receivedAt).getTime() / 1000,
-        );
+        await db.transaction(async (trx: any) => {
+          const now = Date.now();
+          const receivedAt = Math.floor(
+            new Date(email.receivedAt).getTime() / 1000,
+          );
 
-        // Record in email_received to prevent future duplicates
-        const [emailReceivedId] = await db("email_received").insert({
-          message_id: email.id,
-          from: email.from,
-          to: email.to,
-          subject: email.subject,
-          thread_id: email.threadId ?? null,
-          received_at: receivedAt,
-          created_at: now,
-        });
-
-        await db("conversation_message").insert({
-          conversation_id: 0,
-          plugin: "email",
-          channel: email.from,
-          message_id: email.id,
-          thread_id: email.threadId ?? null,
-          from: email.from,
-          to: email.to,
-          timestamp: receivedAt,
-          direction: "received",
-          text: email.textBody,
-          created_at: now,
-        });
-
-        // Only queue if watch inbox is enabled
-        const watchEnabled = await isWatchInboxEnabled(db);
-        if (watchEnabled) {
-          const history = await db("conversation_message")
-            .where("plugin", "email")
-            .where("channel", email.from)
-            .orderBy("timestamp", "asc")
-            .limit(20);
-
-          const historyEntries = history.map((h: any) => ({
-            role:
-              h.direction === "sent"
-                ? ("assistant" as const)
-                : ("user" as const),
-            text: h.text ?? "",
-            timestamp: h.timestamp,
-          }));
-
-          // Check if email matches a queue
-          const emailQueuePrompt = config.emailQueueDir
-            ? await matchEmailQueue(email.to, config.emailQueueDir)
-            : null;
-
-          const [jobId] = await db("job_queue").insert({
-            executor: "muteworker",
-            job_type: "email:email_received",
-            data: JSON.stringify({
-              messageId: email.id,
-              from: email.from,
-              to: email.to,
-              subject: email.subject,
-              text: email.textBody,
-              threadId: email.threadId ?? null,
-              history: historyEntries,
-              ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
-            }),
-            context: JSON.stringify({ channel: "email", from: email.from }),
-            status: "pending",
+          // Record in email_received to prevent future duplicates
+          const [emailReceivedId] = await trx("email_received").insert({
+            message_id: email.id,
+            from: email.from,
+            to: email.to,
+            subject: email.subject,
+            thread_id: email.threadId ?? null,
+            received_at: receivedAt,
             created_at: now,
-            updated_at: now,
           });
 
-          // Link the job_queue job to the email_received record
-          await db("email_received")
-            .where("id", emailReceivedId)
-            .update({
-              job_id: jobId,
-              job_context: `worker: muteworker, jobId: ${jobId}`,
+          await trx("conversation_message").insert({
+            conversation_id: 0,
+            plugin: "email",
+            channel: email.from,
+            message_id: email.id,
+            thread_id: email.threadId ?? null,
+            from: email.from,
+            to: email.to,
+            timestamp: receivedAt,
+            direction: "received",
+            text: email.textBody,
+            created_at: now,
+          });
+
+          // Only queue if watch inbox is enabled
+          const watchEnabled = await isWatchInboxEnabled(trx);
+          if (watchEnabled) {
+            const history = await trx("conversation_message")
+              .where("plugin", "email")
+              .where("channel", email.from)
+              .orderBy("timestamp", "asc")
+              .limit(20);
+
+            const historyEntries = history.map((h: any) => ({
+              role:
+                h.direction === "sent"
+                  ? ("assistant" as const)
+                  : ("user" as const),
+              text: h.text ?? "",
+              timestamp: h.timestamp,
+            }));
+
+            // Check if email matches a queue
+            const emailQueuePrompt = config.emailQueueDir
+              ? await matchEmailQueue(email.to, config.emailQueueDir)
+              : null;
+
+            const [jobId] = await trx("job_queue").insert({
+              executor: "muteworker",
+              job_type: "email:email_received",
+              data: JSON.stringify({
+                messageId: email.id,
+                from: email.from,
+                to: email.to,
+                subject: email.subject,
+                text: email.textBody,
+                threadId: email.threadId ?? null,
+                history: historyEntries,
+                ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
+              }),
+              context: JSON.stringify({ channel: "email", from: email.from }),
+              status: "pending",
+              created_at: now,
+              updated_at: now,
             });
-        }
+
+            // Link the job_queue job to the email_received record
+            await trx("email_received")
+              .where("id", emailReceivedId)
+              .update({
+                job_id: jobId,
+                job_context: JSON.stringify({ worker: "muteworker", jobId }),
+              });
+          }
+        });
       }
 
       // Mark all as read
@@ -160,66 +162,68 @@ export async function startCalendarInvitePolling(
 
         if (existing) continue;
 
-        const now = Date.now();
+        await db.transaction(async (trx: any) => {
+          const now = Date.now();
 
-        const organizer = invite.organizer
-          ? invite.organizer.name
-            ? `${invite.organizer.name} <${invite.organizer.email}>`
-            : invite.organizer.email
-          : "Unknown";
+          const organizer = invite.organizer
+            ? invite.organizer.name
+              ? `${invite.organizer.name} <${invite.organizer.email}>`
+              : invite.organizer.email
+            : "Unknown";
 
-        const attendees = invite.participants
-          .filter((p) => !p.roles.includes("owner"))
-          .map(
-            (p) =>
-              `${p.name || p.email} (${p.participationStatus}${p.isSelf ? ", you" : ""})`,
-          )
-          .join(", ");
+          const attendees = invite.participants
+            .filter((p) => !p.roles.includes("owner"))
+            .map(
+              (p) =>
+                `${p.name || p.email} (${p.participationStatus}${p.isSelf ? ", you" : ""})`,
+            )
+            .join(", ");
 
-        // Record in calendar_invite_seen to prevent re-notification
-        const [seenId] = await db("calendar_invite_seen").insert({
-          event_id: invite.id,
-          title: invite.title,
-          organizer_email: invite.organizer?.email ?? "",
-          start_time: invite.start
-            ? `${invite.start}${invite.timeZone ? ` (${invite.timeZone})` : ""}`
-            : "",
-          participation_status: "needs-action",
-          first_seen_at: now,
-          notified_at: now,
-        });
-
-        // Create a job for the muteworker to process this invite
-        const [jobId] = await db("job_queue").insert({
-          executor: "muteworker",
-          job_type: "email:calendar_invite_received",
-          data: JSON.stringify({
-            eventId: invite.id,
+          // Record in calendar_invite_seen to prevent re-notification
+          const [seenId] = await trx("calendar_invite_seen").insert({
+            event_id: invite.id,
             title: invite.title,
-            organizer,
-            start: invite.start,
-            timeZone: invite.timeZone,
-            duration: invite.duration ? formatDuration(invite.duration) : "",
-            location: invite.location,
-            description: invite.description,
-            participants: attendees,
-            ...(options?.systemPromptFile
-              ? { systemPromptFile: options.systemPromptFile }
-              : {}),
-          }),
-          context: JSON.stringify({
-            channel: "calendar",
-            from: invite.organizer?.email ?? "unknown",
-          }),
-          status: "pending",
-          created_at: now,
-          updated_at: now,
-        });
+            organizer_email: invite.organizer?.email ?? "",
+            start_time: invite.start
+              ? `${invite.start}${invite.timeZone ? ` (${invite.timeZone})` : ""}`
+              : "",
+            participation_status: "needs-action",
+            first_seen_at: now,
+            notified_at: now,
+          });
 
-        // Link the job to the calendar_invite_seen record
-        await db("calendar_invite_seen")
-          .where("id", seenId)
-          .update({ job_id: jobId });
+          // Create a job for the muteworker to process this invite
+          const [jobId] = await trx("job_queue").insert({
+            executor: "muteworker",
+            job_type: "email:calendar_invite_received",
+            data: JSON.stringify({
+              eventId: invite.id,
+              title: invite.title,
+              organizer,
+              start: invite.start,
+              timeZone: invite.timeZone,
+              duration: invite.duration ? formatDuration(invite.duration) : "",
+              location: invite.location,
+              description: invite.description,
+              participants: attendees,
+              ...(options?.systemPromptFile
+                ? { systemPromptFile: options.systemPromptFile }
+                : {}),
+            }),
+            context: JSON.stringify({
+              channel: "calendar",
+              from: invite.organizer?.email ?? "unknown",
+            }),
+            status: "pending",
+            created_at: now,
+            updated_at: now,
+          });
+
+          // Link the job to the calendar_invite_seen record
+          await trx("calendar_invite_seen")
+            .where("id", seenId)
+            .update({ job_id: jobId });
+        });
       }
     } catch {
       // Polling error — will retry on next interval
