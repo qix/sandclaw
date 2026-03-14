@@ -421,6 +421,76 @@ export async function sendEmail(
   return { messageId: createdId };
 }
 
+/** List all mailbox folders with IDs, recursively nested. */
+export interface JmapMailbox {
+  id: string;
+  name: string;
+  role: string | null;
+  parentId: string | null;
+  path: string;
+  children: JmapMailbox[];
+}
+
+export async function listMailboxes(
+  config: EmailPluginConfig,
+): Promise<JmapMailbox[]> {
+  const session = await discoverSession(config);
+
+  const result = await jmapCall(config, [
+    [
+      "Mailbox/get",
+      {
+        accountId: session.accountId,
+        properties: ["id", "name", "role", "parentId", "sortOrder"],
+      },
+      "mb",
+    ],
+  ]);
+
+  const response = result.methodResponses.find((r) => r[2] === "mb");
+  const raw =
+    (response?.[1]?.list as Array<{
+      id: string;
+      name: string;
+      role: string | null;
+      parentId: string | null;
+      sortOrder?: number;
+    }>) ?? [];
+
+  // Build tree
+  const byId = new Map<string, JmapMailbox>();
+  for (const m of raw) {
+    byId.set(m.id, {
+      id: m.id,
+      name: m.name,
+      role: m.role,
+      parentId: m.parentId,
+      path: "",
+      children: [],
+    });
+  }
+
+  const roots: JmapMailbox[] = [];
+  for (const mb of byId.values()) {
+    if (mb.parentId && byId.has(mb.parentId)) {
+      byId.get(mb.parentId)!.children.push(mb);
+    } else {
+      roots.push(mb);
+    }
+  }
+
+  // Compute paths
+  function setPaths(nodes: JmapMailbox[], prefix: string) {
+    for (const n of nodes) {
+      n.path = prefix ? `${prefix}/${n.name}` : n.name;
+      setPaths(n.children, n.path);
+    }
+  }
+  setPaths(roots, "");
+
+  return roots;
+}
+
 /** Mark emails as seen ($seen keyword). */
 export async function markAsRead(
   config: EmailPluginConfig,

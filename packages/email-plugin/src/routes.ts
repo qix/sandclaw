@@ -8,6 +8,7 @@ import {
   searchEmails,
   getEmails,
   markAsRead,
+  listMailboxes,
   type EmailPluginConfig,
 } from "./jmapClient";
 import {
@@ -192,6 +193,19 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
     } catch (e) {
       return c.json(
         { error: `Failed to fetch received emails: ${(e as Error).message}` },
+        500,
+      );
+    }
+  });
+
+  // GET /folders — list all mailbox folders recursively
+  app.get("/folders", async (c: any) => {
+    try {
+      const folders = await listMailboxes(config);
+      return c.json({ folders });
+    } catch (e) {
+      return c.json(
+        { error: `Failed to list folders: ${(e as Error).message}` },
         500,
       );
     }

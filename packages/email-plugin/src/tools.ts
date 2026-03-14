@@ -1,5 +1,6 @@
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
 import type { JmapCalendarEvent } from "./calendarClient";
+import type { JmapMailbox } from "./jmapClient";
 
 export interface CalendarInvitePayload {
   eventId: string;
@@ -113,10 +114,10 @@ export function buildEmailPrompt(payload: IncomingEmailPayload): string {
 
 export function createListInboxTool(ctx: MuteworkerPluginContext) {
   return {
-    name: "list_jmap_inbox",
+    name: "email_list_inbox",
     label: "List Inbox Emails (JMAP)",
     description:
-      "List recent emails in the inbox. Returns email subjects, senders, and IDs. Use read_jmap_email to get the full content of a specific email.",
+      "List recent emails in the inbox. Returns email subjects, senders, and IDs. Use email_read to get the full content of a specific email.",
     parameters: {
       type: "object",
       properties: {
@@ -177,10 +178,10 @@ export function createListInboxTool(ctx: MuteworkerPluginContext) {
 
 export function createSearchEmailsTool(ctx: MuteworkerPluginContext) {
   return {
-    name: "search_jmap_emails",
+    name: "email_search",
     label: "Search Emails (JMAP)",
     description:
-      "Search emails by text query. Returns matching email subjects, senders, and IDs. Use read_jmap_email to get the full content of a specific email.",
+      "Search emails by text query. Returns matching email subjects, senders, and IDs. Use email_read to get the full content of a specific email.",
     parameters: {
       type: "object",
       properties: {
@@ -251,10 +252,10 @@ export function createSearchEmailsTool(ctx: MuteworkerPluginContext) {
 
 export function createReadEmailTool(ctx: MuteworkerPluginContext) {
   return {
-    name: "read_jmap_email",
+    name: "email_read",
     label: "Read Email (JMAP)",
     description:
-      "Read the full content of a specific email by its ID. Use list_jmap_inbox or search_jmap_emails first to find email IDs.",
+      "Read the full content of a specific email by its ID. Use email_list_inbox or email_search first to find email IDs.",
     parameters: {
       type: "object",
       properties: {
@@ -313,7 +314,7 @@ export function createReadEmailTool(ctx: MuteworkerPluginContext) {
 
 export function createSendEmailTool(ctx: MuteworkerPluginContext) {
   return {
-    name: "send_jmap_email",
+    name: "email_send",
     label: "Send Email (JMAP)",
     description:
       "Request sending an email via JMAP. The send requires human verification before delivery.",
@@ -373,6 +374,65 @@ export function createSendEmailTool(ctx: MuteworkerPluginContext) {
       return {
         content: [{ type: "text", text: replyText }],
         details: result,
+      };
+    },
+  };
+}
+
+export function createListFoldersTool(ctx: MuteworkerPluginContext) {
+  return {
+    name: "email_list_folders",
+    label: "List Email Folders (JMAP)",
+    description:
+      "List all email folders/mailboxes recursively with their IDs. Useful for discovering folder structure.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: false,
+    } as any,
+    execute: async (_toolCallId: string, _params: any) => {
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/email/folders`,
+      );
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(
+          `Folders fetch failed (${response.status}): ${body.slice(0, 200)}`,
+        );
+      }
+
+      const result = (await response.json()) as { folders: JmapMailbox[] };
+
+      function formatTree(nodes: JmapMailbox[], indent: number): string[] {
+        const lines: string[] = [];
+        for (const n of nodes) {
+          const prefix = "  ".repeat(indent);
+          const role = n.role ? ` (${n.role})` : "";
+          lines.push(`${prefix}- ${n.name}${role}  [id: ${n.id}]`);
+          if (n.children.length > 0) {
+            lines.push(...formatTree(n.children, indent + 1));
+          }
+        }
+        return lines;
+      }
+
+      const lines = formatTree(result.folders, 0);
+
+      if (lines.length === 0) {
+        return {
+          content: [{ type: "text", text: "No folders found." }],
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Email folders:\n\n${lines.join("\n")}`,
+          },
+        ],
       };
     },
   };
