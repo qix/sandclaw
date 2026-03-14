@@ -94,6 +94,27 @@ export function ChatPanel() {
           </form>
         </CardBody>
       </Card>
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+.sc-chat-md { line-height: 1.5; }
+.sc-chat-md p { margin: 0 0 0.4em 0; }
+.sc-chat-md p:last-child { margin-bottom: 0; }
+.sc-chat-md pre { background: ${colors.bg}; border: 1px solid ${colors.border}; border-radius: 0.375rem; padding: 0.5rem 0.75rem; overflow-x: auto; margin: 0.4em 0; }
+.sc-chat-md pre code { background: none; padding: 0; border-radius: 0; font-size: 0.8125rem; }
+.sc-chat-md code { background: ${colors.bg}; padding: 0.1em 0.3em; border-radius: 0.25rem; font-size: 0.8125rem; }
+.sc-chat-md ul, .sc-chat-md ol { margin: 0.4em 0; padding-left: 1.5em; }
+.sc-chat-md blockquote { border-left: 3px solid ${colors.border}; margin: 0.4em 0; padding-left: 0.75rem; opacity: 0.85; }
+.sc-chat-md a { color: ${colors.accentHover}; text-decoration: underline; }
+.sc-chat-md h1, .sc-chat-md h2, .sc-chat-md h3, .sc-chat-md h4 { margin: 0.5em 0 0.25em 0; font-size: inherit; font-weight: 700; }
+.sc-chat-md h1 { font-size: 1.1em; }
+.sc-chat-md h2 { font-size: 1.05em; }
+.sc-chat-md img { max-width: 100%; }
+.sc-chat-md table { border-collapse: collapse; margin: 0.4em 0; }
+.sc-chat-md th, .sc-chat-md td { border: 1px solid ${colors.border}; padding: 0.25rem 0.5rem; font-size: 0.8125rem; }
+`,
+        }}
+      />
       <script
         dangerouslySetInnerHTML={{
           __html: `
@@ -103,6 +124,22 @@ export function ChatPanel() {
   var input = document.getElementById('chat-input');
   var latestMessageId = 0;
   var markReadTimer = null;
+  var markedLib = null;
+
+  // Load marked from esm.sh CDN
+  import('https://esm.sh/marked@15.0.6').then(function(mod) {
+    markedLib = mod;
+    // Escape raw HTML tokens to prevent XSS
+    markedLib.marked.use({
+      renderer: {
+        html: function(token) {
+          return escapeHtml(typeof token === 'string' ? token : token.text || '');
+        }
+      }
+    });
+  }).catch(function(err) {
+    console.warn('Failed to load marked library, using plain text rendering:', err);
+  });
 
   function escapeHtml(str) {
     var div = document.createElement('div');
@@ -116,16 +153,27 @@ export function ChatPanel() {
     });
   }
 
+  function renderMarkdown(text) {
+    if (!markedLib) return linkify(escapeHtml(text));
+    try {
+      return markedLib.marked.parse(text, { breaks: true });
+    } catch (e) {
+      console.warn('Markdown parse failed, falling back to plain text:', e);
+      return linkify(escapeHtml(text));
+    }
+  }
+
   function renderMessage(msg) {
     var div = document.createElement('div');
     var isInbound = msg.direction === 'inbound';
-    div.style.cssText = 'padding:0.5rem 0.75rem;border-radius:0.5rem;max-width:80%;word-wrap:break-word;white-space:pre-wrap;font-size:0.875rem;' +
+    div.style.cssText = 'padding:0.5rem 0.75rem;border-radius:0.5rem;max-width:80%;word-wrap:break-word;font-size:0.875rem;' +
       (isInbound
         ? 'align-self:flex-end;background:${colors.accentTint};border:1px solid ${colors.accentTintBorder};color:inherit;'
         : 'align-self:flex-start;background:${colors.successTint};border:1px solid ${colors.successTintBorder};color:inherit;');
+    div.className = 'sc-chat-msg';
     var label = isInbound ? 'You' : 'Agent';
     var time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : '';
-    div.innerHTML = '<div style="font-size:0.75rem;opacity:0.6;margin-bottom:0.25rem;">' + escapeHtml(label) + (time ? ' · ' + escapeHtml(time) : '') + '</div>' + linkify(escapeHtml(msg.text));
+    div.innerHTML = '<div style="font-size:0.75rem;opacity:0.6;margin-bottom:0.25rem;">' + escapeHtml(label) + (time ? ' · ' + escapeHtml(time) : '') + '</div><div class="sc-chat-md">' + renderMarkdown(msg.text) + '</div>';
     return div;
   }
 
