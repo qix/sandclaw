@@ -2,6 +2,7 @@ import type {
   ConfidantePlugin,
   ConfidantePluginContext,
 } from "@sandclaw/confidante-plugin-api";
+import { localTimestamp } from "@sandclaw/util";
 import type { ConfidanteApiClient } from "./apiClient";
 import type { ConfidanteConfig } from "./config";
 import type { DockerServiceImpl } from "./docker";
@@ -76,7 +77,7 @@ export async function executeConfidanteJob(
       jobType: job.jobType,
       ...(jobDataPreview ? { jobData: jobDataPreview } : {}),
     },
-    createdAt: new Date(startTime).toISOString(),
+    createdAt: localTimestamp(new Date(startTime)),
   });
 
   try {
@@ -119,7 +120,7 @@ export async function executeConfidanteJob(
       jobId: job.id,
       event: "completed",
       data: { durationMs, jobType: job.jobType },
-      createdAt: new Date().toISOString(),
+      createdAt: localTimestamp(),
     });
 
     return {
@@ -145,7 +146,7 @@ export async function executeConfidanteJob(
       jobId: job.id,
       event: "failed",
       data: { durationMs, kind, error: message },
-      createdAt: new Date().toISOString(),
+      createdAt: localTimestamp(),
     });
 
     return {

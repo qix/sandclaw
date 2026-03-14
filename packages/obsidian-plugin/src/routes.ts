@@ -1,5 +1,6 @@
 import { readdir, readFile, writeFile, mkdir, stat } from "node:fs/promises";
 import path from "node:path";
+import { localTimestamp } from "@sandclaw/util";
 import { resolveVaultPath, tryReadFile } from "./pathUtils";
 import { computeDiff } from "./diff";
 import type { ObsidianVaultIndex } from "./vaultIndex";
@@ -171,7 +172,7 @@ export function registerRoutes(
     const previousContent = (await tryReadFile(absPath)) ?? "";
     const nextContent = body.content;
     const diff = computeDiff(previousContent, nextContent);
-    const now = Date.now();
+    const now = localTimestamp();
 
     const verificationData = {
       path: relPath,
@@ -180,7 +181,7 @@ export function registerRoutes(
       previousBytes: Buffer.byteLength(previousContent, "utf8"),
       nextBytes: Buffer.byteLength(nextContent, "utf8"),
       diff,
-      createdAt: new Date(now).toISOString(),
+      createdAt: now,
     };
 
     const [id] = await db("verification_requests").insert({

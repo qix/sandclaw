@@ -4,6 +4,7 @@ import type {
   VerificationCallback,
   JobContext,
 } from "@sandclaw/gatekeeper-plugin-api";
+import { localTimestamp } from "@sandclaw/util";
 
 export function registerVerificationFormRoutes(
   app: Hono,
@@ -42,7 +43,7 @@ export function registerVerificationFormRoutes(
     // If the callback exits without error, mark as approved
     await db("verification_requests")
       .where("id", id)
-      .update({ status: "approved", updated_at: new Date().toISOString() });
+      .update({ status: "approved", updated_at: localTimestamp() });
 
     onVerificationChange?.();
     return c.redirect("/?page=verifications");
@@ -56,7 +57,7 @@ export function registerVerificationFormRoutes(
     await db("verification_requests")
       .where("id", id)
       .where("status", "pending")
-      .update({ status: "rejected", updated_at: new Date().toISOString() });
+      .update({ status: "rejected", updated_at: localTimestamp() });
 
     onVerificationChange?.();
     return c.redirect("/?page=verifications");
@@ -89,7 +90,7 @@ export function registerVerificationFormRoutes(
     }
 
     // Re-add the originating event as a new pending job
-    const now = new Date().toISOString();
+    const now = localTimestamp();
     await db("job_queue").insert({
       executor: originJob.executor,
       job_type: originJob.job_type,

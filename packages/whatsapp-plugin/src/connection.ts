@@ -5,6 +5,7 @@ import makeWASocket, {
 import * as QRCode from "qrcode";
 import pino from "pino";
 import type { ConversationSummary } from "@sandclaw/ui";
+import { localTimestamp } from "@sandclaw/util";
 import { waState } from "./state";
 import { useDBAuthState } from "./auth";
 
@@ -29,7 +30,7 @@ export async function getOrCreateConversationId(
     plugin: "whatsapp",
     channel: "whatsapp",
     external_id: jid,
-    created_at: new Date().toISOString(),
+    created_at: localTimestamp(),
   });
   return id;
 }
@@ -96,7 +97,7 @@ export async function connectWhatsApp(
       await upsertSession(db, {
         status: "qr_pending",
         qr_data_url: waState.qrDataUrl,
-        updated_at: new Date().toISOString(),
+        updated_at: localTimestamp(),
       });
     }
 
@@ -136,8 +137,8 @@ export async function connectWhatsApp(
         status: "connected",
         qr_data_url: null,
         phone_number: waState.phoneNumber,
-        last_heartbeat: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        last_heartbeat: localTimestamp(),
+        updated_at: localTimestamp(),
       });
 
       console.log(`[whatsapp] Connected as ${waState.phoneNumber}`);
@@ -168,7 +169,7 @@ export async function connectWhatsApp(
         typeof msg.messageTimestamp === "number"
           ? msg.messageTimestamp
           : Number(msg.messageTimestamp) || Math.floor(Date.now() / 1000);
-      const timestamp = new Date(rawTimestamp * 1000).toISOString();
+      const timestamp = localTimestamp(new Date(rawTimestamp * 1000));
       const messageId = msg.key.id || `${Date.now()}`;
       const isGroup = jid.endsWith("@g.us");
       const conversationId = await getOrCreateConversationId(db, jid);
@@ -185,7 +186,7 @@ export async function connectWhatsApp(
         timestamp,
         direction: "inbound",
         text,
-        created_at: new Date().toISOString(),
+        created_at: localTimestamp(),
       });
 
       const watchEnabled = await isWatchInboxEnabled(db);
@@ -223,7 +224,7 @@ export async function connectWhatsApp(
           history,
         };
 
-        const now = new Date().toISOString();
+        const now = localTimestamp();
         await db("job_queue").insert({
           executor: "muteworker",
           job_type: "whatsapp:incoming_message",

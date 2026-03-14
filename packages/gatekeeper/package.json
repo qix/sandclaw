@@ -25,6 +25,7 @@
     "@hono/node-server": "*",
     "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
     "@sandclaw/ui": "^0.1.0",
+    "@sandclaw/util": "^0.1.0",
     "better-sqlite3": "^11.0.0",
     "hono": "*",
     "knex": "^3.0.0",

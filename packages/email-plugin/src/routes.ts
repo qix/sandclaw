@@ -14,6 +14,7 @@ import {
   getCalendarEvent,
   respondToCalendarInvite,
 } from "./calendarClient";
+import { localTimestamp } from "@sandclaw/util";
 import { isWatchInboxEnabled, isWatchCalendarEnabled } from "./watch";
 
 export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
@@ -59,7 +60,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
     if (!body.subject) return c.json({ error: "subject is required" }, 400);
     if (!body.text) return c.json({ error: "text is required" }, 400);
 
-    const now = new Date().toISOString();
+    const now = localTimestamp();
     const verificationData = {
       to: body.to,
       subject: body.subject,
@@ -100,7 +101,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       return c.json({ error: "messageId and from are required" }, 400);
     }
 
-    const now = new Date().toISOString();
+    const now = localTimestamp();
 
     // Store incoming message
     await db("conversation_message").insert({
@@ -366,7 +367,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       // Continue with unknown details
     }
 
-    const now = new Date().toISOString();
+    const now = localTimestamp();
     const verificationData = {
       eventId: body.eventId,
       response: body.response,
@@ -415,7 +416,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
 
       await db("verification_requests")
         .where("id", id)
-        .update({ status: "approved", updated_at: new Date().toISOString() });
+        .update({ status: "approved", updated_at: localTimestamp() });
 
       return c.json({ success: true });
     } catch (e) {

@@ -8,6 +8,7 @@ import {
 import type { MuteworkerApiClient } from "./apiClient.js";
 import type { MuteworkerConfig } from "./config.js";
 import type { Logger } from "./logger.js";
+import { localTimestamp } from "@sandclaw/util";
 import { runWithClaude } from "./claudeRuntime.js";
 import { getMcpToolDefs } from "./tools/index.js";
 import type { Artifact } from "./tools/index.js";
@@ -60,7 +61,7 @@ export async function executeMuteworkerJob(
       jobId: job.id,
       event: ev,
       ...data,
-      createdAt: new Date().toISOString(),
+      createdAt: localTimestamp(),
     });
   };
 

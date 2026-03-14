@@ -27,6 +27,7 @@
     "@sandclaw/confidante-plugin-api": "^0.1.0",
     "@sandclaw/confidante-util": "^0.1.0",
     "@sandclaw/ui": "^0.1.0",
+    "@sandclaw/util": "^0.1.0",
     "shell-quote": "^1.8.3"
   },
   "peerDependencies": {

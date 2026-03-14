@@ -24,7 +24,8 @@
     "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
     "@sandclaw/muteworker-plugin-api": "^0.1.0",
     "@sandclaw/ui": "^0.1.0",
-    "shell-quote": "^1.8.3"
+    "shell-quote": "^1.8.3",
+    "@sandclaw/util": "^0.1.0"
   },
   "peerDependencies": {
     "react": "^18.0.0"

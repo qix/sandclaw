@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { localTimestamp } from "@sandclaw/util";
 import {
   GWS_PLUGIN_ID,
   GWS_VERIFICATION_ACTION,
@@ -22,14 +23,14 @@ export function registerRoutes(app: any, db: any) {
 
     const requestId = randomUUID();
     const responseJobType = body.responseJobType || GWS_RESULT_JOB_TYPE;
-    const now = Date.now();
+    const now = localTimestamp();
 
     const verificationData = {
       requestId,
       command: body.command,
       description: body.description,
       responseJobType,
-      createdAt: new Date(now).toISOString(),
+      createdAt: now,
     };
 
     const [id] = await db("verification_requests").insert({

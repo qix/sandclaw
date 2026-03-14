@@ -1,3 +1,4 @@
+import { localTimestamp } from "@sandclaw/util";
 import { tgState } from "./state";
 import {
   connectTelegram,
@@ -101,7 +102,7 @@ export function registerRoutes(
     }
 
     const autoApprove = operatorChatIds.has(chatId);
-    const now = new Date().toISOString();
+    const now = localTimestamp();
     const [id] = await db("verification_requests").insert({
       plugin: "telegram",
       action: "send_message",

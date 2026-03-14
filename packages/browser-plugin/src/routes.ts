@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { localTimestamp } from "@sandclaw/util";
 import {
   BROWSER_VERIFICATION_ACTION,
   BROWSER_CONFIDANTE_JOB_TYPE,
@@ -24,7 +25,7 @@ export function registerRoutes(
     const requestId = randomUUID();
     const responseJobType =
       body.responseJobType || DEFAULT_BROWSER_RESULT_JOB_TYPE;
-    const now = Date.now();
+    const now = localTimestamp();
 
     const verificationData = {
       requestId,
@@ -32,7 +33,7 @@ export function registerRoutes(
       url: body.url,
       responseJobType,
       image: pluginConfig.image ?? "browser-plugin",
-      createdAt: new Date(now).toISOString(),
+      createdAt: now,
     };
 
     const [id] = await db("verification_requests").insert({
@@ -66,7 +67,7 @@ export function registerRoutes(
     if (!body.result) return c.json({ error: "result is required" }, 400);
 
     const jobType = body.responseJobType || DEFAULT_BROWSER_RESULT_JOB_TYPE;
-    const now = Date.now();
+    const now = localTimestamp();
 
     const [jobId] = await db("job_queue").insert({
       executor: "muteworker",

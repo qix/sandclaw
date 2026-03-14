@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 import type { Knex } from "knex";
 import type { AgentStatusEvent } from "@sandclaw/gatekeeper-plugin-api";
+import { localTimestamp } from "@sandclaw/util";
 
 export function registerCoreRoutes(
   app: Hono,
@@ -24,7 +25,7 @@ export function registerCoreRoutes(
     const pollMs = 500;
 
     while (Date.now() < deadline) {
-      const now = new Date().toISOString();
+      const now = localTimestamp();
       const job = await db("job_queue")
         .where("executor", executor)
         .where("status", "pending")
@@ -87,7 +88,7 @@ export function registerCoreRoutes(
       .update({
         status: "complete",
         result: body.result ?? null,
-        updated_at: new Date().toISOString(),
+        updated_at: localTimestamp(),
       });
 
     if (updated === 0) return c.json({ error: "Job not found" }, 404);
@@ -107,7 +108,7 @@ export function registerCoreRoutes(
     if (body.data === undefined)
       return c.json({ error: "data is required" }, 400);
 
-    const now = new Date().toISOString();
+    const now = localTimestamp();
     const [id] = await db("job_queue").insert({
       executor: body.executor,
       job_type: body.jobType,
@@ -177,7 +178,7 @@ export function registerCoreRoutes(
       systemPrompt: body.systemPrompt,
       toolNames: body.toolNames,
       data: body.data,
-      createdAt: body.createdAt ?? new Date().toISOString(),
+      createdAt: body.createdAt ?? localTimestamp(),
     };
 
     if (agentStatusHooks) {
@@ -210,7 +211,7 @@ export function registerCoreRoutes(
 
     await db("verification_requests")
       .where("id", id)
-      .update({ status: "rejected", updated_at: new Date().toISOString() });
+      .update({ status: "rejected", updated_at: localTimestamp() });
 
     onVerificationChange?.();
     return c.json({ success: true });
@@ -382,7 +383,7 @@ export function registerCoreRoutes(
     const prompt = promptParts.join("\n");
     const context =
       Object.keys(sqCtx).length > 0 ? JSON.stringify(sqCtx) : null;
-    const now = new Date().toISOString();
+    const now = localTimestamp();
 
     const [jobId] = await db("job_queue").insert({
       executor: "muteworker",

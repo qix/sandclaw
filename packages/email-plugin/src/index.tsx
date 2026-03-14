@@ -23,6 +23,7 @@ import {
   createReadCalendarEventTool,
   createRespondCalendarInviteTool,
 } from "./tools";
+import { localTimestamp } from "@sandclaw/util";
 import { createEmailJobHandlers } from "./jobHandlers";
 import { migrations } from "./migrations";
 
@@ -93,7 +94,7 @@ export function createEmailPlugin(config: EmailPluginConfig) {
               request.data.subject,
               request.data.text,
             );
-            const now = new Date().toISOString();
+            const now = localTimestamp();
             await db("conversation_message").insert({
               conversation_id: 0,
               plugin: "email",

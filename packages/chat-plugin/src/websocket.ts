@@ -2,6 +2,7 @@ import type {
   NotifyService,
   WebSocketService,
 } from "@sandclaw/gatekeeper-plugin-api";
+import { localTimestamp } from "@sandclaw/util";
 
 export type DbHandle = any;
 
@@ -24,7 +25,7 @@ async function getOrCreateConversationId(db: DbHandle): Promise<number> {
     plugin: "chat",
     channel: "chat",
     external_id: "operator",
-    created_at: new Date().toISOString(),
+    created_at: localTimestamp(),
   });
   conversationId = id;
   return conversationId!;
@@ -72,7 +73,7 @@ export async function storeMessage(
   text: string,
 ) {
   const convId = await getOrCreateConversationId(db);
-  const now = new Date().toISOString();
+  const now = localTimestamp();
   const [id] = await db("conversation_message").insert({
     conversation_id: convId,
     plugin: "chat",
@@ -96,7 +97,7 @@ async function enqueueJob(
   history: any[],
   convId: number,
 ) {
-  const jobNow = new Date().toISOString();
+  const jobNow = localTimestamp();
   await db("job_queue").insert({
     executor: "muteworker",
     job_type: "chat:incoming_message",

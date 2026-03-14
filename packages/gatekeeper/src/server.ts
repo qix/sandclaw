@@ -22,6 +22,7 @@ import type { ComponentType } from "react";
 import { WebSocketServer, WebSocket } from "ws";
 import { App } from "./pages/App";
 import type { VerificationHistoryPage } from "./pages/VerificationsPage";
+import { localTimestamp } from "@sandclaw/util";
 import { createDb, runCoreMigrations } from "./db";
 import { logger } from "./logger";
 import { registerCoreRoutes, registerVerificationFormRoutes } from "./routes";
@@ -162,7 +163,7 @@ export async function startGatekeeper(
     jobType: string,
     data: any,
   ): Promise<{ jobId: number }> {
-    const now = new Date().toISOString();
+    const now = localTimestamp();
     const [jobId] = await db("job_queue").insert({
       executor,
       job_type: jobType,
@@ -223,7 +224,7 @@ export async function startGatekeeper(
 
       async requestVerification(options) {
         const { action, data, jobContext, autoApprove } = options;
-        const now = new Date().toISOString();
+        const now = localTimestamp();
         const [id] = await db("verification_requests").insert({
           plugin: pluginId,
           action,
@@ -241,7 +242,7 @@ export async function startGatekeeper(
           }
           await db("verification_requests").where("id", id).update({
             status: "approved",
-            updated_at: new Date().toISOString(),
+            updated_at: localTimestamp(),
           });
           notifyVerificationChange();
           return { id, status: "approved" as const };

@@ -1,4 +1,5 @@
 import type { VerificationsService } from "@sandclaw/gatekeeper-plugin-api";
+import { localTimestamp } from "@sandclaw/util";
 import { waState } from "./state";
 import {
   getOrCreateConversationId,
@@ -22,10 +23,10 @@ export async function deliverMessage(db: any, jid: string, text: string) {
     thread_id: jid,
     from: waState.phoneNumber,
     to: jid,
-    timestamp: new Date().toISOString(),
+    timestamp: localTimestamp(),
     direction: "outbound",
     text,
-    created_at: new Date().toISOString(),
+    created_at: localTimestamp(),
   });
 
   loadRecentConversations(db).catch((err) =>

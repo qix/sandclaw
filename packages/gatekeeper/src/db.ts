@@ -1,6 +1,7 @@
 import knex, { Knex } from "knex";
 import { mkdirSync } from "fs";
 import { dirname } from "path";
+import { localTimestamp } from "@sandclaw/util";
 import { logger } from "./logger";
 
 export function createDb(dbPath: string): Knex {
@@ -175,7 +176,7 @@ async function migrateIntegerTimestamps(db: Knex): Promise<void> {
       for (const col of columns) {
         const val = row[col];
         if (val != null && typeof val === "number") {
-          updates[col] = new Date(val).toISOString();
+          updates[col] = localTimestamp(new Date(val));
         }
       }
       if (Object.keys(updates).length > 0) {
@@ -192,7 +193,7 @@ async function migrateIntegerTimestamps(db: Knex): Promise<void> {
       for (const col of columns) {
         const val = row[col];
         if (val != null && typeof val === "number") {
-          updates[col] = new Date(val * 1000).toISOString();
+          updates[col] = localTimestamp(new Date(val * 1000));
         }
       }
       if (Object.keys(updates).length > 0) {

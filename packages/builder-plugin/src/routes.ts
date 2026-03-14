@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { AgentStatusEvent } from "@sandclaw/gatekeeper-plugin-api";
+import { localTimestamp } from "@sandclaw/util";
 import {
   BUILDER_VERIFICATION_ACTION,
   BUILDER_CONFIDANTE_JOB_TYPE,
@@ -25,7 +26,7 @@ export function registerRoutes(
     const requestId = randomUUID();
     const responseJobType =
       body.responseJobType || DEFAULT_BUILDER_RESULT_JOB_TYPE;
-    const now = new Date().toISOString();
+    const now = localTimestamp();
 
     const verificationData = {
       requestId,
@@ -69,7 +70,7 @@ export function registerRoutes(
     if (!body.result) return c.json({ error: "result is required" }, 400);
 
     const jobType = body.responseJobType || DEFAULT_BUILDER_RESULT_JOB_TYPE;
-    const now = new Date().toISOString();
+    const now = localTimestamp();
 
     const [jobId] = await db("job_queue").insert({
       executor: "muteworker",

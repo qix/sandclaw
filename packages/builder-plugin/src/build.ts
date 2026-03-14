@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import type { ConfidantePluginContext } from "@sandclaw/confidante-plugin-api";
 import { runDockerCommand } from "@sandclaw/confidante-util";
+import { localTimestamp } from "@sandclaw/util";
 import { runDockerClaude } from "./docker";
 import { DEFAULT_BUILDER_RESULT_JOB_TYPE } from "./constants";
 import {
@@ -49,7 +50,7 @@ export async function executeBuild(
       jobId: ctx.job.id,
       event: "step",
       data: { step: stepName, ...data },
-      createdAt: new Date().toISOString(),
+      createdAt: localTimestamp(),
     });
   }
 

@@ -5,6 +5,7 @@ import {
   type EmailPluginConfig,
 } from "./jmapClient";
 import { queryCalendarInvites, formatDuration } from "./calendarClient";
+import { localTimestamp } from "@sandclaw/util";
 import { matchEmailQueue } from "./routes";
 
 export async function isWatchInboxEnabled(db: any): Promise<boolean> {
@@ -45,8 +46,8 @@ export async function startEmailPolling(
 
       for (const email of emails) {
         await db.transaction(async (trx: any) => {
-          const now = new Date().toISOString();
-          const receivedAt = new Date(email.receivedAt).toISOString();
+          const now = localTimestamp();
+          const receivedAt = localTimestamp(new Date(email.receivedAt));
 
           // Record in email_received to prevent future duplicates
           const [emailReceivedId] = await trx("email_received").insert({
@@ -161,7 +162,7 @@ export async function startCalendarInvitePolling(
         if (existing) continue;
 
         await db.transaction(async (trx: any) => {
-          const now = new Date().toISOString();
+          const now = localTimestamp();
 
           const organizer = invite.organizer
             ? invite.organizer.name

@@ -1,6 +1,7 @@
 import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 import { quote } from "shell-quote";
+import { localTimestamp } from "@sandclaw/util";
 import { GITHUB_PLUGIN_ID, GITHUB_PR_CREATED_ACTION } from "./constants";
 
 const execFile = promisify(execFileCb);
@@ -84,7 +85,7 @@ export function registerRoutes(
       console.error("[github] Failed to fetch PR diff:", err);
     }
 
-    const now = Date.now();
+    const now = localTimestamp();
     const data = {
       repo,
       prUrl,
@@ -93,7 +94,7 @@ export function registerRoutes(
       title: prTitle,
       body: prBody || "",
       diff,
-      createdAt: new Date(now).toISOString(),
+      createdAt: now,
     };
 
     const [id] = await db("verification_requests").insert({

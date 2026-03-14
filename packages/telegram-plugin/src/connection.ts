@@ -1,5 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import type { ConversationSummary } from "@sandclaw/ui";
+import { localTimestamp } from "@sandclaw/util";
 import { tgState } from "./state";
 
 /** Look up or create a conversation row for the given chat ID, returning its auto-increment ID. */
@@ -15,7 +16,7 @@ export async function getOrCreateConversationId(
     plugin: "telegram",
     channel: "telegram",
     external_id: chatId,
-    created_at: new Date().toISOString(),
+    created_at: localTimestamp(),
   });
   return id;
 }
@@ -65,10 +66,10 @@ export async function deliverMessage(db: any, chatId: string, text: string) {
     thread_id: chatId,
     from: tgState.botUsername,
     to: chatId,
-    timestamp: new Date().toISOString(),
+    timestamp: localTimestamp(),
     direction: "outbound",
     text,
-    created_at: new Date().toISOString(),
+    created_at: localTimestamp(),
   });
 
   loadRecentConversations(db).catch((err) =>
@@ -92,8 +93,8 @@ export async function connectTelegram(db: any, token: string) {
     status: "connected",
     bot_username: tgState.botUsername,
     bot_token: token,
-    last_heartbeat: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    last_heartbeat: localTimestamp(),
+    updated_at: localTimestamp(),
   });
 
   console.log(`[telegram] Connected as @${tgState.botUsername}`);
@@ -106,7 +107,7 @@ export async function connectTelegram(db: any, token: string) {
     const chatId = String(msg.chat.id);
     const text = msg.text;
     const messageId = String(msg.message_id);
-    const timestamp = new Date(msg.date * 1000).toISOString();
+    const timestamp = localTimestamp(new Date(msg.date * 1000));
     const firstName = msg.from?.first_name ?? null;
     const lastName = msg.from?.last_name ?? null;
     const username = msg.from?.username ?? null;
@@ -129,7 +130,7 @@ export async function connectTelegram(db: any, token: string) {
       timestamp,
       direction: "inbound",
       text,
-      created_at: new Date().toISOString(),
+      created_at: localTimestamp(),
     });
 
     // Fetch recent history for context
@@ -165,7 +166,7 @@ export async function connectTelegram(db: any, token: string) {
       history,
     };
 
-    const now = new Date().toISOString();
+    const now = localTimestamp();
     await db("job_queue").insert({
       executor: "muteworker",
       job_type: "telegram:incoming_message",
