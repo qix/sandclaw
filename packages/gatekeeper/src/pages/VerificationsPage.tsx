@@ -17,6 +17,7 @@ export interface VerificationRequest {
   action: string;
   data: string;
   status: string;
+  error?: string;
   jobContext?: { worker: "muteworker" | "confidante"; jobId: number };
   createdAt: string;
   updatedAt?: string;
@@ -70,17 +71,22 @@ function VerificationCard({
   const createdDate = new Date(r.createdAt).toLocaleString();
   const isResolved = r.status === "approved" || r.status === "rejected";
   const isRejected = r.status === "rejected";
+  const isError = r.status === "error";
 
   const cardStyle: React.CSSProperties = isResolved
     ? {
         opacity: 0.55,
         borderColor: isRejected ? "rgba(239, 68, 68, 0.35)" : undefined,
       }
-    : {};
+    : isError
+      ? { borderColor: "rgba(239, 68, 68, 0.5)" }
+      : {};
 
   const overlayStyle: React.CSSProperties | undefined = isRejected
     ? { background: "rgba(239, 68, 68, 0.06)" }
-    : undefined;
+    : isError
+      ? { background: "rgba(239, 68, 68, 0.08)" }
+      : undefined;
 
   return (
     <Card key={r.id} style={cardStyle}>
@@ -115,14 +121,14 @@ function VerificationCard({
             ))}
         </div>
         <div className="sc-flex-row">
-          {isResolved && (
+          {(isResolved || isError) && (
             <Badge
               bg={
-                isRejected
+                isRejected || isError
                   ? "rgba(239, 68, 68, 0.2)"
                   : "rgba(139, 143, 163, 0.2)"
               }
-              fg={isRejected ? colors.danger : colors.muted}
+              fg={isRejected || isError ? colors.danger : colors.muted}
             >
               {r.status}
             </Badge>
@@ -140,17 +146,36 @@ function VerificationCard({
       </CardHeader>
       <CardBody style={overlayStyle}>
         {createElement(Renderer, { action: r.action, data: parsed })}
+        {isError && r.error && (
+          <pre
+            style={{
+              marginTop: "0.75rem",
+              padding: "0.6rem 0.8rem",
+              background: "rgba(239, 68, 68, 0.1)",
+              border: "1px solid rgba(239, 68, 68, 0.25)",
+              borderRadius: "6px",
+              color: colors.danger,
+              fontSize: "0.8rem",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {r.error}
+          </pre>
+        )}
       </CardBody>
       {!isResolved && (
         <CardFooter>
-          <form method="post" action={`/verifications/approve/${r.id}`}>
-            <Button type="submit" variant="success">
-              Approve
-            </Button>
-          </form>
+          {!isError && (
+            <form method="post" action={`/verifications/approve/${r.id}`}>
+              <Button type="submit" variant="success">
+                Approve
+              </Button>
+            </form>
+          )}
           <form method="post" action={`/verifications/reject/${r.id}`}>
             <Button type="submit" variant="danger">
-              Reject
+              {isError ? "Dismiss" : "Reject"}
             </Button>
           </form>
           <form method="post" action={`/verifications/requeue/${r.id}`}>

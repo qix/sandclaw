@@ -106,14 +106,15 @@ export interface VerificationsService {
    *
    * When `autoApprove` is true the registered verification callback is invoked
    * immediately and the request is stored as "approved".  If the callback
-   * throws, the error propagates to the caller and the request stays "pending".
+   * throws, the request is marked as "error" with the exception details stored
+   * for the operator to review in the browser UI.
    */
   requestVerification(options: {
     action: string;
     data: any;
     jobContext?: JobContext;
     autoApprove?: boolean;
-  }): Promise<{ id: number; status: "pending" | "approved" }>;
+  }): Promise<{ id: number; status: "pending" | "approved" | "error" }>;
 }
 
 /** Core service refs available to all plugins. */
