@@ -51,10 +51,9 @@ export function registerRoutes(
       head,
       "--title",
       prTitle,
+      "--body",
+      prBody || "",
     ];
-    if (prBody) {
-      args.push("--body", prBody);
-    }
 
     let prUrl: string;
     let prNumber: number;
