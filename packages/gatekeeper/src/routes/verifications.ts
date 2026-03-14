@@ -6,6 +6,24 @@ import type {
 } from "@sandclaw/gatekeeper-plugin-api";
 import { localTimestamp } from "@sandclaw/util";
 
+/** Extract error message and the source line from a thrown error's stack trace. */
+function formatHookError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const message = err.message;
+  // Find the first application stack frame (skip node internals)
+  const stack = err.stack ?? "";
+  const lines = stack.split("\n").slice(1);
+  const sourceLine = lines.find(
+    (l) => l.includes("at ") && !l.includes("node_modules") && !l.includes("node:"),
+  );
+  if (sourceLine) {
+    return `${message}\n${sourceLine.trim()}`;
+  }
+  // Fall back to the first stack frame if no app frame found
+  const firstFrame = lines[0]?.trim();
+  return firstFrame ? `${message}\n${firstFrame}` : message;
+}
+
 export function registerVerificationFormRoutes(
   app: Hono,
   db: Knex,
@@ -34,10 +52,23 @@ export function registerVerificationFormRoutes(
         ? JSON.parse(request.job_context)
         : undefined;
 
-      await callback(
-        { id, action: request.action, data: parsedData, jobContext },
-        { queueJob },
-      );
+      try {
+        await callback(
+          { id, action: request.action, data: parsedData, jobContext },
+          { queueJob },
+        );
+      } catch (err) {
+        const errorDetail = formatHookError(err);
+        await db("verification_requests")
+          .where("id", id)
+          .update({
+            status: "error",
+            error: errorDetail,
+            updated_at: localTimestamp(),
+          });
+        onVerificationChange?.();
+        return c.redirect("/?page=verifications");
+      }
     }
 
     // If the callback exits without error, mark as approved
@@ -56,8 +87,8 @@ export function registerVerificationFormRoutes(
 
     await db("verification_requests")
       .where("id", id)
-      .where("status", "pending")
-      .update({ status: "rejected", updated_at: localTimestamp() });
+      .whereIn("status", ["pending", "error"])
+      .update({ status: "rejected", error: null, updated_at: localTimestamp() });
 
     onVerificationChange?.();
     return c.redirect("/?page=verifications");
@@ -69,7 +100,7 @@ export function registerVerificationFormRoutes(
     if (!id || isNaN(id)) return c.redirect("/?page=verifications");
 
     const request = await db("verification_requests").where("id", id).first();
-    if (!request || request.status !== "pending") {
+    if (!request || (request.status !== "pending" && request.status !== "error")) {
       return c.redirect("/?page=verifications");
     }
 
@@ -104,7 +135,7 @@ export function registerVerificationFormRoutes(
     // Mark the verification request as rejected so it leaves the pending list
     await db("verification_requests")
       .where("id", id)
-      .update({ status: "rejected", updated_at: now });
+      .update({ status: "rejected", error: null, updated_at: now });
 
     onVerificationChange?.();
     return c.redirect("/?page=verifications");

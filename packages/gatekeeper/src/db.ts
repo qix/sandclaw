@@ -27,6 +27,17 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
     });
   }
 
+  // Add error column to verification_requests if missing
+  if (await db.schema.hasTable("verification_requests")) {
+    const errCols = await db.raw("PRAGMA table_info(verification_requests)");
+    const hasError = errCols.some((c: any) => c.name === "error");
+    if (!hasError) {
+      await db.schema.alterTable("verification_requests", (t) => {
+        t.text("error").nullable();
+      });
+    }
+  }
+
   // Add job_context column to verification_requests if missing, migrate from old job column
   if (await db.schema.hasTable("verification_requests")) {
     const cols = await db.raw("PRAGMA table_info(verification_requests)");

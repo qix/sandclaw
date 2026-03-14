@@ -238,7 +238,31 @@ export async function startGatekeeper(
         if (autoApprove) {
           const callback = verificationCallbacks.get(pluginId);
           if (callback) {
-            await callback({ id, action, data, jobContext }, { queueJob });
+            try {
+              await callback({ id, action, data, jobContext }, { queueJob });
+            } catch (err) {
+              const message =
+                err instanceof Error ? err.message : String(err);
+              const stack =
+                err instanceof Error ? err.stack ?? "" : "";
+              const lines = stack.split("\n").slice(1);
+              const sourceLine = lines.find(
+                (l) =>
+                  l.includes("at ") &&
+                  !l.includes("node_modules") &&
+                  !l.includes("node:"),
+              );
+              const errorDetail = sourceLine
+                ? `${message}\n${sourceLine.trim()}`
+                : message;
+              await db("verification_requests").where("id", id).update({
+                status: "error",
+                error: errorDetail,
+                updated_at: localTimestamp(),
+              });
+              notifyVerificationChange();
+              return { id, status: "error" as const };
+            }
           }
           await db("verification_requests").where("id", id).update({
             status: "approved",
@@ -279,7 +303,7 @@ export async function startGatekeeper(
 
   async function broadcastVerificationCount() {
     const [{ count }] = await db("verification_requests")
-      .where("status", "pending")
+      .whereIn("status", ["pending", "error"])
       .count("* as count");
     const n = Number(count);
     if (n === lastBroadcastCount) return;
@@ -384,7 +408,7 @@ export async function startGatekeeper(
     const [{ count: pendingVerificationCount }] = await db(
       "verification_requests",
     )
-      .where("status", "pending")
+      .whereIn("status", ["pending", "error"])
       .count("* as count");
 
     // Tab component arrays (rendered directly by App via context)
@@ -399,7 +423,7 @@ export async function startGatekeeper(
     let verificationHistory: VerificationHistoryPage | undefined;
     if (activePage === "verifications") {
       const rows = await db("verification_requests")
-        .where("status", "pending")
+        .whereIn("status", ["pending", "error"])
         .orderBy("created_at", "desc");
       verificationRequests = rows.map((r: any) => ({
         id: r.id,
@@ -407,6 +431,7 @@ export async function startGatekeeper(
         action: r.action,
         data: r.data,
         status: r.status,
+        error: r.error ?? undefined,
         jobContext: r.job_context ? JSON.parse(r.job_context) : undefined,
         createdAt: r.created_at,
       }));
@@ -421,13 +446,13 @@ export async function startGatekeeper(
       const historyOffset = (historyPage - 1) * historyLimit;
 
       const [{ count: totalResolved }] = await db("verification_requests")
-        .whereIn("status", ["approved", "rejected"])
+        .whereIn("status", ["approved", "rejected", "error"])
         .count("* as count");
 
       const total = Number(totalResolved);
       if (total > 0) {
         const historyRows = await db("verification_requests")
-          .whereIn("status", ["approved", "rejected"])
+          .whereIn("status", ["approved", "rejected", "error"])
           .orderBy("updated_at", "desc")
           .limit(historyLimit)
           .offset(historyOffset);
@@ -439,6 +464,7 @@ export async function startGatekeeper(
             action: r.action,
             data: r.data,
             status: r.status,
+            error: r.error ?? undefined,
             jobContext: r.job_context ? JSON.parse(r.job_context) : undefined,
             createdAt: r.created_at,
             updatedAt: r.updated_at,
@@ -541,7 +567,7 @@ export async function startGatekeeper(
         coreClients.add(ws);
         // Query and send current count immediately on connect
         const [{ count }] = await db("verification_requests")
-          .where("status", "pending")
+          .whereIn("status", ["pending", "error"])
           .count("* as count");
         const n = Number(count);
         lastBroadcastCount = n;

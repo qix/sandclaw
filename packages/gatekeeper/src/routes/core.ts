@@ -215,22 +215,22 @@ export function registerCoreRoutes(
     if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
 
     const request = await db("verification_requests").where("id", id).first();
-    if (!request || request.status !== "pending") {
+    if (!request || (request.status !== "pending" && request.status !== "error")) {
       return c.json({ error: "Not found or already resolved" }, 404);
     }
 
     await db("verification_requests")
       .where("id", id)
-      .update({ status: "rejected", updated_at: localTimestamp() });
+      .update({ status: "rejected", error: null, updated_at: localTimestamp() });
 
     onVerificationChange?.();
     return c.json({ success: true });
   });
 
-  // GET /api/verifications/pending — list all pending verification requests
+  // GET /api/verifications/pending — list all pending and errored verification requests
   app.get("/api/verifications/pending", async (c) => {
     const requests = await db("verification_requests")
-      .where("status", "pending")
+      .whereIn("status", ["pending", "error"])
       .orderBy("created_at", "desc");
 
     return c.json({
@@ -240,6 +240,7 @@ export function registerCoreRoutes(
         action: r.action,
         data: r.data,
         status: r.status,
+        error: r.error ?? undefined,
         jobContext: r.job_context ? JSON.parse(r.job_context) : undefined,
         createdAt: r.created_at,
       })),
@@ -256,11 +257,11 @@ export function registerCoreRoutes(
     const offset = (page - 1) * limit;
 
     const [{ count: total }] = await db("verification_requests")
-      .whereIn("status", ["approved", "rejected"])
+      .whereIn("status", ["approved", "rejected", "error"])
       .count("* as count");
 
     const requests = await db("verification_requests")
-      .whereIn("status", ["approved", "rejected"])
+      .whereIn("status", ["approved", "rejected", "error"])
       .orderBy("updated_at", "desc")
       .limit(limit)
       .offset(offset);
@@ -272,6 +273,7 @@ export function registerCoreRoutes(
         action: r.action,
         data: r.data,
         status: r.status,
+        error: r.error ?? undefined,
         jobContext: r.job_context ? JSON.parse(r.job_context) : undefined,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
