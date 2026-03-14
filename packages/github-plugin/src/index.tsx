@@ -59,10 +59,56 @@ export function createGithubPlugin(options?: GithubPluginOptions) {
               options?.autoPullRepo &&
               data.repo === options.autoPullRepo
             ) {
+              const pullCwd = { cwd: options.autoPullPath };
               try {
-                await execFile("git", ["pull"], {
-                  cwd: options.autoPullPath,
-                });
+                // Check for uncommitted changes
+                const { stdout: status } = await execFile(
+                  "git",
+                  ["status", "--porcelain"],
+                  pullCwd,
+                );
+                if (status.trim()) {
+                  console.log(
+                    "Auto-pull skipped: working directory has uncommitted changes",
+                  );
+                  return;
+                }
+
+                // Get the current branch
+                const { stdout: branch } = await execFile(
+                  "git",
+                  ["rev-parse", "--abbrev-ref", "HEAD"],
+                  pullCwd,
+                );
+                const currentBranch = branch.trim();
+
+                // Fetch latest from origin
+                await execFile("git", ["fetch", "origin", "main"], pullCwd);
+
+                if (currentBranch === "main") {
+                  // Already on main — fast-forward pull
+                  await execFile(
+                    "git",
+                    ["rebase", "origin/main"],
+                    pullCwd,
+                  );
+                } else {
+                  // On a different branch — dry-run rebase to check for conflicts
+                  try {
+                    await execFile(
+                      "git",
+                      ["rebase", "--no-fork-point", "origin/main"],
+                      pullCwd,
+                    );
+                  } catch {
+                    // Rebase failed (conflicts) — abort and skip
+                    await execFile("git", ["rebase", "--abort"], pullCwd);
+                    console.log(
+                      `Auto-pull skipped: rebase from origin/main onto ${currentBranch} would cause conflicts`,
+                    );
+                    return;
+                  }
+                }
               } catch (err) {
                 console.error("Auto-pull failed:", err);
               }
