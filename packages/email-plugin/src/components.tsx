@@ -289,7 +289,7 @@ export function EmailPanel() {
       html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">Job</th>';
       html += '</tr></thead><tbody>';
       emails.forEach(function(e){
-        var date = e.received_at ? new Date(e.received_at * 1000).toLocaleString() : '';
+        var date = e.received_at ? new Date(e.received_at).toLocaleString() : '';
         var jobCell = '';
         if (e.job_id) {
           jobCell = '<a href="?page=agent-status&job=' + encodeURIComponent(e.job_id) + '" style="color:' + accent + ';text-decoration:none;font-size:0.8rem">#' + e.job_id + '</a>';
