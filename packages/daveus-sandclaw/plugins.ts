@@ -55,8 +55,8 @@ export const plugins: SandclawPlugin[] = [
     userEmail: process.env.GMAIL_USER_EMAIL || "",
   }),
   createGithubPlugin({
-    autoPullPath: "/home/josh/code/daveus-sandclaw",
-    autoPullRepo: "qix/daveus-sandclaw",
+    autoPullPath: "/home/josh/code/sandclaw",
+    autoPullRepo: "qix/sandclaw",
   }),
   createGoogleWorkspacePlugin({
     clientId: process.env.GOOGLE_CLIENT_ID || "",
