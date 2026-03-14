@@ -64,17 +64,9 @@ export const plugins: SandclawPlugin[] = [
     refreshToken: process.env.GOOGLE_REFRESH_TOKEN || "",
   }),
   createBuilderPlugin({
-    repo: "git@github.com:qix/daveus-sandclaw.git",
+    repo: "git@github.com:qix/sandclaw.git",
     workDir,
     branch: process.env.BUILDER_BRANCH || "main",
-    dockerArgsOverride: [
-      "--workdir",
-      "/workspace/daveus-sandclaw",
-      "-v",
-      `${workDir}:/workspace/daveus-sandclaw`,
-      "-v",
-      "/home/josh/code/sandclaw:/workspace/sandclaw",
-    ],
   }),
   createEmailPlugin({
     jmapHost: "api.fastmail.com",
