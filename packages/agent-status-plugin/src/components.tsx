@@ -230,6 +230,65 @@ function formatTime(ts: string | number): string {
   return new Date(ts).toLocaleTimeString();
 }
 
+/** Build a human-readable "From …" label from a job context object. */
+function formatContextLabel(
+  context: Record<string, unknown> | undefined | null,
+): string | null {
+  if (!context) return null;
+  const channel = context.channel as string | undefined;
+  const from = context.from as string | undefined;
+  const lastMessage = context.lastMessage as string | undefined;
+
+  const parts: string[] = [];
+  if (from) parts.push(`From ${from}`);
+  if (channel && !from) parts.push(channel);
+  if (lastMessage) parts.push(`"${lastMessage}"`);
+  return parts.length > 0 ? parts.join(" — ") : null;
+}
+
+/** Render a context line under a job card. */
+function ContextLine({
+  context,
+  executor,
+}: {
+  context?: Record<string, unknown> | null;
+  executor?: string | null;
+}) {
+  const label = formatContextLabel(context);
+  const channel = context?.channel as string | undefined;
+  if (!label && !executor) return null;
+  return (
+    <div
+      style={{
+        fontSize: "0.75rem",
+        color: colors.muted,
+        marginTop: "0.25rem",
+        display: "flex",
+        gap: "0.75rem",
+        alignItems: "center",
+      }}
+    >
+      {channel && (
+        <span
+          style={{
+            background: colors.border,
+            borderRadius: "0.25rem",
+            padding: "0 0.35rem",
+            fontSize: "0.65rem",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.03em",
+          }}
+        >
+          {channel}
+        </span>
+      )}
+      {label && <span>{label}</span>}
+      {executor && <span style={{ opacity: 0.7 }}>{executor}</span>}
+    </div>
+  );
+}
+
 export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
   const jobs = groupByJob(events);
 
@@ -294,7 +353,16 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                 const jobType =
                   (started?.data?.jobType as string | undefined) ??
                   (queued?.data?.jobType as string | undefined);
-                const jobData = started?.data?.prompt as string | undefined;
+                const executor =
+                  (queued?.data?.executor as string | undefined) ??
+                  (started?.data?.executor as string | undefined);
+                const context =
+                  (queued?.data?.context as
+                    | Record<string, unknown>
+                    | undefined) ?? null;
+                const jobData = started?.data
+                  ? JSON.stringify(started.data)
+                  : undefined;
                 const firstEvent = queued ?? started;
                 return (
                   <a
@@ -317,7 +385,7 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
-                        marginBottom: "0.5rem",
+                        marginBottom: "0.25rem",
                       }}
                     >
                       <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>
@@ -341,6 +409,7 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                         {firstEvent ? formatTime(firstEvent.createdAt) : ""}
                       </span>
                     </div>
+                    <ContextLine context={context} executor={executor} />
                     {jobData && <CollapsibleJson data={jobData} />}
                     <div
                       style={{
@@ -395,6 +464,7 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                 </p>
               ) : (
                 finishedJobs.map((j) => {
+                  const queued = j.events.find((e) => e.event === "queued");
                   const started = j.events.find((e) => e.event === "started");
                   const terminal = j.events[j.events.length - 1];
                   const stepCount = j.events.filter(
@@ -404,8 +474,19 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                     | number
                     | undefined;
                   const isSuccess = terminal.event === "completed";
-                  const jobType = started?.data?.jobType as string | undefined;
-                  const jobData = started?.data?.prompt as string | undefined;
+                  const jobType =
+                    (started?.data?.jobType as string | undefined) ??
+                    (queued?.data?.jobType as string | undefined);
+                  const executor =
+                    (queued?.data?.executor as string | undefined) ??
+                    (started?.data?.executor as string | undefined);
+                  const context =
+                    (queued?.data?.context as
+                      | Record<string, unknown>
+                      | undefined) ?? null;
+                  const jobData = started?.data
+                    ? JSON.stringify(started.data)
+                    : undefined;
                   return (
                     <a
                       key={j.jobId}
@@ -453,6 +534,7 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                           {isSuccess ? "Completed" : "Failed"}
                         </span>
                       </div>
+                      <ContextLine context={context} executor={executor} />
                       {jobData && <CollapsibleJson data={jobData} />}
                       <div
                         style={{
@@ -565,29 +647,50 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
     '</div>';
   }
 
-  function createActiveJobEl(ev) {
+  function makeContextLineHtml(context, executor) {
+    if (!context && !executor) return '';
+    var channel = context && context.channel;
+    var from = context && context.from;
+    var lastMessage = context && context.lastMessage;
+    var parts = [];
+    if (from) parts.push('From ' + escapeHtml(from));
+    if (channel && !from) parts.push(escapeHtml(channel));
+    if (lastMessage) parts.push('\\u201c' + escapeHtml(lastMessage) + '\\u201d');
+    var label = parts.join(' \\u2014 ');
+    var channelHtml = channel
+      ? '<span style="background:${colors.border};border-radius:0.25rem;padding:0 0.35rem;font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">' + escapeHtml(channel) + '</span>'
+      : '';
+    var labelHtml = label ? '<span>' + label + '</span>' : '';
+    var executorHtml = executor ? '<span style="opacity:0.7;">' + escapeHtml(executor) + '</span>' : '';
+    return '<div style="font-size:0.75rem;color:${colors.muted};margin-top:0.25rem;display:flex;gap:0.75rem;align-items:center;">' +
+      channelHtml + labelHtml + executorHtml + '</div>';
+  }
+
+  function createActiveJobEl(ev, context, executor) {
     var a = document.createElement('a');
     a.className = 'agent-status-job';
     a.setAttribute('data-job-id', ev.jobId);
     a.href = '?page=agent-status&job=' + ev.jobId;
     a.style.cssText = 'display:block;padding:0.75rem;background:${colors.surface};border-radius:0.5rem;border:1px solid ${colors.border};margin-bottom:0.5rem;text-decoration:none;color:inherit;';
     var jobType = ev.data && ev.data.jobType;
-    var jobData = ev.data && ev.data.prompt;
+    var jobData = ev.data ? JSON.stringify(ev.data) : null;
     var jobTypeHtml = jobType
       ? '<span style="margin-left:0.5rem;font-size:0.75rem;color:${colors.accent};font-weight:500;">' + escapeHtml(jobType) + '</span>'
       : '';
     var jobDataHtml = jobData ? makeCollapsibleJson(jobData) : '';
+    var contextHtml = makeContextLineHtml(context, executor);
     a.innerHTML =
-      '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;">' +
         '<span style="font-weight:600;font-size:0.875rem;">Job #' + ev.jobId + jobTypeHtml + '</span>' +
         '<span style="font-size:0.75rem;color:${colors.muted};">' + formatTime(ev.createdAt) + '</span>' +
       '</div>' +
+      contextHtml +
       jobDataHtml +
       '<div style="font-size:0.8rem;color:${colors.accent};margin-top:0.5rem;" data-step-count>0 steps so far&hellip;</div>';
     return a;
   }
 
-  function createHistoryJobEl(ev, stepCount, jobType, jobData) {
+  function createHistoryJobEl(ev, stepCount, jobType, jobData, context, executor) {
     var isSuccess = ev.event === 'completed';
     var durationMs = ev.data && ev.data.durationMs;
     var a = document.createElement('a');
@@ -597,6 +700,7 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
       ? '<span style="margin-left:0.5rem;font-size:0.75rem;color:${colors.accent};font-weight:500;">' + escapeHtml(jobType) + '</span>'
       : '';
     var jobDataHtml = jobData ? makeCollapsibleJson(jobData) : '';
+    var contextHtml = makeContextLineHtml(context, executor);
     var errorHtml = !isSuccess && ev.data && ev.data.error
       ? '<div style="font-size:0.75rem;color:${colors.danger};margin-top:0.25rem;">' + escapeHtml(String(ev.data.error)) + '</div>'
       : '';
@@ -605,6 +709,7 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
         '<span style="font-weight:600;font-size:0.875rem;">Job #' + ev.jobId + jobTypeHtml + '</span>' +
         '<span style="font-size:0.75rem;color:' + (isSuccess ? '${colors.success}' : '${colors.danger}') + ';font-weight:600;">' + (isSuccess ? 'Completed' : 'Failed') + '</span>' +
       '</div>' +
+      contextHtml +
       jobDataHtml +
       '<div style="font-size:0.75rem;color:${colors.muted};display:flex;gap:1rem;margin-top:0.5rem;">' +
         '<span>' + stepCount + ' step' + (stepCount !== 1 ? 's' : '') + '</span>' +
@@ -622,14 +727,18 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
     a.href = '?page=agent-status&job=' + ev.jobId;
     a.style.cssText = 'display:block;padding:0.75rem;background:${colors.surface};border-radius:0.5rem;border:1px solid ${colors.border};margin-bottom:0.5rem;text-decoration:none;color:inherit;';
     var jobType = ev.data && ev.data.jobType;
+    var executor = ev.data && ev.data.executor;
+    var context = ev.data && ev.data.context;
     var jobTypeHtml = jobType
       ? '<span style="margin-left:0.5rem;font-size:0.75rem;color:${colors.accent};font-weight:500;">' + escapeHtml(jobType) + '</span>'
       : '';
+    var contextHtml = makeContextLineHtml(context, executor);
     a.innerHTML =
-      '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;">' +
         '<span style="font-weight:600;font-size:0.875rem;">Job #' + ev.jobId + jobTypeHtml + '</span>' +
         '<span style="font-size:0.75rem;color:${colors.muted};">' + formatTime(ev.createdAt) + '</span>' +
       '</div>' +
+      contextHtml +
       '<div style="font-size:0.8rem;color:${colors.muted};margin-top:0.5rem;" data-step-count>Queued\\u2026</div>';
     return a;
   }
@@ -650,6 +759,8 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
         steps: 0,
         queued: true,
         jobType: ev.data && ev.data.jobType || null,
+        executor: ev.data && ev.data.executor || null,
+        context: ev.data && ev.data.context || null,
         jobData: null
       };
       updateActiveCount();
@@ -664,13 +775,17 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
         var empty = activeEl.querySelector('p');
         if (empty) empty.remove();
       }
-      var el = createActiveJobEl(ev);
+      var context = (existing && existing.context) || null;
+      var executor = ev.data && ev.data.executor || (existing && existing.executor) || null;
+      var el = createActiveJobEl(ev, context, executor);
       activeEl.appendChild(el);
       activeJobs[ev.jobId] = {
         el: el,
         steps: 0,
         jobType: ev.data && ev.data.jobType || (existing && existing.jobType) || null,
-        jobData: ev.data && ev.data.prompt || null
+        executor: executor,
+        context: context,
+        jobData: ev.data ? JSON.stringify(ev.data) : null
       };
       updateActiveCount();
 
@@ -689,6 +804,8 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
       var stepCount = job ? (job.steps || 0) : 0;
       var jobType = job ? job.jobType : null;
       var jobData = job ? job.jobData : null;
+      var context = job ? job.context : null;
+      var executor = job ? job.executor : null;
       if (job && job.el) job.el.remove();
       delete activeJobs[ev.jobId];
       updateActiveCount();
@@ -698,7 +815,7 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
       if (hEmpty) hEmpty.remove();
 
       // Prepend to history
-      var hEl = createHistoryJobEl(ev, stepCount, jobType, jobData);
+      var hEl = createHistoryJobEl(ev, stepCount, jobType, jobData, context, executor);
       historyEl.insertBefore(hEl, historyEl.firstChild);
       finishedCount++;
       if (historyCountEl) historyCountEl.textContent = '(' + finishedCount + ')';
@@ -726,18 +843,30 @@ export function AgentJobDetailPanel({
   const isQueued = !started && !!queued;
   const isSuccess = terminal?.event === "completed";
   const durationMs = terminal?.data?.durationMs as number | undefined;
+  const jobType =
+    (started?.data?.jobType as string | undefined) ??
+    (queued?.data?.jobType as string | undefined);
+  const executor =
+    (queued?.data?.executor as string | undefined) ??
+    (started?.data?.executor as string | undefined);
+  const context =
+    (queued?.data?.context as Record<string, unknown> | undefined) ?? null;
+
+  const subtitleParts: string[] = [];
+  if (executor) subtitleParts.push(executor);
+  if (jobType) subtitleParts.push(jobType);
+  const statusStr = isFinished
+    ? `${isSuccess ? "Completed" : "Failed"} after ${stepCount} step${stepCount !== 1 ? "s" : ""}${durationMs != null ? ` in ${formatDuration(durationMs)}` : ""}`
+    : isQueued
+      ? "Queued — waiting for executor"
+      : `In progress — ${stepCount} step${stepCount !== 1 ? "s" : ""} so far`;
+  if (statusStr) subtitleParts.push(statusStr);
 
   return (
     <div className="sc-section">
       <PageHeader
         title={`Job #${jobId}`}
-        subtitle={
-          isFinished
-            ? `${isSuccess ? "Completed" : "Failed"} after ${stepCount} step${stepCount !== 1 ? "s" : ""}${durationMs != null ? ` in ${formatDuration(durationMs)}` : ""}`
-            : isQueued
-              ? "Queued — waiting for executor"
-              : `In progress — ${stepCount} step${stepCount !== 1 ? "s" : ""} so far`
-        }
+        subtitle={subtitleParts.join(" · ")}
       />
 
       <div style={{ marginBottom: "1rem" }}>
@@ -800,6 +929,7 @@ export function AgentJobDetailPanel({
             {started && <span>Started: {formatTime(started.createdAt)}</span>}
             {terminal && <span>Ended: {formatTime(terminal.createdAt)}</span>}
           </div>
+          <ContextLine context={context} executor={null} />
           {started?.toolNames && (
             <div
               style={{

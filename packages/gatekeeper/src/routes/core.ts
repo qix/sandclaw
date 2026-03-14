@@ -124,10 +124,20 @@ export function registerCoreRoutes(
 
     // Fire "queued" agent status event
     if (agentStatusHooks) {
+      let parsedContext: Record<string, unknown> | undefined;
+      if (job.context) {
+        try {
+          parsedContext = JSON.parse(job.context);
+        } catch {}
+      }
       const queuedEvent: AgentStatusEvent = {
         jobId: job.id,
         event: "queued",
-        data: { jobType: body.jobType, executor: body.executor },
+        data: {
+          jobType: body.jobType,
+          executor: body.executor,
+          ...(parsedContext ? { context: parsedContext } : {}),
+        },
         createdAt: now,
       };
       for (const hook of agentStatusHooks) {
@@ -400,7 +410,11 @@ export function registerCoreRoutes(
       const queuedEvent: AgentStatusEvent = {
         jobId,
         event: "queued",
-        data: { jobType: "confidante:result", executor: "muteworker" },
+        data: {
+          jobType: "confidante:result",
+          executor: "muteworker",
+          ...(Object.keys(sqCtx).length > 0 ? { context: sqCtx } : {}),
+        },
         createdAt: now,
       };
       for (const hook of agentStatusHooks) {
