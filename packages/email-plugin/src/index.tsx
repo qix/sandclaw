@@ -93,7 +93,7 @@ export function createEmailPlugin(config: EmailPluginConfig) {
               request.data.subject,
               request.data.text,
             );
-            const now = Date.now();
+            const now = new Date().toISOString();
             await db("conversation_message").insert({
               conversation_id: 0,
               plugin: "email",
@@ -101,7 +101,7 @@ export function createEmailPlugin(config: EmailPluginConfig) {
               message_id: result.messageId,
               from: config.userEmail,
               to: request.data.to,
-              timestamp: Math.floor(now / 1000),
+              timestamp: now,
               direction: "sent",
               text: request.data.text,
               created_at: now,

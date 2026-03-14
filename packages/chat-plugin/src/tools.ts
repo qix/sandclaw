@@ -5,7 +5,7 @@ export interface IncomingChatPayload {
   history?: Array<{
     role: "user" | "assistant";
     text: string;
-    timestamp: number;
+    timestamp: string;
   }>;
 }
 
@@ -16,7 +16,7 @@ export function buildChatPrompt(payload: IncomingChatPayload): string {
         "--- Conversation History ---",
         ...payload.history.map(
           (h) =>
-            `[${new Date(h.timestamp * 1000).toISOString()}] ${h.role === "assistant" ? "Assistant" : "User"}: ${h.text}`,
+            `[${h.timestamp}] ${h.role === "assistant" ? "Assistant" : "User"}: ${h.text}`,
         ),
         "----------------------------",
       ]

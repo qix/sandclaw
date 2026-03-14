@@ -5,8 +5,8 @@ export async function migrations(knex: any): Promise<void> {
       t.text("status").notNullable().defaultTo("disconnected");
       t.text("bot_username");
       t.text("bot_token");
-      t.integer("last_heartbeat");
-      t.integer("updated_at");
+      t.text("last_heartbeat");
+      t.text("updated_at");
     });
   }
 }

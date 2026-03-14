@@ -5,8 +5,8 @@ export async function migrations(knex: any): Promise<void> {
       t.text("status").notNullable().defaultTo("disconnected");
       t.text("qr_data_url");
       t.text("phone_number");
-      t.integer("last_heartbeat");
-      t.integer("updated_at");
+      t.text("last_heartbeat");
+      t.text("updated_at");
     });
   }
 

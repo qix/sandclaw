@@ -15,7 +15,7 @@ export async function getOrCreateConversationId(
     plugin: "telegram",
     channel: "telegram",
     external_id: chatId,
-    created_at: Date.now(),
+    created_at: new Date().toISOString(),
   });
   return id;
 }
@@ -65,10 +65,10 @@ export async function deliverMessage(db: any, chatId: string, text: string) {
     thread_id: chatId,
     from: tgState.botUsername,
     to: chatId,
-    timestamp: Math.floor(Date.now() / 1000),
+    timestamp: new Date().toISOString(),
     direction: "outbound",
     text,
-    created_at: Date.now(),
+    created_at: new Date().toISOString(),
   });
 
   loadRecentConversations(db).catch((err) =>
@@ -92,8 +92,8 @@ export async function connectTelegram(db: any, token: string) {
     status: "connected",
     bot_username: tgState.botUsername,
     bot_token: token,
-    last_heartbeat: Date.now(),
-    updated_at: Date.now(),
+    last_heartbeat: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   });
 
   console.log(`[telegram] Connected as @${tgState.botUsername}`);
@@ -106,7 +106,7 @@ export async function connectTelegram(db: any, token: string) {
     const chatId = String(msg.chat.id);
     const text = msg.text;
     const messageId = String(msg.message_id);
-    const timestamp = msg.date;
+    const timestamp = new Date(msg.date * 1000).toISOString();
     const firstName = msg.from?.first_name ?? null;
     const lastName = msg.from?.last_name ?? null;
     const username = msg.from?.username ?? null;
@@ -129,7 +129,7 @@ export async function connectTelegram(db: any, token: string) {
       timestamp,
       direction: "inbound",
       text,
-      created_at: Date.now(),
+      created_at: new Date().toISOString(),
     });
 
     // Fetch recent history for context
@@ -165,7 +165,7 @@ export async function connectTelegram(db: any, token: string) {
       history,
     };
 
-    const now = Date.now();
+    const now = new Date().toISOString();
     await db("job_queue").insert({
       executor: "muteworker",
       job_type: "telegram:incoming_message",

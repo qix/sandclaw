@@ -45,10 +45,8 @@ export async function startEmailPolling(
 
       for (const email of emails) {
         await db.transaction(async (trx: any) => {
-          const now = Date.now();
-          const receivedAt = Math.floor(
-            new Date(email.receivedAt).getTime() / 1000,
-          );
+          const now = new Date().toISOString();
+          const receivedAt = new Date(email.receivedAt).toISOString();
 
           // Record in email_received to prevent future duplicates
           const [emailReceivedId] = await trx("email_received").insert({
@@ -163,7 +161,7 @@ export async function startCalendarInvitePolling(
         if (existing) continue;
 
         await db.transaction(async (trx: any) => {
-          const now = Date.now();
+          const now = new Date().toISOString();
 
           const organizer = invite.organizer
             ? invite.organizer.name

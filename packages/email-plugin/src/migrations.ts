@@ -7,8 +7,8 @@ export async function migrations(knex: any): Promise<void> {
       t.text("to").notNullable();
       t.text("subject");
       t.text("thread_id");
-      t.integer("received_at");
-      t.integer("created_at");
+      t.text("received_at");
+      t.text("created_at");
       t.integer("job_id");
       t.text("job_context");
     });
@@ -30,8 +30,8 @@ export async function migrations(knex: any): Promise<void> {
       t.text("organizer_email");
       t.text("start_time");
       t.text("participation_status");
-      t.integer("first_seen_at");
-      t.integer("notified_at");
+      t.text("first_seen_at");
+      t.text("notified_at");
       t.integer("job_id");
     });
   }

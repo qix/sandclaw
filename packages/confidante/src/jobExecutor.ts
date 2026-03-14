@@ -28,7 +28,7 @@ export interface ConfidanteJobArgs {
     jobId: number;
     event: string;
     data?: Record<string, unknown>;
-    createdAt?: number;
+    createdAt?: string;
   }) => void;
 }
 
@@ -76,7 +76,7 @@ export async function executeConfidanteJob(
       jobType: job.jobType,
       ...(jobDataPreview ? { jobData: jobDataPreview } : {}),
     },
-    createdAt: startTime,
+    createdAt: new Date(startTime).toISOString(),
   });
 
   try {
@@ -119,7 +119,7 @@ export async function executeConfidanteJob(
       jobId: job.id,
       event: "completed",
       data: { durationMs, jobType: job.jobType },
-      createdAt: Date.now(),
+      createdAt: new Date().toISOString(),
     });
 
     return {
@@ -145,7 +145,7 @@ export async function executeConfidanteJob(
       jobId: job.id,
       event: "failed",
       data: { durationMs, kind, error: message },
-      createdAt: Date.now(),
+      createdAt: new Date().toISOString(),
     });
 
     return {

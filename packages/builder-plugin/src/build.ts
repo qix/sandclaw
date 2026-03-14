@@ -49,7 +49,7 @@ export async function executeBuild(
       jobId: ctx.job.id,
       event: "step",
       data: { step: stepName, ...data },
-      createdAt: Date.now(),
+      createdAt: new Date().toISOString(),
     });
   }
 

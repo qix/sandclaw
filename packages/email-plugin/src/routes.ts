@@ -59,7 +59,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
     if (!body.subject) return c.json({ error: "subject is required" }, 400);
     if (!body.text) return c.json({ error: "text is required" }, 400);
 
-    const now = Date.now();
+    const now = new Date().toISOString();
     const verificationData = {
       to: body.to,
       subject: body.subject,
@@ -100,7 +100,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       return c.json({ error: "messageId and from are required" }, 400);
     }
 
-    const now = Date.now();
+    const now = new Date().toISOString();
 
     // Store incoming message
     await db("conversation_message").insert({
@@ -111,7 +111,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       thread_id: body.threadId ?? null,
       from: body.from,
       to: body.to ?? config.userEmail,
-      timestamp: Math.floor(now / 1000),
+      timestamp: now,
       direction: "received",
       text: body.text ?? "",
       created_at: now,
@@ -366,7 +366,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       // Continue with unknown details
     }
 
-    const now = Date.now();
+    const now = new Date().toISOString();
     const verificationData = {
       eventId: body.eventId,
       response: body.response,
@@ -415,7 +415,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
 
       await db("verification_requests")
         .where("id", id)
-        .update({ status: "approved", updated_at: Date.now() });
+        .update({ status: "approved", updated_at: new Date().toISOString() });
 
       return c.json({ success: true });
     } catch (e) {

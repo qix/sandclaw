@@ -72,7 +72,7 @@ export class ConfidanteApiClient {
     systemPrompt?: string;
     toolNames?: string[];
     data?: Record<string, unknown>;
-    createdAt?: number;
+    createdAt?: string;
   }): Promise<void> {
     try {
       await this.request("/api/job/status", {

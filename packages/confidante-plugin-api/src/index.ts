@@ -44,7 +44,7 @@ export type ReportStatusFn = (event: {
   jobId: number;
   event: string;
   data?: Record<string, unknown>;
-  createdAt?: number;
+  createdAt?: string;
 }) => void;
 
 /**

@@ -21,8 +21,8 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
       t.text("action").notNullable();
       t.text("data").notNullable();
       t.text("status").notNullable().defaultTo("pending");
-      t.integer("created_at");
-      t.integer("updated_at");
+      t.text("created_at");
+      t.text("updated_at");
     });
   }
 
@@ -69,8 +69,8 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
       t.text("context");
       t.text("result");
       t.text("status").notNullable().defaultTo("pending");
-      t.integer("created_at");
-      t.integer("updated_at");
+      t.text("created_at");
+      t.text("updated_at");
     });
   }
 
@@ -115,7 +115,7 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
       t.text("plugin").notNullable();
       t.text("channel").notNullable();
       t.text("external_id").notNullable();
-      t.integer("created_at");
+      t.text("created_at");
       t.unique(["plugin", "channel", "external_id"]);
     });
   }
@@ -130,10 +130,10 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
       t.text("thread_id");
       t.text("from");
       t.text("to");
-      t.integer("timestamp").notNullable();
+      t.text("timestamp").notNullable();
       t.text("direction").notNullable();
       t.text("text");
-      t.integer("created_at");
+      t.text("created_at");
     });
   }
 
@@ -144,5 +144,60 @@ export async function runCoreMigrations(db: Knex): Promise<void> {
       t.text("value");
       t.unique(["plugin", "key"]);
     });
+  }
+
+  // Migrate existing integer timestamps to ISO8601 strings (idempotent)
+  await migrateIntegerTimestamps(db);
+}
+
+/** Convert integer epoch timestamps to ISO8601 strings across all core tables. */
+async function migrateIntegerTimestamps(db: Knex): Promise<void> {
+  const msColumns: Array<{ table: string; columns: string[] }> = [
+    {
+      table: "verification_requests",
+      columns: ["created_at", "updated_at"],
+    },
+    { table: "job_queue", columns: ["created_at", "updated_at"] },
+    { table: "conversations", columns: ["created_at"] },
+    { table: "conversation_message", columns: ["created_at"] },
+  ];
+
+  // conversation_message.timestamp was stored as seconds
+  const secColumns: Array<{ table: string; columns: string[] }> = [
+    { table: "conversation_message", columns: ["timestamp"] },
+  ];
+
+  for (const { table, columns } of msColumns) {
+    if (!(await db.schema.hasTable(table))) continue;
+    const rows = await db(table).select(["id", ...columns]);
+    for (const row of rows) {
+      const updates: Record<string, string> = {};
+      for (const col of columns) {
+        const val = row[col];
+        if (val != null && typeof val === "number") {
+          updates[col] = new Date(val).toISOString();
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        await db(table).where("id", row.id).update(updates);
+      }
+    }
+  }
+
+  for (const { table, columns } of secColumns) {
+    if (!(await db.schema.hasTable(table))) continue;
+    const rows = await db(table).select(["id", ...columns]);
+    for (const row of rows) {
+      const updates: Record<string, string> = {};
+      for (const col of columns) {
+        const val = row[col];
+        if (val != null && typeof val === "number") {
+          updates[col] = new Date(val * 1000).toISOString();
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        await db(table).where("id", row.id).update(updates);
+      }
+    }
   }
 }

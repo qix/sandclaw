@@ -124,7 +124,7 @@ export function ChatPanel() {
         ? 'align-self:flex-end;background:${colors.accentTint};border:1px solid ${colors.accentTintBorder};color:inherit;'
         : 'align-self:flex-start;background:${colors.successTint};border:1px solid ${colors.successTintBorder};color:inherit;');
     var label = isInbound ? 'You' : 'Agent';
-    var time = msg.timestamp ? new Date(msg.timestamp * 1000).toLocaleTimeString() : '';
+    var time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : '';
     div.innerHTML = '<div style="font-size:0.75rem;opacity:0.6;margin-bottom:0.25rem;">' + escapeHtml(label) + (time ? ' · ' + escapeHtml(time) : '') + '</div>' + linkify(escapeHtml(msg.text));
     return div;
   }

@@ -226,8 +226,8 @@ function formatDuration(ms: number): string {
   return `${s}s`;
 }
 
-function formatTime(epochMs: number): string {
-  return new Date(epochMs).toLocaleTimeString();
+function formatTime(ts: string | number): string {
+  return new Date(ts).toLocaleTimeString();
 }
 
 export function AgentStatusPanel({ events }: AgentStatusPanelProps) {

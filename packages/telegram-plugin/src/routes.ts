@@ -101,7 +101,7 @@ export function registerRoutes(
     }
 
     const autoApprove = operatorChatIds.has(chatId);
-    const now = Date.now();
+    const now = new Date().toISOString();
     const [id] = await db("verification_requests").insert({
       plugin: "telegram",
       action: "send_message",

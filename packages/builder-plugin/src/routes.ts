@@ -25,7 +25,7 @@ export function registerRoutes(
     const requestId = randomUUID();
     const responseJobType =
       body.responseJobType || DEFAULT_BUILDER_RESULT_JOB_TYPE;
-    const now = Date.now();
+    const now = new Date().toISOString();
 
     const verificationData = {
       requestId,
@@ -35,7 +35,7 @@ export function registerRoutes(
       repo: pluginConfig.repo,
       branch: pluginConfig.branch ?? "main",
       image: pluginConfig.image ?? "builder-plugin",
-      createdAt: new Date(now).toISOString(),
+      createdAt: now,
     };
 
     const [id] = await db("verification_requests").insert({
@@ -69,7 +69,7 @@ export function registerRoutes(
     if (!body.result) return c.json({ error: "result is required" }, 400);
 
     const jobType = body.responseJobType || DEFAULT_BUILDER_RESULT_JOB_TYPE;
-    const now = Date.now();
+    const now = new Date().toISOString();
 
     const [jobId] = await db("job_queue").insert({
       executor: "muteworker",

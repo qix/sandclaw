@@ -162,7 +162,7 @@ export async function startGatekeeper(
     jobType: string,
     data: any,
   ): Promise<{ jobId: number }> {
-    const now = Date.now();
+    const now = new Date().toISOString();
     const [jobId] = await db("job_queue").insert({
       executor,
       job_type: jobType,
@@ -223,7 +223,7 @@ export async function startGatekeeper(
 
       async requestVerification(options) {
         const { action, data, jobContext, autoApprove } = options;
-        const now = Date.now();
+        const now = new Date().toISOString();
         const [id] = await db("verification_requests").insert({
           plugin: pluginId,
           action,
@@ -239,9 +239,10 @@ export async function startGatekeeper(
           if (callback) {
             await callback({ id, action, data, jobContext }, { queueJob });
           }
-          await db("verification_requests")
-            .where("id", id)
-            .update({ status: "approved", updated_at: Date.now() });
+          await db("verification_requests").where("id", id).update({
+            status: "approved",
+            updated_at: new Date().toISOString(),
+          });
           notifyVerificationChange();
           return { id, status: "approved" as const };
         }

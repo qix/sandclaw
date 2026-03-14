@@ -18,8 +18,8 @@ export interface VerificationRequest {
   data: string;
   status: string;
   jobContext?: { worker: "muteworker" | "confidante"; jobId: number };
-  createdAt: number;
-  updatedAt?: number;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface VerificationHistoryPage {

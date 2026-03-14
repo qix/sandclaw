@@ -42,7 +42,7 @@ export function registerVerificationFormRoutes(
     // If the callback exits without error, mark as approved
     await db("verification_requests")
       .where("id", id)
-      .update({ status: "approved", updated_at: Date.now() });
+      .update({ status: "approved", updated_at: new Date().toISOString() });
 
     onVerificationChange?.();
     return c.redirect("/?page=verifications");
@@ -56,7 +56,7 @@ export function registerVerificationFormRoutes(
     await db("verification_requests")
       .where("id", id)
       .where("status", "pending")
-      .update({ status: "rejected", updated_at: Date.now() });
+      .update({ status: "rejected", updated_at: new Date().toISOString() });
 
     onVerificationChange?.();
     return c.redirect("/?page=verifications");
@@ -89,7 +89,7 @@ export function registerVerificationFormRoutes(
     }
 
     // Re-add the originating event as a new pending job
-    const now = Date.now();
+    const now = new Date().toISOString();
     await db("job_queue").insert({
       executor: originJob.executor,
       job_type: originJob.job_type,

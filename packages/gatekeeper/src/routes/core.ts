@@ -24,7 +24,7 @@ export function registerCoreRoutes(
     const pollMs = 500;
 
     while (Date.now() < deadline) {
-      const now = Date.now();
+      const now = new Date().toISOString();
       const job = await db("job_queue")
         .where("executor", executor)
         .where("status", "pending")
@@ -87,7 +87,7 @@ export function registerCoreRoutes(
       .update({
         status: "complete",
         result: body.result ?? null,
-        updated_at: Date.now(),
+        updated_at: new Date().toISOString(),
       });
 
     if (updated === 0) return c.json({ error: "Job not found" }, 404);
@@ -107,7 +107,7 @@ export function registerCoreRoutes(
     if (body.data === undefined)
       return c.json({ error: "data is required" }, 400);
 
-    const now = Date.now();
+    const now = new Date().toISOString();
     const [id] = await db("job_queue").insert({
       executor: body.executor,
       job_type: body.jobType,
@@ -155,7 +155,7 @@ export function registerCoreRoutes(
       systemPrompt?: string;
       toolNames?: string[];
       data?: Record<string, unknown>;
-      createdAt?: number;
+      createdAt?: string;
     }>();
 
     if (!body.jobId || !body.event) {
@@ -177,7 +177,7 @@ export function registerCoreRoutes(
       systemPrompt: body.systemPrompt,
       toolNames: body.toolNames,
       data: body.data,
-      createdAt: body.createdAt ?? Date.now(),
+      createdAt: body.createdAt ?? new Date().toISOString(),
     };
 
     if (agentStatusHooks) {
@@ -210,7 +210,7 @@ export function registerCoreRoutes(
 
     await db("verification_requests")
       .where("id", id)
-      .update({ status: "rejected", updated_at: Date.now() });
+      .update({ status: "rejected", updated_at: new Date().toISOString() });
 
     onVerificationChange?.();
     return c.json({ success: true });
@@ -354,7 +354,7 @@ export function registerCoreRoutes(
         promptParts.push("--- Conversation History ---");
         for (const m of messages as any[]) {
           const role = m.direction === "inbound" ? "User" : "Assistant";
-          const ts = new Date(m.timestamp * 1000).toISOString();
+          const ts = m.timestamp;
           promptParts.push(`[${ts}] ${role}: ${m.text}`);
         }
         promptParts.push("--- End History ---", "");
@@ -382,7 +382,7 @@ export function registerCoreRoutes(
     const prompt = promptParts.join("\n");
     const context =
       Object.keys(sqCtx).length > 0 ? JSON.stringify(sqCtx) : null;
-    const now = Date.now();
+    const now = new Date().toISOString();
 
     const [jobId] = await db("job_queue").insert({
       executor: "muteworker",

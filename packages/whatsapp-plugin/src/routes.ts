@@ -22,10 +22,10 @@ export async function deliverMessage(db: any, jid: string, text: string) {
     thread_id: jid,
     from: waState.phoneNumber,
     to: jid,
-    timestamp: Math.floor(Date.now() / 1000),
+    timestamp: new Date().toISOString(),
     direction: "outbound",
     text,
-    created_at: Date.now(),
+    created_at: new Date().toISOString(),
   });
 
   loadRecentConversations(db).catch((err) =>

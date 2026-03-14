@@ -38,7 +38,7 @@ export interface AgentStatusEvent {
   systemPrompt?: string;
   toolNames?: string[];
   data?: Record<string, unknown>;
-  createdAt: number;
+  createdAt: string;
 }
 
 /** Hooks that plugins can register to react to gatekeeper lifecycle events. */

@@ -24,7 +24,7 @@ async function getOrCreateConversationId(db: DbHandle): Promise<number> {
     plugin: "chat",
     channel: "chat",
     external_id: "operator",
-    created_at: Date.now(),
+    created_at: new Date().toISOString(),
   });
   conversationId = id;
   return conversationId!;
@@ -72,7 +72,7 @@ export async function storeMessage(
   text: string,
 ) {
   const convId = await getOrCreateConversationId(db);
-  const now = Math.floor(Date.now() / 1000);
+  const now = new Date().toISOString();
   const [id] = await db("conversation_message").insert({
     conversation_id: convId,
     plugin: "chat",
@@ -84,7 +84,7 @@ export async function storeMessage(
     timestamp: now,
     direction,
     text,
-    created_at: Date.now(),
+    created_at: now,
   });
   return { id, from, text, direction, timestamp: now };
 }
@@ -96,14 +96,15 @@ async function enqueueJob(
   history: any[],
   convId: number,
 ) {
+  const jobNow = new Date().toISOString();
   await db("job_queue").insert({
     executor: "muteworker",
     job_type: "chat:incoming_message",
     data: JSON.stringify({ text, history }),
     context: JSON.stringify({ channel: "chat", conversationId: convId }),
     status: "pending",
-    created_at: Date.now(),
-    updated_at: Date.now(),
+    created_at: jobNow,
+    updated_at: jobNow,
   });
 }
 

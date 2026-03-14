@@ -13,6 +13,6 @@ export async function runAgentStatusMigrations(knex: Knex): Promise<void> {
     t.text("system_prompt").nullable();
     t.text("tool_names").nullable(); // JSON array
     t.text("data").nullable(); // JSON
-    t.integer("created_at").notNullable().index();
+    t.text("created_at").notNullable().index();
   });
 }

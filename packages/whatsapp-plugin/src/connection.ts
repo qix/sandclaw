@@ -29,7 +29,7 @@ export async function getOrCreateConversationId(
     plugin: "whatsapp",
     channel: "whatsapp",
     external_id: jid,
-    created_at: Date.now(),
+    created_at: new Date().toISOString(),
   });
   return id;
 }
@@ -96,7 +96,7 @@ export async function connectWhatsApp(
       await upsertSession(db, {
         status: "qr_pending",
         qr_data_url: waState.qrDataUrl,
-        updated_at: Date.now(),
+        updated_at: new Date().toISOString(),
       });
     }
 
@@ -136,8 +136,8 @@ export async function connectWhatsApp(
         status: "connected",
         qr_data_url: null,
         phone_number: waState.phoneNumber,
-        last_heartbeat: Date.now(),
-        updated_at: Date.now(),
+        last_heartbeat: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
 
       console.log(`[whatsapp] Connected as ${waState.phoneNumber}`);
@@ -164,10 +164,11 @@ export async function connectWhatsApp(
       if (!text) continue;
 
       const pushName = msg.pushName ?? null;
-      const timestamp =
+      const rawTimestamp =
         typeof msg.messageTimestamp === "number"
           ? msg.messageTimestamp
           : Number(msg.messageTimestamp) || Math.floor(Date.now() / 1000);
+      const timestamp = new Date(rawTimestamp * 1000).toISOString();
       const messageId = msg.key.id || `${Date.now()}`;
       const isGroup = jid.endsWith("@g.us");
       const conversationId = await getOrCreateConversationId(db, jid);
@@ -184,7 +185,7 @@ export async function connectWhatsApp(
         timestamp,
         direction: "inbound",
         text,
-        created_at: Date.now(),
+        created_at: new Date().toISOString(),
       });
 
       const watchEnabled = await isWatchInboxEnabled(db);
@@ -222,7 +223,7 @@ export async function connectWhatsApp(
           history,
         };
 
-        const now = Date.now();
+        const now = new Date().toISOString();
         await db("job_queue").insert({
           executor: "muteworker",
           job_type: "whatsapp:incoming_message",

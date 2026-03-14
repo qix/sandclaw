@@ -41,7 +41,7 @@ export interface JobArgs {
     systemPrompt?: string;
     toolNames?: string[];
     data?: Record<string, unknown>;
-    createdAt?: number;
+    createdAt?: string;
   }) => void;
 }
 
@@ -60,7 +60,7 @@ export async function executeMuteworkerJob(
       jobId: job.id,
       event: ev,
       ...data,
-      createdAt: Date.now(),
+      createdAt: new Date().toISOString(),
     });
   };
 
