@@ -1,8 +1,16 @@
 import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
+import { quote } from "shell-quote";
 import { GITHUB_PLUGIN_ID, GITHUB_PR_CREATED_ACTION } from "./constants";
 
 const execFile = promisify(execFileCb);
+
+const BOLD = "\x1b[1m";
+const RESET = "\x1b[0m";
+
+function logCmd(cmd: string, args: string[]) {
+  process.stderr.write(`${BOLD}$ ${quote([cmd, ...args])}${RESET}\n`);
+}
 
 export interface GithubRouteOptions {
   /** If set, `git pull` will be run in this directory after a PR is merged on the matching repo. */
@@ -52,6 +60,7 @@ export function registerRoutes(
     let prNumber: number;
 
     try {
+      logCmd("gh", args);
       const { stdout } = await execFile("gh", args);
       // gh pr create outputs the PR URL on stdout
       prUrl = stdout.trim();
@@ -68,13 +77,9 @@ export function registerRoutes(
     // Fetch the full PR diff
     let diff = "";
     try {
-      const { stdout } = await execFile("gh", [
-        "pr",
-        "diff",
-        String(prNumber),
-        "--repo",
-        repo,
-      ]);
+      const diffArgs = ["pr", "diff", String(prNumber), "--repo", repo];
+      logCmd("gh", diffArgs);
+      const { stdout } = await execFile("gh", diffArgs);
       diff = stdout;
     } catch (err) {
       console.error("[github] Failed to fetch PR diff:", err);
