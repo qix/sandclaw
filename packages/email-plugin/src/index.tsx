@@ -11,12 +11,8 @@ import {
   EmailVerificationRenderer,
   CalendarResponseVerificationRenderer,
 } from "./components";
-import {
-  registerRoutes,
-  registerEmailQueueRoutes,
-  startEmailPolling,
-  startCalendarInvitePolling,
-} from "./routes";
+import { registerRoutes, registerEmailQueueRoutes } from "./routes";
+import { startEmailPolling, startCalendarInvitePolling } from "./watch";
 import {
   createSendEmailTool,
   createListInboxTool,

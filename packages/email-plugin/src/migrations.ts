@@ -14,6 +14,14 @@ export async function migrations(knex: any): Promise<void> {
     });
   }
 
+  // Backfill columns added after initial release
+  if (!(await knex.schema.hasColumn("email_received", "job_id"))) {
+    await knex.schema.alterTable("email_received", (t: any) => {
+      t.integer("job_id");
+      t.text("job_context");
+    });
+  }
+
   if (!(await knex.schema.hasTable("calendar_invite_seen"))) {
     await knex.schema.createTable("calendar_invite_seen", (t: any) => {
       t.increments("id");
