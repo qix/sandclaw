@@ -5,17 +5,21 @@ import {
   CardBody,
   PageHeader,
   StatusDot,
+  Button,
   colors,
 } from "@sandclaw/ui";
 import type { AgentStatusEvent } from "@sandclaw/gatekeeper-plugin-api";
+import type { JobQueueRow } from "./state";
 
 interface AgentStatusPanelProps {
   events: AgentStatusEvent[];
+  jobQueueMap: Map<number, JobQueueRow>;
 }
 
 interface AgentJobDetailPanelProps {
   jobId: number;
   events: AgentStatusEvent[];
+  jobQueueRow?: JobQueueRow;
 }
 
 /** Group events by jobId, returning jobs with their events. */
@@ -289,7 +293,10 @@ function ContextLine({
   );
 }
 
-export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
+export function AgentStatusPanel({
+  events,
+  jobQueueMap,
+}: AgentStatusPanelProps) {
   const jobs = groupByJob(events);
 
   const activeJobs = jobs.filter((j) => {
@@ -350,12 +357,16 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                   (e) => e.event === "step",
                 ).length;
                 const isQueued = !started && !!queued;
+                const queueRow = jobQueueMap.get(j.jobId);
                 const jobType =
+                  queueRow?.job_type ??
                   (started?.data?.jobType as string | undefined) ??
                   (queued?.data?.jobType as string | undefined);
                 const executor =
+                  queueRow?.executor ??
                   (queued?.data?.executor as string | undefined) ??
                   (started?.data?.executor as string | undefined);
+                const queueStatus = queueRow?.status;
                 const context =
                   (queued?.data?.context as
                     | Record<string, unknown>
@@ -364,66 +375,90 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                   ? JSON.stringify(started.data)
                   : undefined;
                 const firstEvent = queued ?? started;
+                const canCancel = queueStatus === "in_progress";
                 return (
-                  <a
+                  <div
                     key={j.jobId}
-                    href={`?page=agent-status&job=${j.jobId}`}
                     className="agent-status-job"
                     data-job-id={j.jobId}
                     style={{
-                      display: "block",
                       padding: "0.75rem",
                       background: colors.surface,
                       borderRadius: "0.5rem",
                       border: `1px solid ${colors.border}`,
                       marginBottom: "0.5rem",
-                      textDecoration: "none",
-                      color: "inherit",
                     }}
                   >
-                    <div
+                    <a
+                      href={`?page=agent-status&job=${j.jobId}`}
                       style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: "0.25rem",
+                        display: "block",
+                        textDecoration: "none",
+                        color: "inherit",
                       }}
                     >
-                      <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>
-                        Job #{j.jobId}
-                        {jobType && (
-                          <span
-                            style={{
-                              marginLeft: "0.5rem",
-                              fontSize: "0.75rem",
-                              color: colors.accent,
-                              fontWeight: 500,
-                            }}
-                          >
-                            {jobType}
-                          </span>
-                        )}
-                      </span>
-                      <span
-                        style={{ fontSize: "0.75rem", color: colors.muted }}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "0.25rem",
+                        }}
                       >
-                        {firstEvent ? formatTime(firstEvent.createdAt) : ""}
-                      </span>
-                    </div>
-                    <ContextLine context={context} executor={executor} />
-                    {jobData && <CollapsibleJson data={jobData} />}
-                    <div
-                      style={{
-                        fontSize: "0.8rem",
-                        color: isQueued ? colors.muted : colors.accent,
-                        marginTop: "0.5rem",
-                      }}
-                      data-step-count
-                    >
-                      {isQueued
-                        ? "Queued\u2026"
-                        : `${stepCount} step${stepCount !== 1 ? "s" : ""} so far\u2026`}
-                    </div>
-                  </a>
+                        <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>
+                          Job #{j.jobId}
+                          {jobType && (
+                            <span
+                              style={{
+                                marginLeft: "0.5rem",
+                                fontSize: "0.75rem",
+                                color: colors.accent,
+                                fontWeight: 500,
+                              }}
+                            >
+                              {jobType}
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          style={{ fontSize: "0.75rem", color: colors.muted }}
+                        >
+                          {firstEvent ? formatTime(firstEvent.createdAt) : ""}
+                        </span>
+                      </div>
+                      <ContextLine context={context} executor={executor} />
+                      {queueStatus && (
+                        <div
+                          style={{
+                            fontSize: "0.7rem",
+                            color: colors.muted,
+                            marginTop: "0.25rem",
+                          }}
+                        >
+                          Queue status: <strong>{queueStatus}</strong>
+                        </div>
+                      )}
+                      {jobData && <CollapsibleJson data={jobData} />}
+                      <div
+                        style={{
+                          fontSize: "0.8rem",
+                          color: isQueued ? colors.muted : colors.accent,
+                          marginTop: "0.5rem",
+                        }}
+                        data-step-count
+                      >
+                        {isQueued
+                          ? "Queued\u2026"
+                          : `${stepCount} step${stepCount !== 1 ? "s" : ""} so far\u2026`}
+                      </div>
+                    </a>
+                    {canCancel && (
+                      <div style={{ marginTop: "0.5rem" }}>
+                        <Button variant="danger" data-cancel-job={j.jobId}>
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 );
               })
             )}
@@ -474,12 +509,16 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                     | number
                     | undefined;
                   const isSuccess = terminal.event === "completed";
+                  const queueRow = jobQueueMap.get(j.jobId);
                   const jobType =
+                    queueRow?.job_type ??
                     (started?.data?.jobType as string | undefined) ??
                     (queued?.data?.jobType as string | undefined);
                   const executor =
+                    queueRow?.executor ??
                     (queued?.data?.executor as string | undefined) ??
                     (started?.data?.executor as string | undefined);
+                  const queueStatus = queueRow?.status;
                   const context =
                     (queued?.data?.context as
                       | Record<string, unknown>
@@ -535,6 +574,17 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
                         </span>
                       </div>
                       <ContextLine context={context} executor={executor} />
+                      {queueStatus && (
+                        <div
+                          style={{
+                            fontSize: "0.7rem",
+                            color: colors.muted,
+                            marginTop: "0.25rem",
+                          }}
+                        >
+                          Queue status: <strong>{queueStatus}</strong>
+                        </div>
+                      )}
                       {jobData && <CollapsibleJson data={jobData} />}
                       <div
                         style={{
@@ -820,6 +870,45 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
       finishedCount++;
       if (historyCountEl) historyCountEl.textContent = '(' + finishedCount + ')';
     }
+
+    // Handle job-cancelled WS event
+    if (data.type === 'agent-status:job-cancelled' && data.jobId) {
+      var job = activeJobs[data.jobId];
+      if (job && job.el) {
+        var cancelBtn = job.el.querySelector('[data-cancel-job]');
+        if (cancelBtn) {
+          cancelBtn.disabled = true;
+          cancelBtn.textContent = 'Cancelled';
+        }
+      }
+    }
+  });
+
+  // Delegate click handler for cancel buttons
+  activeEl.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-cancel-job]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var jobId = btn.getAttribute('data-cancel-job');
+    if (!jobId) return;
+    btn.disabled = true;
+    btn.textContent = 'Cancelling\\u2026';
+    fetch('/api/agent-status/cancel/' + jobId, { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.ok) {
+          btn.textContent = 'Cancelled';
+        } else {
+          btn.textContent = 'Cancel';
+          btn.disabled = false;
+          alert(data.error || 'Failed to cancel');
+        }
+      })
+      .catch(function() {
+        btn.textContent = 'Cancel';
+        btn.disabled = false;
+      });
   });
 })();
 `,
@@ -832,6 +921,7 @@ export function AgentStatusPanel({ events }: AgentStatusPanelProps) {
 export function AgentJobDetailPanel({
   jobId,
   events,
+  jobQueueRow,
 }: AgentJobDetailPanelProps) {
   const queued = events.find((e) => e.event === "queued");
   const started = events.find((e) => e.event === "started");
@@ -844,13 +934,17 @@ export function AgentJobDetailPanel({
   const isSuccess = terminal?.event === "completed";
   const durationMs = terminal?.data?.durationMs as number | undefined;
   const jobType =
+    jobQueueRow?.job_type ??
     (started?.data?.jobType as string | undefined) ??
     (queued?.data?.jobType as string | undefined);
   const executor =
+    jobQueueRow?.executor ??
     (queued?.data?.executor as string | undefined) ??
     (started?.data?.executor as string | undefined);
+  const queueStatus = jobQueueRow?.status;
   const context =
     (queued?.data?.context as Record<string, unknown> | undefined) ?? null;
+  const canCancel = queueStatus === "in_progress";
 
   const subtitleParts: string[] = [];
   if (executor) subtitleParts.push(executor);
@@ -941,6 +1035,17 @@ export function AgentJobDetailPanel({
               Tools: {started.toolNames.join(", ")}
             </div>
           )}
+          {queueStatus && (
+            <div
+              style={{
+                fontSize: "0.8rem",
+                color: colors.muted,
+                marginTop: "0.5rem",
+              }}
+            >
+              Queue status: <strong>{queueStatus}</strong>
+            </div>
+          )}
           {!isSuccess && terminal?.data?.error != null && (
             <div
               style={{
@@ -950,6 +1055,13 @@ export function AgentJobDetailPanel({
               }}
             >
               Error: {String(terminal.data.error as string)}
+            </div>
+          )}
+          {canCancel && (
+            <div style={{ marginTop: "0.75rem" }}>
+              <Button variant="danger" data-cancel-job={jobId}>
+                Cancel Job
+              </Button>
             </div>
           )}
         </CardBody>
@@ -1021,6 +1133,40 @@ export function AgentJobDetailPanel({
           </CardBody>
         </Card>
       </div>
+
+      {/* Client-side cancel button handler for detail page */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+(function() {
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-cancel-job]');
+    if (!btn) return;
+    e.preventDefault();
+    var jobId = btn.getAttribute('data-cancel-job');
+    if (!jobId) return;
+    btn.disabled = true;
+    btn.textContent = 'Cancelling\\u2026';
+    fetch('/api/agent-status/cancel/' + jobId, { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.ok) {
+          btn.textContent = 'Cancelled';
+        } else {
+          btn.textContent = 'Cancel Job';
+          btn.disabled = false;
+          alert(data.error || 'Failed to cancel');
+        }
+      })
+      .catch(function() {
+        btn.textContent = 'Cancel Job';
+        btn.disabled = false;
+      });
+  });
+})();
+`,
+        }}
+      />
     </div>
   );
 }

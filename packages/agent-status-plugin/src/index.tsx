@@ -8,7 +8,12 @@ import { AgentJobDetailPanel } from "./components";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { StatusDot } from "@sandclaw/ui";
 import { runAgentStatusMigrations } from "./migrations";
-import { agentStatusState, pushEvent, loadRecentEvents } from "./state";
+import {
+  agentStatusState,
+  pushEvent,
+  loadRecentEvents,
+  loadJobQueueData,
+} from "./state";
 import { AgentStatusPanel } from "./components";
 
 export { AgentStatusPanel } from "./components";
@@ -57,10 +62,21 @@ function AgentStatusPage() {
     const jobEvents = agentStatusState.recentEvents.filter(
       (e) => e.jobId === jobId,
     );
-    return <AgentJobDetailPanel jobId={jobId} events={jobEvents} />;
+    return (
+      <AgentJobDetailPanel
+        jobId={jobId}
+        events={jobEvents}
+        jobQueueRow={agentStatusState.jobQueueMap.get(jobId)}
+      />
+    );
   }
 
-  return <AgentStatusPanel events={agentStatusState.recentEvents} />;
+  return (
+    <AgentStatusPanel
+      events={agentStatusState.recentEvents}
+      jobQueueMap={agentStatusState.jobQueueMap}
+    />
+  );
 }
 
 export function createAgentStatusPlugin() {
@@ -76,14 +92,52 @@ export function createAgentStatusPlugin() {
           hooks: gatekeeperDeps.hooks,
           components: gatekeeperDeps.components,
           ws: gatekeeperDeps.ws,
+          routes: gatekeeperDeps.routes,
         },
-        async init({ db, hooks, components, ws }) {
+        async init({ db, hooks, components, ws, routes }) {
           // Load recent events from DB into memory
           await loadRecentEvents(db);
 
           // Register tab and page
           components.register("tabs:primary", AgentStatusTab);
           components.register("page:agent-status", AgentStatusPage);
+
+          // Register cancel route
+          routes.registerRoutes((app) => {
+            app.post("/cancel/:id", async (c: any) => {
+              const jobId = parseInt(c.req.param("id"), 10);
+              if (isNaN(jobId)) {
+                return c.json({ error: "Invalid job ID" }, 400);
+              }
+
+              const job = await db("job_queue").where("id", jobId).first();
+              if (!job) {
+                return c.json({ error: "Job not found" }, 404);
+              }
+              if (job.status !== "in_progress") {
+                return c.json(
+                  { error: `Cannot cancel job with status "${job.status}"` },
+                  400,
+                );
+              }
+
+              await db("job_queue").where("id", jobId).update({
+                status: "cancelled",
+                updated_at: new Date().toISOString(),
+              });
+
+              // Refresh in-memory state
+              await loadJobQueueData(db);
+
+              // Broadcast the cancellation to WS clients
+              ws.broadcast({
+                type: "agent-status:job-cancelled",
+                jobId,
+              });
+
+              return c.json({ ok: true });
+            });
+          });
 
           // Register hook to handle incoming agent status events
           hooks.register({
@@ -103,6 +157,11 @@ export function createAgentStatusPlugin() {
 
               // Update in-memory state
               pushEvent(event);
+
+              // Refresh job_queue data for new jobs
+              if (event.event === "queued" || event.event === "started") {
+                await loadJobQueueData(db);
+              }
 
               // Broadcast to all connected WS clients
               ws.broadcast({
