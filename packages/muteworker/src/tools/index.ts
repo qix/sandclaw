@@ -22,6 +22,7 @@ export interface ToolConversionArgs {
   config: MuteworkerConfig;
   logger: Logger;
   job: MuteworkerQueueJob;
+  reportStatus?: (ev: string, data?: Record<string, unknown>) => void;
 }
 
 /**
@@ -164,6 +165,8 @@ function convertToMcpTool(
       tool: name,
       params,
     });
+
+    args.reportStatus?.("tool_called", { tool: name, args: params });
 
     const loopConfig = args.config.loopDetection;
 

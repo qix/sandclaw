@@ -90,7 +90,12 @@ export async function executeMuteworkerJob(
     const toolNames = rawTools
       .map((t: any) => t.name as string)
       .filter(Boolean);
-    const mcpToolDefs = getMcpToolDefs(rawTools, { config, logger, job });
+    const mcpToolDefs = getMcpToolDefs(rawTools, {
+      config,
+      logger,
+      job,
+      reportStatus,
+    });
 
     // Emit "started" event
     reportStatus("started", {
