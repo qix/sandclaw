@@ -1,10 +1,9 @@
-import React from "react";
-import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
+import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
 import type { ConfidanteEnvironment } from "@sandclaw/confidante-plugin-api";
-import { BrowserPanel, BrowserVerificationRenderer } from "./components";
+import { BrowserVerificationRenderer } from "./components";
 import { registerRoutes, type BrowserPluginConfig } from "./routes";
 import { BROWSER_CONFIDANTE_JOB_TYPE } from "./constants";
 import { createRequestBrowseTool } from "./tools";
@@ -38,17 +37,10 @@ export function createBrowserPlugin(options: BrowserPluginOptions = {}) {
       env.registerInit({
         deps: {
           db: gatekeeperDeps.db,
-          components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
           verifications: gatekeeperDeps.verifications,
         },
-        init({ db, components, routes, verifications }) {
-          function BrowserTab() {
-            return <TabLink href="?page=browser" title="Browser" />;
-          }
-          components.register("tabs:primary", BrowserTab);
-          components.register("page:browser", BrowserPanel);
-
+        init({ db, routes, verifications }) {
           routes.registerRoutes((app) => registerRoutes(app, db, config));
 
           verifications.registerVerificationCallback(
