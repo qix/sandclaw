@@ -13,6 +13,11 @@ export interface EmailPluginConfig {
   emailQueueDir?: string;
   /** Path to a markdown file whose content is prepended to every email processing prompt. */
   systemPromptFile?: string;
+  /**
+   * Additional mailbox folders to poll for unseen emails (alongside Inbox).
+   * Matches by folder name or full path (e.g. "Tickets, Once-off" or "Work/Urgent").
+   */
+  watchFolders?: string[];
 }
 
 export interface JmapEmail {
@@ -35,6 +40,8 @@ export interface JmapSession {
   inboxId: string;
   draftsId: string;
   calendarAccountId: string | null;
+  /** Resolved mailbox IDs for watchFolders config (excludes inbox). */
+  watchMailboxIds: string[];
   fetchedAt: number;
 }
 
@@ -86,13 +93,19 @@ export async function discoverSession(
 
   // Fetch mailbox IDs
   const mbRes = await jmapCallRaw(session.apiUrl, config.apiToken, [
-    ["Mailbox/get", { accountId, properties: ["id", "name", "role"] }, "mb"],
+    [
+      "Mailbox/get",
+      { accountId, properties: ["id", "name", "role", "parentId"] },
+      "mb",
+    ],
   ]);
 
   const mailboxes =
     (mbRes.methodResponses?.[0]?.[1]?.list as Array<{
       id: string;
+      name: string;
       role: string | null;
+      parentId: string | null;
     }>) ?? [];
 
   const inbox = mailboxes.find((m) => m.role === "inbox");
@@ -100,12 +113,42 @@ export async function discoverSession(
 
   if (!inbox) throw new Error("JMAP: no inbox mailbox found");
 
+  // Resolve watchFolders to mailbox IDs
+  const watchMailboxIds: string[] = [];
+  if (config.watchFolders?.length) {
+    const mailboxById = new Map(mailboxes.map((m) => [m.id, m]));
+
+    function getMailboxPath(id: string): string {
+      const parts: string[] = [];
+      let cur = mailboxById.get(id);
+      while (cur) {
+        parts.unshift(cur.name);
+        cur = cur.parentId ? mailboxById.get(cur.parentId) : undefined;
+      }
+      return parts.join("/");
+    }
+
+    for (const folderName of config.watchFolders) {
+      const found = mailboxes.find(
+        (m) => m.name === folderName || getMailboxPath(m.id) === folderName,
+      );
+      if (found) {
+        watchMailboxIds.push(found.id);
+      } else {
+        console.warn(
+          `[email] watchFolder "${folderName}" not found in mailboxes`,
+        );
+      }
+    }
+  }
+
   cachedSession = {
     apiUrl: session.apiUrl,
     accountId,
     inboxId: inbox.id,
     draftsId: drafts?.id ?? inbox.id,
     calendarAccountId,
+    watchMailboxIds,
     fetchedAt: Date.now(),
   };
 
@@ -163,18 +206,32 @@ async function jmapCall(
 // Public API
 // ---------------------------------------------------------------------------
 
-/** Query unseen email IDs from INBOX (up to 20). */
+/** Query unseen email IDs from watched mailboxes (up to 20). */
 export async function queryUnseenEmails(
   config: EmailPluginConfig,
 ): Promise<string[]> {
   const session = await discoverSession(config);
+
+  const allMailboxIds = [session.inboxId, ...session.watchMailboxIds];
+
+  // Build filter: single mailbox uses simple filter, multiple uses OR operator
+  const filter =
+    allMailboxIds.length === 1
+      ? { inMailbox: allMailboxIds[0], notKeyword: "$seen" }
+      : {
+          operator: "OR",
+          conditions: allMailboxIds.map((id) => ({
+            inMailbox: id,
+            notKeyword: "$seen",
+          })),
+        };
 
   const result = await jmapCall(config, [
     [
       "Email/query",
       {
         accountId: session.accountId,
-        filter: { inMailbox: session.inboxId, notKeyword: "$seen" },
+        filter,
         sort: [{ property: "receivedAt", isAscending: false }],
         limit: 20,
       },
