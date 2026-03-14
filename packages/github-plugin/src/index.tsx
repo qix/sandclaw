@@ -87,11 +87,7 @@ export function createGithubPlugin(options?: GithubPluginOptions) {
 
                 if (currentBranch === "main") {
                   // Already on main — fast-forward pull
-                  await execFile(
-                    "git",
-                    ["rebase", "origin/main"],
-                    pullCwd,
-                  );
+                  await execFile("git", ["rebase", "origin/main"], pullCwd);
                 } else {
                   // On a different branch — dry-run rebase to check for conflicts
                   try {

@@ -12,7 +12,7 @@ export interface IncomingWhatsappPayload {
   history?: Array<{
     role: "user" | "assistant";
     text: string;
-    timestamp: number;
+    timestamp: string;
   }>;
 }
 
@@ -30,7 +30,7 @@ export function buildWhatsappPrompt(
         "--- Conversation History ---",
         ...payload.history.map(
           (h) =>
-            `[${new Date(h.timestamp * 1000).toISOString()}] ${h.role === "assistant" ? "Assistant" : "User"}: ${h.text}`,
+            `[${h.timestamp}] ${h.role === "assistant" ? "Assistant" : "User"}: ${h.text}`,
         ),
         "----------------------------",
       ]

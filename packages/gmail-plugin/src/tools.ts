@@ -10,7 +10,7 @@ export interface IncomingEmailPayload {
   history?: Array<{
     role: "user" | "assistant";
     text: string;
-    timestamp: number;
+    timestamp: string;
   }>;
 }
 
@@ -20,7 +20,7 @@ export function buildEmailPrompt(payload: IncomingEmailPayload): string {
         "--- Email Conversation History ---",
         ...payload.history.map(
           (h) =>
-            `[${new Date(h.timestamp * 1000).toISOString()}] ${h.role === "assistant" ? "Assistant" : "User"}: ${h.text}`,
+            `[${h.timestamp}] ${h.role === "assistant" ? "Assistant" : "User"}: ${h.text}`,
         ),
         "---------------------------------",
       ]
