@@ -156,7 +156,14 @@ export function ChatPanel() {
   function renderMarkdown(text) {
     if (!markedLib) return linkify(escapeHtml(text));
     try {
-      return markedLib.marked.parse(text, { breaks: true });
+      // Treat single newlines as paragraph breaks by converting them to double newlines.
+      // Preserve existing double+ newlines and don't alter newlines inside code blocks.
+      var parts = text.split(/(\`\`\`[\s\S]*?\`\`\`)/g);
+      var normalized = parts.map(function(part, i) {
+        if (i % 2 === 1) return part; // code block, leave as-is
+        return part.replace(/\n{2,}/g, '\n\n').replace(/(?<!\n)\n(?!\n)/g, '\n\n');
+      }).join('');
+      return markedLib.marked.parse(normalized, { breaks: false });
     } catch (e) {
       console.warn('Markdown parse failed, falling back to plain text:', e);
       return linkify(escapeHtml(text));
