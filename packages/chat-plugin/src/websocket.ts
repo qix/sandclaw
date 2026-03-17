@@ -46,6 +46,24 @@ async function getRecentHistory(db: DbHandle, limit = 50) {
   }));
 }
 
+async function getHistoryBefore(db: DbHandle, beforeId: number, limit = 30) {
+  const convId = await getOrCreateConversationId(db);
+  const rows = await db("conversation_message")
+    .where({ conversation_id: convId })
+    .where("id", "<", beforeId)
+    .orderBy("id", "desc")
+    .limit(limit);
+  return rows.reverse().map((r: any) => ({
+    id: r.id,
+    from: r.from,
+    text: r.text,
+    direction: r.direction,
+    timestamp: r.timestamp,
+  }));
+}
+
+export { getHistoryBefore };
+
 /** Compute current unread message count. */
 export async function getUnreadCount(db: DbHandle): Promise<number> {
   const kvRow = await db("plugin_kv")
@@ -117,7 +135,7 @@ async function enqueueJob(
 
 /** Called when a new WS client connects — sends chat history. */
 export function onChatConnect(ws: any, db: DbHandle) {
-  getRecentHistory(db)
+  getRecentHistory(db, 30)
     .then((messages) => {
       if (ws.readyState === ws.OPEN) {
         ws.send(JSON.stringify({ type: "chat-plugin:history", messages }));
