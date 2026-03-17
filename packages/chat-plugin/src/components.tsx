@@ -123,8 +123,11 @@ export function ChatPanel() {
   var form = document.getElementById('chat-form');
   var input = document.getElementById('chat-input');
   var latestMessageId = 0;
+  var oldestMessageId = Infinity;
   var markReadTimer = null;
   var markedLib = null;
+  var loadingOlder = false;
+  var noMoreOlder = false;
 
   // Load marked from esm.sh CDN
   import('https://esm.sh/marked@15.0.6').then(function(mod) {
@@ -207,18 +210,66 @@ export function ChatPanel() {
     markReadTimer = setTimeout(markRead, 300);
   }
 
+  function loadOlderMessages() {
+    if (loadingOlder || noMoreOlder || oldestMessageId === Infinity) return;
+    loadingOlder = true;
+
+    // Show loading indicator at top
+    var loader = document.createElement('div');
+    loader.className = 'sc-chat-loader';
+    loader.style.cssText = 'text-align:center;padding:0.5rem;font-size:0.75rem;color:${colors.muted};';
+    loader.textContent = 'Loading older messages\\u2026';
+    messagesEl.insertBefore(loader, messagesEl.firstChild);
+
+    fetch('/api/chat/history/older?before=' + oldestMessageId + '&limit=30')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (loader.parentNode) loader.remove();
+        if (!data.messages || !data.messages.length) {
+          noMoreOlder = true;
+          loadingOlder = false;
+          return;
+        }
+
+        // Remember scroll position to restore after prepending
+        var prevScrollHeight = messagesEl.scrollHeight;
+
+        var frag = document.createDocumentFragment();
+        data.messages.forEach(function(msg) {
+          frag.appendChild(renderMessage(msg));
+          if (msg.id < oldestMessageId) oldestMessageId = msg.id;
+        });
+        messagesEl.insertBefore(frag, messagesEl.firstChild);
+
+        // Restore scroll position so content doesn't jump
+        messagesEl.scrollTop = messagesEl.scrollHeight - prevScrollHeight;
+
+        if (!data.hasMore) noMoreOlder = true;
+        loadingOlder = false;
+      })
+      .catch(function() {
+        if (loader.parentNode) loader.remove();
+        loadingOlder = false;
+      });
+  }
+
   messagesEl.addEventListener('scroll', function() {
     if (isAtBottom()) debouncedMarkRead();
+    // Trigger load when scrolled near the top (within 100px)
+    if (messagesEl.scrollTop < 100) loadOlderMessages();
   });
 
   document.addEventListener('sc:ws:message', function(e) {
     var data = e.detail;
     if (data.type === 'chat-plugin:history') {
       messagesEl.innerHTML = '';
+      oldestMessageId = Infinity;
+      noMoreOlder = false;
       if (data.messages && data.messages.length) {
         data.messages.forEach(function(msg) {
           messagesEl.appendChild(renderMessage(msg));
           if (msg.id > latestMessageId) latestMessageId = msg.id;
+          if (msg.id < oldestMessageId) oldestMessageId = msg.id;
         });
       } else {
         var p = document.createElement('p');

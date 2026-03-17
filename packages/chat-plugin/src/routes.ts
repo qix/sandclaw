@@ -2,7 +2,7 @@ import type {
   NotifyService,
   WebSocketService,
 } from "@sandclaw/gatekeeper-plugin-api";
-import { storeMessage, getUnreadCount } from "./websocket";
+import { storeMessage, getUnreadCount, getHistoryBefore } from "./websocket";
 
 export function registerRoutes(
   app: any,
@@ -56,6 +56,19 @@ export function registerRoutes(
 
     notify.notifyCountChange();
     return c.json({ success: true });
+  });
+
+  // GET /history/older — fetch messages older than a given ID (infinite scroll)
+  app.get("/history/older", async (c: any) => {
+    const beforeId = parseInt(c.req.query("before") || "0", 10);
+    const limit = Math.min(parseInt(c.req.query("limit") || "30", 10), 100);
+
+    if (!beforeId || isNaN(beforeId)) {
+      return c.json({ error: "before query param is required" }, 400);
+    }
+
+    const messages = await getHistoryBefore(db, beforeId, limit);
+    return c.json({ messages, hasMore: messages.length === limit });
   });
 
   // GET /history — fetch recent messages (fallback for non-WS clients)
