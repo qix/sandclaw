@@ -170,7 +170,16 @@ export function registerRoutes(
     }
 
     if (lastCheckboxIndex >= 0) {
-      lines.splice(lastCheckboxIndex + 1, 0, newLine);
+      // Scan past any indented continuation lines (sub-items, notes, etc.)
+      // that belong to the last checkbox. Stop at an empty line or a line
+      // that doesn't start with whitespace.
+      let insertIndex = lastCheckboxIndex + 1;
+      while (insertIndex < lines.length) {
+        const line = lines[insertIndex];
+        if (line === "" || !/^\s/.test(line)) break;
+        insertIndex++;
+      }
+      lines.splice(insertIndex, 0, newLine);
     } else {
       // No checkbox section found — append to end of file
       if (lines[lines.length - 1] !== "") {
