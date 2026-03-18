@@ -215,13 +215,18 @@ export function registerCoreRoutes(
     if (!id || isNaN(id)) return c.json({ error: "Invalid id" }, 400);
 
     const request = await db("verification_requests").where("id", id).first();
-    if (!request || (request.status !== "pending" && request.status !== "error")) {
+    if (
+      !request ||
+      (request.status !== "pending" && request.status !== "error")
+    ) {
       return c.json({ error: "Not found or already resolved" }, 404);
     }
 
-    await db("verification_requests")
-      .where("id", id)
-      .update({ status: "rejected", error: null, updated_at: localTimestamp() });
+    await db("verification_requests").where("id", id).update({
+      status: "rejected",
+      error: null,
+      updated_at: localTimestamp(),
+    });
 
     onVerificationChange?.();
     return c.json({ success: true });

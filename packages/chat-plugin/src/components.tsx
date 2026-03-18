@@ -164,7 +164,7 @@ export function ChatPanel() {
       var parts = text.split(/(\`\`\`[\s\S]*?\`\`\`)/g);
       var normalized = parts.map(function(part, i) {
         if (i % 2 === 1) return part; // code block, leave as-is
-        return part.replace(/\n{2,}/g, '\n\n').replace(/(?<!\n)\n(?!\n)/g, '\n\n');
+        return part.replace(/\\n{2,}/g, '\\n\\n').replace(/(?<!\\n)\\n(?!\\n)/g, '\\n\\n');
       }).join('');
       return markedLib.marked.parse(normalized, { breaks: false });
     } catch (e) {

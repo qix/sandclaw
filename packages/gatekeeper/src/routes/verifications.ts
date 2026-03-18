@@ -14,7 +14,8 @@ function formatHookError(err: unknown): string {
   const stack = err.stack ?? "";
   const lines = stack.split("\n").slice(1);
   const sourceLine = lines.find(
-    (l) => l.includes("at ") && !l.includes("node_modules") && !l.includes("node:"),
+    (l) =>
+      l.includes("at ") && !l.includes("node_modules") && !l.includes("node:"),
   );
   if (sourceLine) {
     return `${message}\n${sourceLine.trim()}`;
@@ -59,13 +60,11 @@ export function registerVerificationFormRoutes(
         );
       } catch (err) {
         const errorDetail = formatHookError(err);
-        await db("verification_requests")
-          .where("id", id)
-          .update({
-            status: "error",
-            error: errorDetail,
-            updated_at: localTimestamp(),
-          });
+        await db("verification_requests").where("id", id).update({
+          status: "error",
+          error: errorDetail,
+          updated_at: localTimestamp(),
+        });
         onVerificationChange?.();
         return c.redirect("/?page=verifications");
       }
@@ -88,7 +87,11 @@ export function registerVerificationFormRoutes(
     await db("verification_requests")
       .where("id", id)
       .whereIn("status", ["pending", "error"])
-      .update({ status: "rejected", error: null, updated_at: localTimestamp() });
+      .update({
+        status: "rejected",
+        error: null,
+        updated_at: localTimestamp(),
+      });
 
     onVerificationChange?.();
     return c.redirect("/?page=verifications");
@@ -100,7 +103,10 @@ export function registerVerificationFormRoutes(
     if (!id || isNaN(id)) return c.redirect("/?page=verifications");
 
     const request = await db("verification_requests").where("id", id).first();
-    if (!request || (request.status !== "pending" && request.status !== "error")) {
+    if (
+      !request ||
+      (request.status !== "pending" && request.status !== "error")
+    ) {
       return c.redirect("/?page=verifications");
     }
 

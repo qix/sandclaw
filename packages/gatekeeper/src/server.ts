@@ -241,10 +241,8 @@ export async function startGatekeeper(
             try {
               await callback({ id, action, data, jobContext }, { queueJob });
             } catch (err) {
-              const message =
-                err instanceof Error ? err.message : String(err);
-              const stack =
-                err instanceof Error ? err.stack ?? "" : "";
+              const message = err instanceof Error ? err.message : String(err);
+              const stack = err instanceof Error ? (err.stack ?? "") : "";
               const lines = stack.split("\n").slice(1);
               const sourceLine = lines.find(
                 (l) =>

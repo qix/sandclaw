@@ -217,17 +217,16 @@ export function registerRoutes(
     }
 
     const lines = content.split("\n");
-    const matchIndex = lines.findIndex((line) => line.trim() === original.trim());
+    const matchIndex = lines.findIndex(
+      (line) => line.trim() === original.trim(),
+    );
     if (matchIndex < 0) {
       return c.json({ error: "Original line not found in file" }, 404);
     }
 
     // Only allow modifying lines tagged with #ai
     if (!lines[matchIndex].trimEnd().endsWith("#ai")) {
-      return c.json(
-        { error: "Can only modify lines that end with #ai" },
-        403,
-      );
+      return c.json({ error: "Can only modify lines that end with #ai" }, 403);
     }
 
     // Preserve #ai tag unless the new content explicitly includes or removes it
