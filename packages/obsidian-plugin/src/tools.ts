@@ -199,6 +199,132 @@ export function createReadTool(ctx: MuteworkerPluginContext) {
   };
 }
 
+export function createAddDailyTaskTool(ctx: MuteworkerPluginContext) {
+  return {
+    name: "obsidian_add_daily_task",
+    label: "Add Daily Task",
+    description:
+      "Add a new task to an Obsidian daily note. " +
+      "The task is appended after the last checkbox line (- [ ] or - [x]) with an #ai tag. " +
+      "This action is applied immediately without verification.",
+    parameters: {
+      type: "object",
+      properties: {
+        path: { type: "string" },
+        task: { type: "string" },
+      },
+      required: ["path", "task"],
+      additionalProperties: false,
+    } as any,
+    execute: async (_toolCallId: string, params: any) => {
+      const notePath = String(params.path ?? "").trim();
+      if (!notePath) throw new Error("path is required");
+      const task = String(params.task ?? "").trim();
+      if (!task) throw new Error("task is required");
+
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/obsidian/add-daily-task`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ path: notePath, task }),
+        },
+      );
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(
+          `Add daily task failed (${response.status}): ${body.slice(0, 200)}`,
+        );
+      }
+
+      const data = (await response.json()) as any;
+      ctx.artifacts.push({
+        type: "text",
+        label: "Obsidian Add Daily Task",
+        value: data.path,
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Added task to ${data.path}:\n${data.task}`,
+          },
+        ],
+        details: data,
+      };
+    },
+  };
+}
+
+export function createModifyDailyTaskTool(ctx: MuteworkerPluginContext) {
+  return {
+    name: "obsidian_modify_daily_task",
+    label: "Modify Daily Task",
+    description:
+      "Modify an existing task in an Obsidian daily note. " +
+      "Only tasks tagged with #ai can be modified. " +
+      "The #ai tag is preserved unless explicitly removed. " +
+      "This action is applied immediately without verification.",
+    parameters: {
+      type: "object",
+      properties: {
+        path: { type: "string" },
+        original: { type: "string" },
+        new_content: { type: "string" },
+      },
+      required: ["path", "original", "new_content"],
+      additionalProperties: false,
+    } as any,
+    execute: async (_toolCallId: string, params: any) => {
+      const notePath = String(params.path ?? "").trim();
+      if (!notePath) throw new Error("path is required");
+      const original = String(params.original ?? "").trim();
+      if (!original) throw new Error("original is required");
+      if (typeof params.new_content !== "string")
+        throw new Error("new_content must be a string");
+
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/obsidian/modify-daily-task`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            path: notePath,
+            original,
+            new_content: params.new_content,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(
+          `Modify daily task failed (${response.status}): ${body.slice(0, 200)}`,
+        );
+      }
+
+      const data = (await response.json()) as any;
+      ctx.artifacts.push({
+        type: "text",
+        label: "Obsidian Modify Daily Task",
+        value: data.path,
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Modified task in ${data.path}:\n"${data.original}" → "${data.modified}"`,
+          },
+        ],
+        details: data,
+      };
+    },
+  };
+}
+
 export function createWriteTool(ctx: MuteworkerPluginContext) {
   return {
     name: "obsidian_write",

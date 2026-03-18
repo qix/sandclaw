@@ -13,6 +13,8 @@ import {
   createListTool,
   createReadTool,
   createWriteTool,
+  createAddDailyTaskTool,
+  createModifyDailyTaskTool,
 } from "./tools";
 
 export type { ObsidianVaultIndex } from "./vaultIndex";
@@ -22,6 +24,8 @@ export {
   createListTool,
   createReadTool,
   createWriteTool,
+  createAddDailyTaskTool,
+  createModifyDailyTaskTool,
 } from "./tools";
 
 export interface ObsidianPluginConfig {
@@ -77,6 +81,8 @@ export function createObsidianPlugin(config: ObsidianPluginConfig) {
             createListTool(ctx),
             createReadTool(ctx),
             createWriteTool(ctx),
+            createAddDailyTaskTool(ctx),
+            createModifyDailyTaskTool(ctx),
           ]);
         },
       });
