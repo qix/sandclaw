@@ -137,6 +137,115 @@ export function registerRoutes(
     });
   });
 
+  // POST /add-daily-task — append a task to a daily note's checkbox section
+  app.post("/add-daily-task", async (c: any) => {
+    const body = (await c.req.json()) as { path?: string; task?: string };
+    const notePath = (body.path ?? "").trim();
+    if (!notePath) return c.json({ error: "path is required" }, 400);
+    const task = (body.task ?? "").trim();
+    if (!task) return c.json({ error: "task is required" }, 400);
+
+    const absPath = resolveVaultPath(vaultRoot, notePath);
+    if (!absPath) return c.json({ error: "path escapes vault" }, 400);
+
+    let content: string;
+    try {
+      content = await readFile(absPath, "utf8");
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "ENOENT") {
+        return c.json({ error: "File not found" }, 404);
+      }
+      throw e;
+    }
+
+    const lines = content.split("\n");
+    const newLine = `- [ ] ${task} #ai`;
+
+    // Find the last checkbox line (- [ ] or - [x]) and insert after it
+    let lastCheckboxIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (/^- \[[ x]\] /.test(lines[i])) {
+        lastCheckboxIndex = i;
+      }
+    }
+
+    if (lastCheckboxIndex >= 0) {
+      lines.splice(lastCheckboxIndex + 1, 0, newLine);
+    } else {
+      // No checkbox section found — append to end of file
+      if (lines[lines.length - 1] !== "") {
+        lines.push("");
+      }
+      lines.push(newLine);
+    }
+
+    const nextContent = lines.join("\n");
+    await mkdir(path.dirname(absPath), { recursive: true });
+    await writeFile(absPath, nextContent, "utf8");
+    vaultIndex.markStale();
+
+    const relPath = path.relative(vaultRoot, absPath).replace(/\\/g, "/");
+    return c.json({ path: relPath, task: newLine });
+  });
+
+  // POST /modify-daily-task — modify an existing #ai task in a daily note
+  app.post("/modify-daily-task", async (c: any) => {
+    const body = (await c.req.json()) as {
+      path?: string;
+      original?: string;
+      new_content?: string;
+    };
+    const notePath = (body.path ?? "").trim();
+    if (!notePath) return c.json({ error: "path is required" }, 400);
+    const original = (body.original ?? "").trim();
+    if (!original) return c.json({ error: "original is required" }, 400);
+    const newContent = body.new_content ?? "";
+    if (typeof newContent !== "string")
+      return c.json({ error: "new_content must be a string" }, 400);
+
+    const absPath = resolveVaultPath(vaultRoot, notePath);
+    if (!absPath) return c.json({ error: "path escapes vault" }, 400);
+
+    let content: string;
+    try {
+      content = await readFile(absPath, "utf8");
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "ENOENT") {
+        return c.json({ error: "File not found" }, 404);
+      }
+      throw e;
+    }
+
+    const lines = content.split("\n");
+    const matchIndex = lines.findIndex((line) => line.trim() === original.trim());
+    if (matchIndex < 0) {
+      return c.json({ error: "Original line not found in file" }, 404);
+    }
+
+    // Only allow modifying lines tagged with #ai
+    if (!lines[matchIndex].trimEnd().endsWith("#ai")) {
+      return c.json(
+        { error: "Can only modify lines that end with #ai" },
+        403,
+      );
+    }
+
+    // Preserve #ai tag unless the new content explicitly includes or removes it
+    let finalLine = newContent;
+    if (!finalLine.trimEnd().endsWith("#ai") && !finalLine.includes("#ai")) {
+      finalLine = `${finalLine.trimEnd()} #ai`;
+    }
+
+    lines[matchIndex] = finalLine;
+    const nextContent = lines.join("\n");
+    await mkdir(path.dirname(absPath), { recursive: true });
+    await writeFile(absPath, nextContent, "utf8");
+    vaultIndex.markStale();
+
+    const relPath = path.relative(vaultRoot, absPath).replace(/\\/g, "/");
+    return c.json({ path: relPath, original, modified: finalLine });
+  });
+
   // POST /write — create a verification request for a vault write
   app.post("/write", async (c: any) => {
     const body = (await c.req.json()) as {
