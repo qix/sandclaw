@@ -159,7 +159,8 @@ export function registerRoutes(
     }
 
     const lines = content.split("\n");
-    const newLine = `- [ ] ${task} #ai`;
+    const cleanTask = task.replace(/\s*#ai/g, "").trim();
+    const newLine = `- [ ] ${cleanTask} #ai`;
 
     // Find the last checkbox line (- [ ] or - [x]) and insert after it
     let lastCheckboxIndex = -1;
@@ -238,11 +239,9 @@ export function registerRoutes(
       return c.json({ error: "Can only modify lines that end with #ai" }, 403);
     }
 
-    // Preserve #ai tag unless the new content explicitly includes or removes it
-    let finalLine = newContent;
-    if (!finalLine.trimEnd().endsWith("#ai") && !finalLine.includes("#ai")) {
-      finalLine = `${finalLine.trimEnd()} #ai`;
-    }
+    // Ensure exactly one #ai tag at the end
+    const cleanLine = newContent.replace(/\s*#ai/g, "").trimEnd();
+    const finalLine = `${cleanLine} #ai`;
 
     lines[matchIndex] = finalLine;
     const nextContent = lines.join("\n");
