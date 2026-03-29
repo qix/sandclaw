@@ -14,9 +14,9 @@ const localConfig = JSON.parse(
 const gatekeeperPort = 8888;
 
 const shared = {
-  /* Pi agent model configuration */
+  /* Model configuration */
   modelProvider: "anthropic",
-  modelId: "claude-haiku-4-5",
+  modelId: "claude-opus-4-6",
 
   /* Address that the muteworker and confidante instances use to talk to gatekeeper. Should be localhost if running on the same machine. */
   gatekeeperInternalUrl: `http://localhost:${gatekeeperPort}`,
