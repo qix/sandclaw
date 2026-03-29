@@ -53,6 +53,8 @@ export type ReportStatusFn = (event: {
 export interface ConfidantePluginContext {
   /** Gatekeeper base URL (e.g. "http://localhost:3000"). */
   gatekeeperInternalUrl: string;
+  /** Model ID to use for agent work (e.g. "claude-opus-4-6"). */
+  modelId?: string;
   logger: ConfidantePluginLogger;
   job: ConfidantePluginJob;
   /** Built-in Docker service for running work inside containers. */

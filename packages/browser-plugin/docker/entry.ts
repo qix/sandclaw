@@ -87,30 +87,25 @@ async function main() {
   }
 
   const startUrl = process.env.BROWSER_START_URL || "";
+  const modelId = process.env.BROWSER_MODEL_ID || undefined;
   const maxTurns = parseInt(process.env.BROWSER_MAX_TURNS || "30", 10);
 
   log(`prompt: ${prompt.slice(0, 120)}...`);
   if (startUrl) log(`start URL: ${startUrl}`);
+  if (modelId) log(`model: ${modelId}`);
   log(`max turns: ${maxTurns}`);
 
-  // Build system prompt
+  // Build system prompt — the agent-browser skill is installed at
+  // .claude/skills/agent-browser/ and will be picked up by the SDK automatically.
   const systemParts = [
-    "You are a browser automation agent. Use the agent-browser MCP tools (prefixed with mcp__agent-browser__) to browse the web and complete the user's request.",
-    "IMPORTANT: You MUST use the agent-browser MCP tools for ALL web interactions. Do NOT use WebFetch, curl, wget, or any Bash commands to fetch web content. Do NOT install or use Playwright, Puppeteer, or any other browser automation library. The agent-browser MCP server already provides a fully functional browser — use it exclusively.",
+    "You are a browser automation agent. Use the agent-browser CLI via Bash to browse the web and complete the user's request.",
+    "IMPORTANT: Do NOT use WebFetch, curl, wget, or any other tool to fetch web content. Do NOT install or use Playwright, Puppeteer, or any other browser automation library. The agent-browser CLI is already installed — use it exclusively via Bash.",
     "Return a concise summary of what you found or accomplished.",
   ];
   if (startUrl) {
     systemParts.push(`Start by navigating to: ${startUrl}`);
   }
   const systemPrompt = systemParts.join("\n");
-
-  // Configure agent-browser-mcp as a stdio MCP server
-  const mcpServers: Record<string, any> = {
-    "agent-browser": {
-      command: "npx",
-      args: ["agent-browser-mcp"],
-    },
-  };
 
   writeStatus("Starting browser agent...");
 
@@ -123,15 +118,15 @@ async function main() {
       prompt,
       options: {
         systemPrompt,
+        model: modelId,
         maxTurns,
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
-        mcpServers,
       },
     });
 
     for await (const message of conversation) {
-	    console.log(message);
+      console.log(message);
       if (message.type === "assistant") {
         // Emit tool invocations
         const tools = extractToolUses(message);

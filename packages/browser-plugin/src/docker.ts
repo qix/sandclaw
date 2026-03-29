@@ -24,6 +24,8 @@ export interface RunDockerBrowserOptions {
   prompt: string;
   /** Optional start URL for the browser. */
   url?: string;
+  /** Model ID for the agent (e.g. "claude-opus-4-6"). */
+  modelId?: string;
   /** Max agent turns. @default 30 */
   maxTurns?: number;
   /**
@@ -64,6 +66,7 @@ export function runDockerBrowser(
     image,
     prompt,
     url,
+    modelId,
     maxTurns = 30,
     envKeys = ["ANTHROPIC_API_KEY"],
     dockerArgs = [],
@@ -83,6 +86,9 @@ export function runDockerBrowser(
     envFlags.push("-e", `BROWSER_START_URL=${url}`);
   }
   envFlags.push("-e", `BROWSER_MAX_TURNS=${maxTurns}`);
+  if (modelId) {
+    envFlags.push("-e", `BROWSER_MODEL_ID=${modelId}`);
+  }
 
   const fullArgs = ["run", "--rm", ...envFlags, ...dockerArgs, image];
   logCmd("docker", fullArgs);

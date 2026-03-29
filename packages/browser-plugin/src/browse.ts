@@ -54,6 +54,7 @@ export async function executeBrowse(
     image,
     prompt,
     url,
+    modelId: ctx.modelId,
     onStatus: ctx.reportStatus
       ? (event) => {
           ctx.reportStatus!({

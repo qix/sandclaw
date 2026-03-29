@@ -1,6 +1,8 @@
 export interface ConfidanteConfig {
   /** Gatekeeper base URL. */
   gatekeeperInternalUrl: string;
+  /** Model ID for agent work (e.g. "claude-opus-4-6"). */
+  modelId?: string;
   /** Poll interval in ms when long polling is disabled. */
   pollIntervalMs: number;
   /** Long-poll timeout in ms sent to the Gatekeeper. */
