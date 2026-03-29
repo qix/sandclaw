@@ -131,6 +131,7 @@ async function main() {
     });
 
     for await (const message of conversation) {
+	    console.log(message);
       if (message.type === "assistant") {
         // Emit tool invocations
         const tools = extractToolUses(message);

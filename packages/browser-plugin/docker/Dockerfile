@@ -51,11 +51,13 @@ RUN npm install -g @anthropic-ai/claude-code
 # Install agent-browser globally and run its install step
 RUN npm install -g agent-browser && agent-browser install
 
-# Copy container entry point source
-COPY package.json tsconfig.json entry.ts ./
+# Install dependencies
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Install dependencies and compile
-RUN npm install && npx tsc
+# Add code and compile
+COPY entry.ts tsconfig.json ./
+RUN npx tsc
 
 # Start Xvfb then run the entry point
 CMD ["bash", "-c", "Xvfb :99 -screen 0 1280x720x24 -nolisten tcp &>/dev/null & export DISPLAY=:99 && node dist/entry.js"]
