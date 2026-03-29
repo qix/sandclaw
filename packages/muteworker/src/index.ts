@@ -101,7 +101,9 @@ function initializePlugins(plugins: MuteworkerPlugin[]) {
   const startHooks: Array<() => Promise<void>> = [];
   const stopHooks: Array<() => Promise<void>> = [];
   const buildSystemPromptHooks: Array<
-    (prev: SystemPromptSources) => SystemPromptSources | Promise<SystemPromptSources>
+    (
+      prev: SystemPromptSources,
+    ) => SystemPromptSources | Promise<SystemPromptSources>
   > = [];
   const hooksService: MuteworkerHooks = {
     register(hooks) {
@@ -370,7 +372,9 @@ async function handleToolCommand(
     } else if (typeof result === "string") {
       console.log(result);
     } else {
-      console.log(inspect(result, { colors: process.stdout.isTTY ?? false, depth: null }));
+      console.log(
+        inspect(result, { colors: process.stdout.isTTY ?? false, depth: null }),
+      );
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

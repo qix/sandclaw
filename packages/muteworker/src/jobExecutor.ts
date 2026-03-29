@@ -85,7 +85,7 @@ export async function executeMuteworkerJob(
 
     // Build system prompt, instantiate tools, and convert to MCP defs once upfront
     const systemPromptSources = await args.buildSystemPrompt();
-    const systemPrompt = Object.values(systemPromptSources).join("\n");
+    const systemPrompt = sourcesToSystemPrompt(systemPromptSources);
 
     // Log the structured system prompt sources before calling Claude
     logger.info("job.system_prompt", {
@@ -112,22 +112,14 @@ export async function executeMuteworkerJob(
       reportStatus,
     });
 
-    // Emit "started" event
-    reportStatus("started", {
-      data: jobData,
-      systemPrompt,
-      systemPromptSources,
-      toolNames,
-    });
-
     const runAgent: RunAgentFn = async (
       prompt: string,
       opts?: RunAgentOptions,
     ) => {
       const effectiveSources: SystemPromptSources = opts?.systemPrompt
-        ? { "additional": opts.systemPrompt, ...systemPromptSources }
+        ? { additional: opts.systemPrompt, ...systemPromptSources }
         : systemPromptSources;
-      const effectiveSystemPrompt = Object.values(effectiveSources).join("\n");
+      const effectiveSystemPrompt = sourcesToSystemPrompt(effectiveSources);
 
       if (opts?.systemPrompt) {
         logger.info("job.system_prompt.additional", {
@@ -135,6 +127,15 @@ export async function executeMuteworkerJob(
           additionalLength: opts.systemPrompt.length,
         });
       }
+
+      // Emit "started" with the effective sources (includes any additional
+      // prompt the job handler provided, e.g. EMAIL.md).
+      reportStatus("started", {
+        data: jobData,
+        systemPrompt: effectiveSystemPrompt,
+        systemPromptSources: effectiveSources,
+        toolNames,
+      });
 
       const result = await runWithClaude(prompt, {
         config,
@@ -202,6 +203,15 @@ export async function executeMuteworkerJob(
       error: { kind, message },
     };
   }
+}
+
+function sourcesToSystemPrompt(sources: SystemPromptSources): string {
+  return Object.entries(sources)
+    .map(
+      ([filename, content]) =>
+        `<PROMPT filename="${filename}">${content}</PROMPT>`,
+    )
+    .join("\n");
 }
 
 async function withTimeout<T>(
