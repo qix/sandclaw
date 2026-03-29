@@ -208,7 +208,7 @@ async function handleReplayCommand(
   console.log(`  Type:    ${job.jobType}`);
   console.log(`  Status:  ${job.status}`);
   console.log(
-    `  Data:    ${inspect(JSON.parse(job.data), { colors: true, depth: null }).replace(/\n/g, "\n           ")}`,
+    `  Data:    ${inspect(JSON.parse(job.data), { colors: process.stdout.isTTY ?? false, depth: null }).replace(/\n/g, "\n           ")}`,
   );
   console.log("-------------------\n");
 

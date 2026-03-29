@@ -365,7 +365,7 @@ async function handleToolCommand(
     } else if (typeof result === "string") {
       console.log(result);
     } else {
-      console.log(inspect(result, { colors: true, depth: null }));
+      console.log(inspect(result, { colors: process.stdout.isTTY ?? false, depth: null }));
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -420,7 +420,7 @@ async function handleReplayCommand(
   console.log(`  Type:    ${job.jobType}`);
   console.log(`  Status:  ${job.status}`);
   console.log(
-    `  Data:    ${inspect(JSON.parse(job.data), { colors: true, depth: null }).replace(/\n/g, "\n           ")}`,
+    `  Data:    ${inspect(JSON.parse(job.data), { colors: process.stdout.isTTY ?? false, depth: null }).replace(/\n/g, "\n           ")}`,
   );
   console.log("-------------------\n");
 
