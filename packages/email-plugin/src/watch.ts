@@ -7,6 +7,7 @@ import {
 import { queryCalendarInvites, formatDuration } from "./calendarClient";
 import { localTimestamp } from "@sandclaw/util";
 import { matchEmailQueue } from "./routes";
+import { stripHtml } from "./stripHtml";
 
 export async function isWatchInboxEnabled(db: any): Promise<boolean> {
   const row = await db("plugin_kv")
@@ -48,6 +49,7 @@ export async function startEmailPolling(
         await db.transaction(async (trx: any) => {
           const now = localTimestamp();
           const receivedAt = localTimestamp(new Date(email.receivedAt));
+          const cleanText = stripHtml(email.textBody);
 
           // Record in email_received to prevent future duplicates
           const [emailReceivedId] = await trx("email_received").insert({
@@ -70,7 +72,7 @@ export async function startEmailPolling(
             to: email.to,
             timestamp: receivedAt,
             direction: "received",
-            text: email.textBody,
+            text: cleanText,
             created_at: now,
           });
 
@@ -105,7 +107,7 @@ export async function startEmailPolling(
                 from: email.from,
                 to: email.to,
                 subject: email.subject,
-                text: email.textBody,
+                text: cleanText,
                 threadId: email.threadId ?? null,
                 history: historyEntries,
                 ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
