@@ -36,6 +36,8 @@ export interface AgentStatusEvent {
   event: "queued" | "started" | "step" | "completed" | "failed";
   prompt?: string;
   systemPrompt?: string;
+  /** Structured map of system prompt sources: { PromptFilename: Source }. */
+  systemPromptSources?: Record<string, string>;
   toolNames?: string[];
   data?: Record<string, unknown>;
   createdAt: string;

@@ -35,16 +35,21 @@ function wrapMemory(filename: string, content: string): string {
 /**
  * Loads all files from `memoryDir` and wraps them in `<MEMORY>` tags
  * for inclusion in the system prompt.
+ *
+ * Returns a structured map of `{ "memory/filename": wrappedContent }`.
  */
-export async function loadMemoryPrompt(memoryDir: string): Promise<string> {
+export async function loadMemoryPrompt(
+  memoryDir: string,
+): Promise<Record<string, string>> {
   const memoryFilenames = await listFiles(memoryDir);
-  const memoryPrompts = await Promise.all(
+  const sources: Record<string, string> = {};
+  await Promise.all(
     memoryFilenames.map(async (filename) => {
       const content = await tryReadFile(path.join(memoryDir, filename));
-      if (!content) return null;
-      return wrapMemory(filename, content);
+      if (content) {
+        sources[`memory/${filename}`] = wrapMemory(filename, content);
+      }
     }),
   );
-
-  return memoryPrompts.filter((p): p is string => p !== null).join("\n");
+  return sources;
 }

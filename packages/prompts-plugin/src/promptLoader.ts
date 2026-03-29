@@ -25,17 +25,22 @@ function wrapPrompt(filename: string, content: string): string {
 
 /**
  * Loads the core prompt files (IDENTITY.md, SYSTEM.md, SOUL.md, USER.md)
- * from `promptsDir` and wraps each in `<PROMPTS>` tags.
+ * from `promptsDir` and wraps each in `<PROMPT>` tags.
+ *
+ * Returns a structured map of `{ filename: wrappedContent }`.
  */
-export async function loadPromptsPrompt(promptsDir: string): Promise<string> {
+export async function loadPromptsPrompt(
+  promptsDir: string,
+): Promise<Record<string, string>> {
   const coreFiles = ["IDENTITY.md", "SYSTEM.md", "SOUL.md", "USER.md"];
-  const corePrompts = await Promise.all(
+  const sources: Record<string, string> = {};
+  await Promise.all(
     coreFiles.map(async (filename) => {
       const content = await tryReadFile(path.join(promptsDir, filename));
-      if (!content) return null;
-      return wrapPrompt(filename, content);
+      if (content) {
+        sources[filename] = wrapPrompt(filename, content);
+      }
     }),
   );
-
-  return corePrompts.filter((p): p is string => p !== null).join("\n");
+  return sources;
 }

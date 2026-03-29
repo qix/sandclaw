@@ -4,6 +4,7 @@ import {
   type MuteworkerPluginContext,
   type RunAgentFn,
   type RunAgentOptions,
+  type SystemPromptSources,
 } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerApiClient } from "./apiClient.js";
 import type { MuteworkerConfig } from "./config.js";
@@ -34,12 +35,13 @@ export interface JobArgs {
   job: MuteworkerQueueJob;
   plugins: MuteworkerPlugin[];
   toolFactories: Array<(ctx: MuteworkerPluginContext) => any[]>;
-  buildSystemPrompt: () => Promise<string>;
+  buildSystemPrompt: () => Promise<SystemPromptSources>;
   reportStatus?: (event: {
     jobId: number;
     event: string;
     prompt?: string;
     systemPrompt?: string;
+    systemPromptSources?: Record<string, string>;
     toolNames?: string[];
     data?: Record<string, unknown>;
     createdAt?: string;
@@ -82,7 +84,20 @@ export async function executeMuteworkerJob(
     });
 
     // Build system prompt, instantiate tools, and convert to MCP defs once upfront
-    const systemPrompt = await args.buildSystemPrompt();
+    const systemPromptSources = await args.buildSystemPrompt();
+    const systemPrompt = Object.values(systemPromptSources).join("\n");
+
+    // Log the structured system prompt sources before calling Claude
+    logger.info("job.system_prompt", {
+      jobId: job.id,
+      sources: Object.fromEntries(
+        Object.entries(systemPromptSources).map(([k, v]) => [
+          k,
+          v.length > 200 ? `${v.slice(0, 200)}… (${v.length} chars)` : v,
+        ]),
+      ),
+    });
+
     const rawTools: any[] = [];
     for (const factory of args.toolFactories) {
       rawTools.push(...factory(pluginCtx));
@@ -101,6 +116,7 @@ export async function executeMuteworkerJob(
     reportStatus("started", {
       data: jobData,
       systemPrompt,
+      systemPromptSources,
       toolNames,
     });
 
@@ -108,9 +124,17 @@ export async function executeMuteworkerJob(
       prompt: string,
       opts?: RunAgentOptions,
     ) => {
-      const effectiveSystemPrompt = opts?.systemPrompt
-        ? `${opts.systemPrompt}\n\n${systemPrompt}`
-        : systemPrompt;
+      const effectiveSources: SystemPromptSources = opts?.systemPrompt
+        ? { "additional": opts.systemPrompt, ...systemPromptSources }
+        : systemPromptSources;
+      const effectiveSystemPrompt = Object.values(effectiveSources).join("\n");
+
+      if (opts?.systemPrompt) {
+        logger.info("job.system_prompt.additional", {
+          jobId: job.id,
+          additionalLength: opts.systemPrompt.length,
+        });
+      }
 
       const result = await runWithClaude(prompt, {
         config,

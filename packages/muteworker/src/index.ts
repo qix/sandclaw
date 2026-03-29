@@ -7,6 +7,7 @@ import {
   type MuteworkerPlugin,
   type MuteworkerHooks,
   type MuteworkerPluginContext,
+  type SystemPromptSources,
   type ToolsService,
 } from "@sandclaw/muteworker-plugin-api";
 import { MuteworkerApiClient } from "./apiClient.js";
@@ -100,7 +101,7 @@ function initializePlugins(plugins: MuteworkerPlugin[]) {
   const startHooks: Array<() => Promise<void>> = [];
   const stopHooks: Array<() => Promise<void>> = [];
   const buildSystemPromptHooks: Array<
-    (prev: string) => string | Promise<string>
+    (prev: SystemPromptSources) => SystemPromptSources | Promise<SystemPromptSources>
   > = [];
   const hooksService: MuteworkerHooks = {
     register(hooks) {
@@ -148,12 +149,12 @@ function initializePlugins(plugins: MuteworkerPlugin[]) {
     }
   };
 
-  const buildSystemPrompt = async (): Promise<string> => {
-    let prompt = "";
+  const buildSystemPrompt = async (): Promise<SystemPromptSources> => {
+    let sources: SystemPromptSources = {};
     for (const hook of buildSystemPromptHooks) {
-      prompt = await hook(prompt);
+      sources = await hook(sources);
     }
-    return prompt;
+    return sources;
   };
 
   return {
@@ -295,12 +296,16 @@ async function handleSystemPromptCommand(
   const { buildSystemPrompt, runInit } = initializePlugins(plugins);
   await runInit();
 
-  const prompt = await buildSystemPrompt();
-  if (!prompt) {
+  const sources = await buildSystemPrompt();
+  const keys = Object.keys(sources);
+  if (keys.length === 0) {
     console.log("(empty system prompt — no plugins contributed content)");
     return;
   }
-  console.log(prompt);
+  for (const [filename, content] of Object.entries(sources)) {
+    console.log(`\n=== ${filename} ===`);
+    console.log(content);
+  }
 }
 
 /**
