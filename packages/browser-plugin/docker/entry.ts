@@ -48,13 +48,29 @@ function extractAssistantText(message: any): string {
   return parts.join("\n");
 }
 
+/** Summarise a tool's input arguments into a compact string. */
+function summariseInput(input: Record<string, unknown>): string {
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(input)) {
+    const str = typeof value === "string" ? value : JSON.stringify(value);
+    const truncated = str.length > 120 ? str.slice(0, 120) + "…" : str;
+    parts.push(`${key}=${truncated}`);
+  }
+  return parts.join(", ");
+}
+
 /** Extract tool use info from an assistant message's content blocks. */
 function extractToolUses(message: any): string[] {
   if (!message?.message?.content) return [];
   const tools: string[] = [];
   for (const block of message.message.content) {
     if (block.type === "tool_use" && block.name) {
-      tools.push(block.name);
+      const input = block.input;
+      if (input && typeof input === "object" && Object.keys(input).length > 0) {
+        tools.push(`${block.name}(${summariseInput(input)})`);
+      } else {
+        tools.push(block.name);
+      }
     }
   }
   return tools;
