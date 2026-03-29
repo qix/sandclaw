@@ -63,6 +63,8 @@ export async function executeBrowse(
             data: {
               subtype: event.subtype,
               message: event.message,
+              ...(event.tool && { tool: event.tool }),
+              ...(event.result && { result: event.result }),
             },
             createdAt: localTimestamp(new Date(event.timestamp)),
           });

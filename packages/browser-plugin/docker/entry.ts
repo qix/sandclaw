@@ -18,14 +18,21 @@ interface StatusBlob {
   type: "status";
   subtype: "info" | "assistant" | "tool_use" | "tool_result" | "error";
   message: string;
+  tool?: { name: string; input: Record<string, unknown> };
+  result?: Record<string, unknown>;
   timestamp: string;
 }
 
-function writeStatus(message: string, subtype: StatusBlob["subtype"] = "info") {
+function writeStatus(
+  message: string,
+  subtype: StatusBlob["subtype"] = "info",
+  extra?: { tool?: StatusBlob["tool"]; result?: StatusBlob["result"] },
+) {
   const blob: StatusBlob = {
     type: "status",
     subtype,
     message,
+    ...extra,
     timestamp: new Date().toISOString(),
   };
   process.stdout.write(JSON.stringify(blob) + "\n");
@@ -48,32 +55,42 @@ function extractAssistantText(message: any): string {
   return parts.join("\n");
 }
 
-/** Summarise a tool's input arguments into a compact string. */
-function summariseInput(input: Record<string, unknown>): string {
-  const parts: string[] = [];
-  for (const [key, value] of Object.entries(input)) {
-    const str = typeof value === "string" ? value : JSON.stringify(value);
-    const truncated = str.length > 120 ? str.slice(0, 120) + "…" : str;
-    parts.push(`${key}=${truncated}`);
-  }
-  return parts.join(", ");
+interface ToolUseInfo {
+  name: string;
+  input: Record<string, unknown>;
 }
 
 /** Extract tool use info from an assistant message's content blocks. */
-function extractToolUses(message: any): string[] {
+function extractToolUses(message: any): ToolUseInfo[] {
   if (!message?.message?.content) return [];
-  const tools: string[] = [];
+  const tools: ToolUseInfo[] = [];
   for (const block of message.message.content) {
     if (block.type === "tool_use" && block.name) {
-      const input = block.input;
-      if (input && typeof input === "object" && Object.keys(input).length > 0) {
-        tools.push(`${block.name}(${summariseInput(input)})`);
-      } else {
-        tools.push(block.name);
-      }
+      tools.push({
+        name: block.name,
+        input: (block.input as Record<string, unknown>) ?? {},
+      });
     }
   }
   return tools;
+}
+
+/** Extract tool results from a user message's content blocks. */
+function extractToolResults(message: any): Record<string, unknown>[] {
+  if (!message?.message?.content) return [];
+  const results: Record<string, unknown>[] = [];
+  for (const block of message.message.content) {
+    if (block.type === "tool_result") {
+      results.push({
+        tool_use_id: block.tool_use_id,
+        content:
+          typeof block.content === "string"
+            ? block.content.slice(0, 2000)
+            : block.content,
+      });
+    }
+  }
+  return results;
 }
 
 // ── main ─────────────────────────────────────────────────────────────
@@ -132,7 +149,7 @@ async function main() {
         // Emit tool invocations
         const tools = extractToolUses(message);
         for (const tool of tools) {
-          writeStatus(`Tool: ${tool}`, "tool_use");
+          writeStatus(tool.name, "tool_use", { tool });
         }
 
         // Emit assistant text (truncated for sanity)
@@ -145,7 +162,10 @@ async function main() {
 
       if (message.type === "user") {
         // User messages in the SDK loop are tool results
-        writeStatus("Processing tool results…", "tool_result");
+        const results = extractToolResults(message);
+        writeStatus("Processing tool results…", "tool_result", {
+          result: { tool_results: results },
+        });
       }
 
       if (message.type === "result") {

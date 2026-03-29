@@ -14,6 +14,8 @@ function logCmd(cmd: string, args: string[]) {
 export interface BrowserStatusEvent {
   subtype: "info" | "assistant" | "tool_use" | "tool_result" | "error";
   message: string;
+  tool?: { name: string; input: Record<string, unknown> };
+  result?: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -112,6 +114,8 @@ export function runDockerBrowser(
         onStatus?.({
           subtype: blob.subtype ?? "info",
           message: blob.message,
+          ...(blob.tool && { tool: blob.tool }),
+          ...(blob.result && { result: blob.result }),
           timestamp: blob.timestamp ?? new Date().toISOString(),
         });
       } else if (blob.type === "result") {
