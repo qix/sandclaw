@@ -164,6 +164,7 @@ export function registerCoreRoutes(
       event?: string;
       prompt?: string;
       systemPrompt?: string;
+      systemPromptSources?: Record<string, string>;
       toolNames?: string[];
       data?: Record<string, unknown>;
       createdAt?: string;
@@ -186,6 +187,7 @@ export function registerCoreRoutes(
       event: body.event as AgentStatusEvent["event"],
       prompt: body.prompt,
       systemPrompt: body.systemPrompt,
+      systemPromptSources: body.systemPromptSources,
       toolNames: body.toolNames,
       data: body.data,
       createdAt: body.createdAt ?? localTimestamp(),

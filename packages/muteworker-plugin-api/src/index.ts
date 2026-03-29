@@ -69,14 +69,20 @@ export function createServiceRef<T>(config: { id: string }): ServiceRef<T> {
   return { id: config.id } as ServiceRef<T>;
 }
 
+/**
+ * A structured map of system prompt sources.
+ * Keys are filenames or identifiers, values are the prompt content.
+ */
+export type SystemPromptSources = Record<string, string>;
+
 /** Hooks that plugins can register to react to muteworker lifecycle events. */
 export interface MuteworkerHooks {
   register(hooks: {
     "muteworker:start"?: () => void | Promise<void>;
     "muteworker:stop"?: () => void | Promise<void>;
     "muteworker:build-system-prompt"?: (
-      prev: string,
-    ) => string | Promise<string>;
+      prev: SystemPromptSources,
+    ) => SystemPromptSources | Promise<SystemPromptSources>;
   }): void;
 }
 

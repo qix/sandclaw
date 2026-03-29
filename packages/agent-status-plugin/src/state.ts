@@ -47,6 +47,9 @@ export async function loadRecentEvents(db: any): Promise<void> {
     event: r.event,
     prompt: r.prompt ?? undefined,
     systemPrompt: r.system_prompt ?? undefined,
+    systemPromptSources: r.system_prompt_sources
+      ? JSON.parse(r.system_prompt_sources)
+      : undefined,
     toolNames: r.tool_names ? JSON.parse(r.tool_names) : undefined,
     data: r.data ? JSON.parse(r.data) : undefined,
     createdAt: r.created_at,

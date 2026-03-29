@@ -148,6 +148,9 @@ export function createAgentStatusPlugin() {
                 event: event.event,
                 prompt: event.prompt ?? null,
                 system_prompt: event.systemPrompt ?? null,
+                system_prompt_sources: event.systemPromptSources
+                  ? JSON.stringify(event.systemPromptSources)
+                  : null,
                 tool_names: event.toolNames
                   ? JSON.stringify(event.toolNames)
                   : null,

@@ -50,8 +50,8 @@ export function createPromptsPlugin(config: PromptsPluginConfig) {
 
           hooks.register({
             "muteworker:build-system-prompt": async (prev) => {
-              const promptsSection = await loadPromptsPrompt(config.promptsDir);
-              return promptsSection ? `${prev}\n${promptsSection}` : prev;
+              const sources = await loadPromptsPrompt(config.promptsDir);
+              return { ...prev, ...sources };
             },
           });
         },

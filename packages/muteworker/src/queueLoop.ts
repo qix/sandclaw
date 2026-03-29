@@ -1,6 +1,7 @@
 import type {
   MuteworkerPlugin,
   MuteworkerPluginContext,
+  SystemPromptSources,
 } from "@sandclaw/muteworker-plugin-api";
 import { ApiError, MuteworkerApiClient } from "./apiClient.js";
 import type { MuteworkerConfig } from "./config.js";
@@ -27,7 +28,7 @@ export class MuteworkerQueueLoop {
     private readonly toolFactories: Array<
       (ctx: MuteworkerPluginContext) => any[]
     >,
-    private readonly buildSystemPrompt: () => Promise<string>,
+    private readonly buildSystemPrompt: () => Promise<SystemPromptSources>,
   ) {}
 
   stop(): void {

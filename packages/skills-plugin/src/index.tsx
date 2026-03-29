@@ -46,8 +46,8 @@ export function createSkillsPlugin(config: SkillsPluginConfig) {
 
           hooks.register({
             "muteworker:build-system-prompt": async (prev) => {
-              const skillsSection = await loadSkillsPrompt(config.skillsDir);
-              return skillsSection ? `${prev}\n${skillsSection}` : prev;
+              const sources = await loadSkillsPrompt(config.skillsDir);
+              return { ...prev, ...sources };
             },
           });
         },

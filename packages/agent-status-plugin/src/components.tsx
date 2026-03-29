@@ -1067,6 +1067,71 @@ export function AgentJobDetailPanel({
         </CardBody>
       </Card>
 
+      {/* System Prompt Sources */}
+      {started?.systemPromptSources &&
+        Object.keys(started.systemPromptSources).length > 0 && (
+          <div style={{ marginTop: "1rem" }}>
+            <Card>
+              <CardHeader>
+                <span style={{ fontWeight: 600, color: colors.text }}>
+                  System Prompt Sources (
+                  {Object.keys(started.systemPromptSources).length})
+                </span>
+              </CardHeader>
+              <CardBody>
+                {Object.entries(
+                  started.systemPromptSources as Record<string, string>,
+                ).map(([filename, source]) => (
+                  <details
+                    key={filename}
+                    style={{
+                      marginBottom: "0.5rem",
+                      borderBottom: `1px solid ${colors.border}`,
+                      paddingBottom: "0.5rem",
+                    }}
+                  >
+                    <summary
+                      style={{
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        fontSize: "0.85rem",
+                        color: colors.accent,
+                        userSelect: "none",
+                        padding: "0.25rem 0",
+                      }}
+                    >
+                      {filename}
+                      <span
+                        style={{
+                          marginLeft: "0.75rem",
+                          fontSize: "0.7rem",
+                          color: colors.muted,
+                          fontWeight: 400,
+                        }}
+                      >
+                        {source.length.toLocaleString()} chars
+                      </span>
+                    </summary>
+                    <pre
+                      className="sc-pre"
+                      style={{
+                        fontSize: "0.75rem",
+                        marginTop: "0.25rem",
+                        overflow: "auto",
+                        maxHeight: "24rem",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {source}
+                    </pre>
+                  </details>
+                ))}
+              </CardBody>
+            </Card>
+          </div>
+        )}
+
       {/* Event timeline */}
       <div style={{ marginTop: "1rem" }}>
         <Card>

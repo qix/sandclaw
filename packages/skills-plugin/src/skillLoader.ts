@@ -38,8 +38,12 @@ function extractDescription(content: string): string | null {
  * Loads skill filenames and frontmatter descriptions from `skillsDir`.
  * Only the filename and description are included in the system prompt;
  * the agent can use `read_skill_file` to fetch full content on demand.
+ *
+ * Returns a structured map with a single `"SKILLS"` key.
  */
-export async function loadSkillsPrompt(skillsDir: string): Promise<string> {
+export async function loadSkillsPrompt(
+  skillsDir: string,
+): Promise<Record<string, string>> {
   const filenames = await listFiles(skillsDir);
   const entries = await Promise.all(
     filenames.map(async (filename) => {
@@ -51,7 +55,9 @@ export async function loadSkillsPrompt(skillsDir: string): Promise<string> {
   );
 
   const lines = entries.filter((e): e is string => e !== null);
-  if (lines.length === 0) return "";
+  if (lines.length === 0) return {};
 
-  return `<SKILLS>\nAvailable skills (use \`read_skill_file\` to fetch full details):\n${lines.join("\n")}\n</SKILLS>`;
+  return {
+    SKILLS: `<SKILLS>\nAvailable skills (use \`read_skill_file\` to fetch full details):\n${lines.join("\n")}\n</SKILLS>`,
+  };
 }

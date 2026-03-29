@@ -26,8 +26,8 @@ export function createMemoryPlugin(config: MemoryPluginConfig) {
 
           hooks.register({
             "muteworker:build-system-prompt": async (prev) => {
-              const memorySection = await loadMemoryPrompt(config.memoryDir);
-              return memorySection ? `${prev}\n${memorySection}` : prev;
+              const sources = await loadMemoryPrompt(config.memoryDir);
+              return { ...prev, ...sources };
             },
           });
         },

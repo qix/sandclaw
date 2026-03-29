@@ -60,6 +60,7 @@ export class MuteworkerApiClient {
     event: string;
     prompt?: string;
     systemPrompt?: string;
+    systemPromptSources?: Record<string, string>;
     toolNames?: string[];
     data?: Record<string, unknown>;
     createdAt?: string;
