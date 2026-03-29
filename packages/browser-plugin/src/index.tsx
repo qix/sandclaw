@@ -29,6 +29,14 @@ export function createBrowserPlugin(options: BrowserPluginOptions = {}) {
     image: options.image,
   };
 
+  // Deferred promise so executeBrowse can await the background image build.
+  let resolveBuild: () => void;
+  let rejectBuild: (err: Error) => void;
+  const buildReady = new Promise<void>((resolve, reject) => {
+    resolveBuild = resolve;
+    rejectBuild = reject;
+  });
+
   return {
     id: "browser" as const,
     verificationRenderer: BrowserVerificationRenderer,
@@ -36,6 +44,7 @@ export function createBrowserPlugin(options: BrowserPluginOptions = {}) {
     jobHandlers: browserJobHandlers,
     confidanteHandlers: createBrowserConfidanteHandlers({
       image: config.image,
+      buildReady,
     }),
 
     registerGateway(env: PluginEnvironment) {
@@ -97,10 +106,11 @@ export function createBrowserPlugin(options: BrowserPluginOptions = {}) {
                   console.log(
                     `[browser-plugin] Docker image "${imageName}" built successfully.`,
                   );
+                  resolveBuild();
                 } else {
-                  console.error(
-                    `[browser-plugin] Docker build failed (exit code ${code}):\n${stderr}`,
-                  );
+                  const msg = `Docker build failed (exit code ${code}):\n${stderr}`;
+                  console.error(`[browser-plugin] ${msg}`);
+                  rejectBuild(new Error(msg));
                 }
               });
             },

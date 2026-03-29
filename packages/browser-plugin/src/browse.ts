@@ -13,6 +13,8 @@ interface BrowseRequestPayload {
 
 export interface BrowseConfig {
   image?: string;
+  /** Resolves when the Docker image build finishes. Await before running. */
+  buildReady?: Promise<void>;
 }
 
 export async function executeBrowse(
@@ -40,6 +42,13 @@ export async function executeBrowse(
     prompt,
     url,
   });
+
+  if (config.buildReady) {
+    ctx.logger.info("browser.browse.waiting_for_build", {
+      jobId: ctx.job.id,
+    });
+    await config.buildReady;
+  }
 
   const { finalResult, exitCode } = await runDockerBrowser({
     image,
