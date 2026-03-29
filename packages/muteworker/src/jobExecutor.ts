@@ -134,6 +134,13 @@ export async function executeMuteworkerJob(
           jobId: job.id,
           additionalLength: opts.systemPrompt.length,
         });
+        // Re-report so the Agent Status page includes the additional prompt
+        reportStatus("started", {
+          data: jobData,
+          systemPrompt: effectiveSystemPrompt,
+          systemPromptSources: effectiveSources,
+          toolNames,
+        });
       }
 
       const result = await runWithClaude(prompt, {

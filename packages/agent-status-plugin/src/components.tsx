@@ -352,7 +352,7 @@ export function AgentStatusPanel({
             ) : (
               activeJobs.map((j) => {
                 const queued = j.events.find((e) => e.event === "queued");
-                const started = j.events.find((e) => e.event === "started");
+                const started = [...j.events].reverse().find((e: any) => e.event === "started");
                 const stepCount = j.events.filter(
                   (e) => e.event === "step",
                 ).length;
@@ -500,7 +500,7 @@ export function AgentStatusPanel({
               ) : (
                 finishedJobs.map((j) => {
                   const queued = j.events.find((e) => e.event === "queued");
-                  const started = j.events.find((e) => e.event === "started");
+                  const started = [...j.events].reverse().find((e: any) => e.event === "started");
                   const terminal = j.events[j.events.length - 1];
                   const stepCount = j.events.filter(
                     (e) => e.event === "step",
@@ -924,7 +924,7 @@ export function AgentJobDetailPanel({
   jobQueueRow,
 }: AgentJobDetailPanelProps) {
   const queued = events.find((e) => e.event === "queued");
-  const started = events.find((e) => e.event === "started");
+  const started = [...events].reverse().find((e: any) => e.event === "started");
   const terminal = events.find(
     (e) => e.event === "completed" || e.event === "failed",
   );
