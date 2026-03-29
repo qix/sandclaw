@@ -39,21 +39,15 @@ USER node
 
 # Set up global npm prefix
 ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
-ENV PATH=$PATH:/usr/local/share/npm-global/bin
+ENV PATH=/workspace/node_modules/.bin:$PATH:/usr/local/share/npm-global/bin
 
 # Point Chromium at the system-installed binary
 ENV CHROME_PATH=/usr/bin/chromium
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 
-# Install Claude Code CLI (required by agent SDK)
-RUN npm install -g @anthropic-ai/claude-code
-
-# Install agent-browser globally and run its install step
-RUN npm install -g agent-browser && agent-browser install
-
 # Install dependencies
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci && agent-browser install
 
 # Add code and compile
 COPY entry.ts tsconfig.json ./
