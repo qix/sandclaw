@@ -49,13 +49,8 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY package.json package-lock.json ./
 RUN npm ci && agent-browser install
 
-# Install the agent-browser skill so Claude Code picks it up natively
-RUN npx -y skills add vercel-labs/agent-browser --yes 2>/dev/null || \
-  (mkdir -p /home/node/.claude/skills/agent-browser && \
-   cp -r node_modules/agent-browser/skills/agent-browser/* /home/node/.claude/skills/agent-browser/)
-
 # Add code and compile
-COPY entry.ts tsconfig.json ./
+COPY entry.ts tsconfig.json .claude ./
 RUN npx tsc
 
 # Start Xvfb then run the entry point

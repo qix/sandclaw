@@ -122,11 +122,12 @@ async function main() {
         maxTurns,
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
+        cwd: "/workspace",
+        settingSources: ["project"],
       },
     });
 
     for await (const message of conversation) {
-      console.log(message);
       if (message.type === "assistant") {
         // Emit tool invocations
         const tools = extractToolUses(message);
