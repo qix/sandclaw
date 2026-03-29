@@ -96,7 +96,7 @@ export function GoogleWorkspaceVerificationRenderer({
             color: colors.text,
           }}
         >
-          gws {command}
+          gws {Array.isArray(command) ? command.join(" ") : command}
         </pre>
       )}
       <table
