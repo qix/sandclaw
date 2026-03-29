@@ -16,6 +16,7 @@ import {
 } from "./calendarClient";
 import { localTimestamp } from "@sandclaw/util";
 import { isWatchInboxEnabled, isWatchCalendarEnabled } from "./watch";
+import { stripHtml } from "./stripHtml";
 
 export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
   // GET /settings/watch-inbox — read current toggle state
@@ -102,6 +103,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
     }
 
     const now = localTimestamp();
+    const cleanText = stripHtml(body.text ?? "");
 
     // Store incoming message
     await db("conversation_message").insert({
@@ -114,7 +116,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
       to: body.to ?? config.userEmail,
       timestamp: now,
       direction: "received",
-      text: body.text ?? "",
+      text: cleanText,
       created_at: now,
     });
 
@@ -150,7 +152,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
           from: body.from,
           to: body.to ?? config.userEmail,
           subject: body.subject ?? "",
-          text: body.text ?? "",
+          text: cleanText,
           threadId: body.threadId ?? null,
           history: historyEntries,
           ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
