@@ -1,10 +1,9 @@
-import React from "react";
-import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
+import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
 import type { ConfidanteEnvironment } from "@sandclaw/confidante-plugin-api";
-import { BuilderPanel, BuilderVerificationRenderer } from "./components";
+import { BuilderVerificationRenderer } from "./components";
 import { registerRoutes, type BuilderPluginConfig } from "./routes";
 import { BUILDER_CONFIDANTE_JOB_TYPE } from "./constants";
 import { createRequestBuildTool } from "./tools";
@@ -55,17 +54,10 @@ export function createBuilderPlugin(options: BuilderPluginOptions) {
         deps: {
           db: gatekeeperDeps.db,
           hooks: gatekeeperDeps.hooks,
-          components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
           verifications: gatekeeperDeps.verifications,
         },
-        init({ db, hooks, components, routes, verifications }) {
-          function BuilderTab() {
-            return <TabLink href="?page=builder" title="Builder" />;
-          }
-          components.register("tabs:primary", BuilderTab);
-          components.register("page:builder", BuilderPanel);
-
+        init({ db, hooks, routes, verifications }) {
           routes.registerRoutes((app) =>
             registerRoutes(app, db, config, (event) =>
               hooks.fireAgentStatus(event),
