@@ -14,83 +14,14 @@ function log(msg: string) {
   process.stderr.write(`[browser-entry] ${msg}\n`);
 }
 
-interface StatusBlob {
-  type: "status";
-  subtype: "info" | "assistant" | "tool_use" | "tool_result" | "error";
-  message: string;
-  tool?: { name: string; input: Record<string, unknown> };
-  result?: Record<string, unknown>;
-  timestamp: string;
-}
-
-function writeStatus(
-  message: string,
-  subtype: StatusBlob["subtype"] = "info",
-  extra?: { tool?: StatusBlob["tool"]; result?: StatusBlob["result"] },
-) {
-  const blob: StatusBlob = {
-    type: "status",
-    subtype,
-    message,
-    ...extra,
-    timestamp: new Date().toISOString(),
-  };
-  process.stdout.write(JSON.stringify(blob) + "\n");
+function writeClaude(body: unknown) {
+  process.stdout.write(JSON.stringify({ type: "claude", body }) + "\n");
 }
 
 function writeResult(data: string, exitCode: number) {
-  const blob = { type: "result", data, exitCode };
-  process.stdout.write(JSON.stringify(blob) + "\n");
-}
-
-/** Extract text content from an assistant message's content blocks. */
-function extractAssistantText(message: any): string {
-  if (!message?.message?.content) return "";
-  const parts: string[] = [];
-  for (const block of message.message.content) {
-    if (block.type === "text" && block.text) {
-      parts.push(block.text);
-    }
-  }
-  return parts.join("\n");
-}
-
-interface ToolUseInfo {
-  name: string;
-  input: Record<string, unknown>;
-}
-
-/** Extract tool use info from an assistant message's content blocks. */
-function extractToolUses(message: any): ToolUseInfo[] {
-  if (!message?.message?.content) return [];
-  const tools: ToolUseInfo[] = [];
-  for (const block of message.message.content) {
-    if (block.type === "tool_use" && block.name) {
-      tools.push({
-        name: block.name,
-        input: (block.input as Record<string, unknown>) ?? {},
-      });
-    }
-  }
-  return tools;
-}
-
-/** Extract tool results from a user message's content blocks. */
-function extractToolResults(message: any): Record<string, unknown>[] {
-  if (!message?.message?.content) return [];
-  const results: Record<string, unknown>[] = [];
-  for (const block of message.message.content) {
-    if (block.type === "tool_result") {
-      results.push({
-        tool_use_id: block.tool_use_id,
-        content:
-          typeof block.content === "string"
-            ? block.content.slice(0, 2000)
-            : block.content,
-      });
-    }
-  }
-  return results;
+  process.stdout.write(
+    JSON.stringify({ type: "result", data, exitCode }) + "\n",
+  );
 }
 
 // ── main ─────────────────────────────────────────────────────────────
@@ -124,8 +55,6 @@ async function main() {
   }
   const systemPrompt = systemParts.join("\n");
 
-  writeStatus("Starting browser agent...");
-
   let finalReply = "";
   let exitCode = 0;
   let gotResult = false;
@@ -145,40 +74,16 @@ async function main() {
     });
 
     for await (const message of conversation) {
-      if (message.type === "assistant") {
-        // Emit tool invocations
-        const tools = extractToolUses(message);
-        for (const tool of tools) {
-          writeStatus(tool.name, "tool_use", { tool });
-        }
-
-        // Emit assistant text (truncated for sanity)
-        const text = extractAssistantText(message);
-        if (text) {
-          const truncated = text.length > 500 ? text.slice(0, 500) + "…" : text;
-          writeStatus(truncated, "assistant");
-        }
-      }
-
-      if (message.type === "user") {
-        // User messages in the SDK loop are tool results
-        const results = extractToolResults(message);
-        writeStatus("Processing tool results…", "tool_result", {
-          result: { tool_results: results },
-        });
-      }
+      writeClaude(message);
 
       if (message.type === "result") {
         gotResult = true;
         if (message.subtype === "success") {
-          const success = message as SDKResultSuccess;
-          finalReply = success.result ?? "";
-          writeStatus(`Completed in ${success.num_turns} turns`);
+          finalReply = (message as SDKResultSuccess).result ?? "";
         } else {
-          const error = message as SDKResultError;
           exitCode = 1;
-          finalReply = error.errors?.join("\n") ?? "Unknown error";
-          writeStatus(`Error after ${error.num_turns} turns`, "error");
+          finalReply =
+            (message as SDKResultError).errors?.join("\n") ?? "Unknown error";
         }
       }
     }

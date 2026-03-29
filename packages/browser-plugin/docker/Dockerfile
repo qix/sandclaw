@@ -50,8 +50,11 @@ COPY package.json package-lock.json ./
 RUN npm ci && agent-browser install
 
 # Add code and compile
-COPY entry.ts tsconfig.json .claude ./
+COPY entry.ts tsconfig.json ./
 RUN npx tsc
+
+# Add remaining static files
+COPY claude-skills /workspace/.claude/skills
 
 # Start Xvfb then run the entry point
 CMD ["bash", "-c", "Xvfb :99 -screen 0 1280x720x24 -nolisten tcp &>/dev/null & export DISPLAY=:99 && node dist/entry.js"]
