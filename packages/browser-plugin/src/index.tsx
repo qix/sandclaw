@@ -1,8 +1,13 @@
+import { spawn } from "node:child_process";
+import path from "node:path";
 import { gatekeeperDeps } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
-import type { ConfidanteEnvironment } from "@sandclaw/confidante-plugin-api";
+import {
+  confidanteDeps,
+  type ConfidanteEnvironment,
+} from "@sandclaw/confidante-plugin-api";
 import { BrowserVerificationRenderer } from "./components";
 import { registerRoutes, type BrowserPluginConfig } from "./routes";
 import { BROWSER_CONFIDANTE_JOB_TYPE } from "./constants";
@@ -67,8 +72,41 @@ export function createBrowserPlugin(options: BrowserPluginOptions = {}) {
       });
     },
 
-    registerConfidante(_env: ConfidanteEnvironment) {
-      // No additional init needed — confidanteHandlers are picked up automatically
+    registerConfidante(env: ConfidanteEnvironment) {
+      env.registerInit({
+        deps: { hooks: confidanteDeps.hooks },
+        init({ hooks }) {
+          hooks.register({
+            "confidante:start": () => {
+              const dockerDir = path.resolve(__dirname, "..", "docker");
+              const imageName = config.image ?? "browser-plugin";
+              console.log(
+                `[browser-plugin] Building Docker image "${imageName}" in background...`,
+              );
+              const child = spawn(
+                "docker",
+                ["build", "-t", imageName, dockerDir],
+                { stdio: ["ignore", "ignore", "pipe"] },
+              );
+              let stderr = "";
+              child.stderr.on("data", (chunk: Buffer) => {
+                stderr += chunk.toString();
+              });
+              child.on("close", (code) => {
+                if (code === 0) {
+                  console.log(
+                    `[browser-plugin] Docker image "${imageName}" built successfully.`,
+                  );
+                } else {
+                  console.error(
+                    `[browser-plugin] Docker build failed (exit code ${code}):\n${stderr}`,
+                  );
+                }
+              });
+            },
+          });
+        },
+      });
     },
   };
 }
