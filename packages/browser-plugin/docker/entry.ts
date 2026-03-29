@@ -14,14 +14,50 @@ function log(msg: string) {
   process.stderr.write(`[browser-entry] ${msg}\n`);
 }
 
-function writeStatus(message: string) {
-  const blob = { type: "status", message, timestamp: new Date().toISOString() };
+interface StatusBlob {
+  type: "status";
+  subtype: "info" | "assistant" | "tool_use" | "tool_result" | "error";
+  message: string;
+  timestamp: string;
+}
+
+function writeStatus(message: string, subtype: StatusBlob["subtype"] = "info") {
+  const blob: StatusBlob = {
+    type: "status",
+    subtype,
+    message,
+    timestamp: new Date().toISOString(),
+  };
   process.stdout.write(JSON.stringify(blob) + "\n");
 }
 
 function writeResult(data: string, exitCode: number) {
   const blob = { type: "result", data, exitCode };
   process.stdout.write(JSON.stringify(blob) + "\n");
+}
+
+/** Extract text content from an assistant message's content blocks. */
+function extractAssistantText(message: any): string {
+  if (!message?.message?.content) return "";
+  const parts: string[] = [];
+  for (const block of message.message.content) {
+    if (block.type === "text" && block.text) {
+      parts.push(block.text);
+    }
+  }
+  return parts.join("\n");
+}
+
+/** Extract tool use info from an assistant message's content blocks. */
+function extractToolUses(message: any): string[] {
+  if (!message?.message?.content) return [];
+  const tools: string[] = [];
+  for (const block of message.message.content) {
+    if (block.type === "tool_use" && block.name) {
+      tools.push(block.name);
+    }
+  }
+  return tools;
 }
 
 // ── main ─────────────────────────────────────────────────────────────
@@ -79,7 +115,23 @@ async function main() {
 
     for await (const message of conversation) {
       if (message.type === "assistant") {
-        writeStatus("Agent working...");
+        // Emit tool invocations
+        const tools = extractToolUses(message);
+        for (const tool of tools) {
+          writeStatus(`Tool: ${tool}`, "tool_use");
+        }
+
+        // Emit assistant text (truncated for sanity)
+        const text = extractAssistantText(message);
+        if (text) {
+          const truncated = text.length > 500 ? text.slice(0, 500) + "…" : text;
+          writeStatus(truncated, "assistant");
+        }
+      }
+
+      if (message.type === "user") {
+        // User messages in the SDK loop are tool results
+        writeStatus("Processing tool results…", "tool_result");
       }
 
       if (message.type === "result") {
@@ -92,7 +144,7 @@ async function main() {
           const error = message as SDKResultError;
           exitCode = 1;
           finalReply = error.errors?.join("\n") ?? "Unknown error";
-          writeStatus(`Error after ${error.num_turns} turns`);
+          writeStatus(`Error after ${error.num_turns} turns`, "error");
         }
       }
     }

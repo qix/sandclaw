@@ -10,6 +10,13 @@ function logCmd(cmd: string, args: string[]) {
   process.stderr.write(`${BOLD}$ ${quote([cmd, ...args])}${RESET}\n`);
 }
 
+/** Parsed status blob from the Docker container's stdout. */
+export interface BrowserStatusEvent {
+  subtype: "info" | "assistant" | "tool_use" | "tool_result" | "error";
+  message: string;
+  timestamp: string;
+}
+
 export interface RunDockerBrowserOptions {
   /** Docker image name (e.g. "browser-plugin"). */
   image: string;
@@ -29,6 +36,11 @@ export interface RunDockerBrowserOptions {
    * Extra `docker run` flags inserted before the image name.
    */
   dockerArgs?: string[];
+  /**
+   * Called for each status blob emitted by the container.
+   * Use this to forward status to the gatekeeper's agent status API.
+   */
+  onStatus?: (event: BrowserStatusEvent) => void;
 }
 
 export interface RunDockerBrowserResult {
@@ -55,6 +67,7 @@ export function runDockerBrowser(
     maxTurns = 30,
     envKeys = ["ANTHROPIC_API_KEY"],
     dockerArgs = [],
+    onStatus,
   } = options;
 
   const envFlags: string[] = [];
@@ -90,6 +103,11 @@ export function runDockerBrowser(
       if (blob.type === "status") {
         statusMessages.push(blob.message);
         process.stderr.write(`${DIM}[browser] ${blob.message}${RESET}\n`);
+        onStatus?.({
+          subtype: blob.subtype ?? "info",
+          message: blob.message,
+          timestamp: blob.timestamp ?? new Date().toISOString(),
+        });
       } else if (blob.type === "result") {
         finalResult = blob.data ?? "";
       }

@@ -36,7 +36,10 @@ export function stripHtml(text: string): string {
   );
 
   // Convert block-level elements to newlines before stripping tags
-  result = result.replace(/<\/(?:p|div|tr|li|h[1-6]|blockquote|section|article|header|footer)>/gi, "\n");
+  result = result.replace(
+    /<\/(?:p|div|tr|li|h[1-6]|blockquote|section|article|header|footer)>/gi,
+    "\n",
+  );
   result = result.replace(/<(?:br|hr)\s*\/?>/gi, "\n");
   result = result.replace(/<li[^>]*>/gi, "- ");
 

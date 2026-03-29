@@ -1,4 +1,5 @@
 import type { ConfidantePluginContext } from "@sandclaw/confidante-plugin-api";
+import { localTimestamp } from "@sandclaw/util";
 import { runDockerBrowser } from "./docker";
 import { DEFAULT_BROWSER_RESULT_JOB_TYPE } from "./constants";
 
@@ -44,6 +45,19 @@ export async function executeBrowse(
     image,
     prompt,
     url,
+    onStatus: ctx.reportStatus
+      ? (event) => {
+          ctx.reportStatus!({
+            jobId: ctx.job.id,
+            event: "step",
+            data: {
+              subtype: event.subtype,
+              message: event.message,
+            },
+            createdAt: localTimestamp(new Date(event.timestamp)),
+          });
+        }
+      : undefined,
   });
 
   ctx.logger.info("browser.browse.completed", {
