@@ -95,7 +95,8 @@ async function main() {
 
   // Build system prompt
   const systemParts = [
-    "You are a browser automation agent. Use the agent-browser MCP tools to browse the web and complete the user's request.",
+    "You are a browser automation agent. Use the agent-browser MCP tools (prefixed with mcp__agent-browser__) to browse the web and complete the user's request.",
+    "IMPORTANT: You MUST use the agent-browser MCP tools for ALL web interactions. Do NOT use WebFetch, curl, wget, or any Bash commands to fetch web content. Do NOT install or use Playwright, Puppeteer, or any other browser automation library. The agent-browser MCP server already provides a fully functional browser — use it exclusively.",
     "Return a concise summary of what you found or accomplished.",
   ];
   if (startUrl) {
