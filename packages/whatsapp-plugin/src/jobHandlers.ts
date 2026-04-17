@@ -8,7 +8,7 @@ import {
   type IncomingWhatsappPayload,
 } from "./tools";
 
-export function createWhatsappJobHandlers(operatorJids: ReadonlySet<string>) {
+export function createWhatsappJobHandlers(operatorJids: ReadonlySet<string>, modelId?: string) {
   return {
     async "whatsapp:incoming_message"(
       ctx: MuteworkerPluginContext,
@@ -26,7 +26,7 @@ export function createWhatsappJobHandlers(operatorJids: ReadonlySet<string>) {
 
       const isOperator = operatorJids.has(payload.jid);
       const prompt = buildWhatsappPrompt(payload, isOperator);
-      const result = await runAgent(prompt);
+      const result = await runAgent(prompt, modelId ? { modelId } : undefined);
 
       if (result.reply && ctx.job.context) {
         try {

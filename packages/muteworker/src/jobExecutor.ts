@@ -143,6 +143,7 @@ export async function executeMuteworkerJob(
         jobId: job.id,
         systemPrompt: effectiveSystemPrompt,
         mcpToolDefs,
+        modelId: opts?.modelId,
         onStep: () => reportStatus("step"),
       });
       return { reply: result?.reply ?? null };

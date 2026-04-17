@@ -35,11 +35,11 @@ export const plugins: SandclawPlugin[] = [
   createMemoryPlugin({ memoryDir: config.memoryDir }),
 
   buildChatPlugin(),
-  /*
   buildWhatsappPlugin({
     operatorJids: ["218519480315934@lid"],
     operatorOnly: true,
-  }), */
+    modelId: 'none',
+  }),
   buildTelegramPlugin({
     botToken: process.env.TELEGRAM_BOT_TOKEN,
 

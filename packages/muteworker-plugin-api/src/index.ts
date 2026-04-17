@@ -44,6 +44,8 @@ export interface RunAgentResult {
 export interface RunAgentOptions {
   /** Additional system prompt prepended to the base system prompt for this run. */
   systemPrompt?: string;
+  /** Override the model ID for this run (e.g. 'claude-sonnet-4-6'). */
+  modelId?: string;
 }
 
 /**

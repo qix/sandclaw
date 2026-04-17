@@ -29,6 +29,10 @@ export interface WhatsappGatekeeperPluginOptions {
   // Only process messages from the operator through the agent, and ignore messages from non-operators entirely.
   // This is useful if you want to use the plugin just for its send tool and not have incoming messages trigger agent runs.
   operatorOnly?: boolean;
+
+  /** Model ID to use for processing incoming messages (e.g. 'claude-sonnet-4-6').
+   *  Set to 'none' to log messages without LLM processing. */
+  modelId?: string;
 }
 
 export function buildWhatsappPlugin(
@@ -36,13 +40,14 @@ export function buildWhatsappPlugin(
 ) {
   const operatorJids: ReadonlySet<string> = new Set(options.operatorJids ?? []);
   const operatorOnly = options.operatorOnly ?? false;
+  const modelId = options.modelId;
 
   return {
     id: "whatsapp" as const,
     verificationRenderer: WhatsAppVerificationRenderer,
     migrations,
 
-    jobHandlers: createWhatsappJobHandlers(operatorJids),
+    jobHandlers: createWhatsappJobHandlers(operatorJids, modelId),
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({
@@ -107,6 +112,7 @@ export function buildWhatsappPlugin(
               await connectWhatsApp(db, {
                 operatorOnly,
                 operatorJids,
+                modelId,
               });
             },
             "gatekeeper:stop": () => disconnectWhatsApp(),

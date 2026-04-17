@@ -73,9 +73,9 @@ export async function loadRecentConversations(db: any): Promise<void> {
 
 export async function connectWhatsApp(
   db: any,
-  options: { operatorOnly: boolean; operatorJids: ReadonlySet<string> },
+  options: { operatorOnly: boolean; operatorJids: ReadonlySet<string>; modelId?: string },
 ) {
-  const { operatorOnly, operatorJids } = options;
+  const { operatorOnly, operatorJids, modelId } = options;
   const logger = pino({ level: "silent" });
   const { version } = await fetchLatestBaileysVersion();
   const { state, saveCreds } = await useDBAuthState(db);
@@ -190,7 +190,8 @@ export async function connectWhatsApp(
       });
 
       const watchEnabled = await isWatchInboxEnabled(db);
-      if (watchEnabled && (!operatorOnly || operatorJids.has(jid))) {
+      const llmDisabled = modelId === "none";
+      if (watchEnabled && !llmDisabled && (!operatorOnly || operatorJids.has(jid))) {
         // Fetch recent history for context
         const recentMessages = await db("conversation_message")
           .where({ plugin: "whatsapp", thread_id: jid })
@@ -240,7 +241,7 @@ export async function connectWhatsApp(
         );
       } else {
         console.log(
-          `[whatsapp] Saved message from ${pushName ?? jid} (queue ${watchEnabled ? "enabled, operator-only filtered" : "disabled"})`,
+          `[whatsapp] Saved message from ${pushName ?? jid} (${llmDisabled ? "model=none, log only" : watchEnabled ? "queue enabled, operator-only filtered" : "queue disabled"})`,
         );
       }
 

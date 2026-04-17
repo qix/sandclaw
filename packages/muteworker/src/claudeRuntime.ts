@@ -15,6 +15,8 @@ export interface ClaudeRunOptions {
   jobId: number;
   systemPrompt: string;
   mcpToolDefs: McpToolDef[];
+  /** Override the model ID from config for this run. */
+  modelId?: string;
   /** Called on each assistant turn. */
   onStep?: () => void;
 }
@@ -28,7 +30,7 @@ export async function runWithClaude(
   prompt: string,
   options: ClaudeRunOptions,
 ): Promise<ClaudeExecutionResult | null> {
-  const { config, logger, jobId, systemPrompt, mcpToolDefs, onStep } = options;
+  const { config, logger, jobId, systemPrompt, mcpToolDefs, modelId, onStep } = options;
 
   // Build MCP tools using the SDK's tool() helper
   const sdkTools = mcpToolDefs.map((def) =>
@@ -65,7 +67,7 @@ export async function runWithClaude(
       prompt,
       options: {
         systemPrompt: systemPrompt || undefined,
-        model: config.modelId,
+        model: modelId ?? config.modelId,
         maxTurns: config.maxTurns,
         permissionMode: config.permissionMode,
         allowDangerouslySkipPermissions:
