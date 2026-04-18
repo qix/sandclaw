@@ -1,6 +1,7 @@
 {
-  "name": "Claude Code Sandbox",
+  "name": "Claudebox Sandbox",
   "build": {
+    "context": "..",
     "dockerfile": "Dockerfile",
     "args": {
       "TZ": "${localEnv:TZ:America/Los_Angeles}",
@@ -9,7 +10,10 @@
       "ZSH_IN_DOCKER_VERSION": "1.2.0"
     }
   },
-  "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
+  "runArgs": [
+	"--add-host=host.docker.internal:host-gateway",
+        "--network=sandbox-net"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [
@@ -37,22 +41,24 @@
       }
     }
   },
-  "remoteUser": "node",
+  "remoteUser": "dev",
   "mounts": [
     "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
-    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
-    "source=/home/josh/.config/daveus-sandclaw,target=/home/node/.config/daveus-sandclaw,type=bind,readonly",
-    "source=/home/josh/.config/devcontainer-gws,target=/home/node/.config/gws,type=bind",
-    "source=/home/josh/code/cm,target=/opt/cm,type=bind,readonly"
+    "source=claude-code-config-${devcontainerId},target=/home/dev/.claude,type=volume"
   ],
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
-    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
-    "POWERLEVEL9K_DISABLE_GITSTATUS": "true",
-    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+    "DISABLE_ERROR_REPORTING": "1",
+    "ALL_PROXY": "http://host.docker.internal:8080",
+    "HTTPS_PROXY": "http://host.docker.internal:8080",
+    "HTTP_PROXY": "http://host.docker.internal:8080",
+    "NODE_EXTRA_CA_CERTS": "/usr/local/share/ca-certificates/mitmproxy.crt",
+    "CLAUDE_CONFIG_DIR": "/home/dev/.claude",
+    "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
-  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
+  "postStartCommand": "sudo /usr/local/bin/setup-mitm.sh",
   "waitFor": "postStartCommand"
+
 }
