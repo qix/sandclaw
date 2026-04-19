@@ -3,6 +3,7 @@
 /.envrc
 /.claude/
 /default.nix
+/samples
 
 # Packages
 node_modules/

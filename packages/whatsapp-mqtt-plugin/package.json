@@ -1,0 +1,37 @@
+{
+  "name": "@sandclaw/whatsapp-mqtt-plugin",
+  "version": "0.1.0",
+  "description": "Sandclaw WhatsApp plugin — connects via MQTT bridge instead of Baileys directly",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/whatsapp-mqtt-plugin"
+  },
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0",
+    "@sandclaw/util": "^0.1.0",
+    "mqtt": "^5.15.1"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "typescript": "*"
+  }
+}

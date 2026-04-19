@@ -20,6 +20,7 @@ import { createBuilderPlugin } from "@sandclaw/builder-plugin";
 import { createEmailPlugin } from "@sandclaw/email-plugin";
 import { createAgentStatusPlugin } from "@sandclaw/agent-status-plugin";
 import { buildWhatsappPlugin } from "@sandclaw/whatsapp-plugin";
+import { buildWhatsappMqttPlugin } from "@sandclaw/whatsapp-mqtt-plugin";
 
 export type SandclawPlugin = GatekeeperPlugin &
   MuteworkerPlugin &
@@ -40,6 +41,7 @@ export const plugins: SandclawPlugin[] = [
     operatorOnly: true,
     modelId: 'none',
   }),
+  buildWhatsappMqttPlugin(),
   buildTelegramPlugin({
     botToken: process.env.TELEGRAM_BOT_TOKEN,
 
