@@ -4,12 +4,12 @@ export interface ConversationSummary {
   threadId: string;
   displayName: string;
   lastMessage: string;
-  lastTimestamp: number;
+  lastTimestamp: string;
   direction: "inbound" | "outbound";
 }
 
-function formatTime(ts: number): string {
-  const d = new Date(ts * 1000);
+function formatTime(ts: string): string {
+  const d = new Date(ts);
   const now = new Date();
   const isToday =
     d.getFullYear() === now.getFullYear() &&
