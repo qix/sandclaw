@@ -15,15 +15,18 @@
     "@release-it-plugins/workspaces": "^5.0.3",
     "@types/react": "*",
     "@types/react-dom": "*",
-    "prettier": "^3.8.1",
+    "prettier": "^3.8.3",
     "release-it": "^19.2.4",
     "tsx": "*",
     "typescript": "*"
   },
   "dependencies": {
-    "@hono/node-server": "*",
-    "hono": "*",
+    "@clack/prompts": "^1.2.0",
+    "@hono/node-server": "^2.0.0",
+    "hono": "^4.12.14",
+    "knex": "^3.2.9",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "ws": "^8.20.0"
   }
 }
