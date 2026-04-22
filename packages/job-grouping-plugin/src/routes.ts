@@ -165,7 +165,7 @@ export function registerRoutes(
     return c.json({ success: true });
   });
 
-  // GET /pending — list pending grouped jobs
+  // GET /pending — list pending grouped jobs (summary)
   app.get("/pending", async (c: any) => {
     const pending = await db("job_grouping_pending")
       .select(
@@ -179,5 +179,74 @@ export function registerRoutes(
       .orderBy("window_start", "desc");
 
     return c.json({ groups: pending });
+  });
+
+  // GET /status — detailed view of pending groups + grouped jobs in main queue
+  app.get("/status", async (c: any) => {
+    // 1. Pending groups with individual jobs and rule info
+    const pendingJobs = await db("job_grouping_pending as p")
+      .leftJoin("job_grouping_rules as r", "p.rule_id", "r.id")
+      .select(
+        "p.id",
+        "p.rule_id",
+        "p.group_key",
+        "p.executor",
+        "p.job_type",
+        "p.job_data",
+        "p.job_context",
+        "p.window_start",
+        "p.created_at",
+        "r.prompt as rule_prompt",
+      )
+      .orderBy("p.window_start", "desc")
+      .orderBy("p.id", "asc");
+
+    // Group them by group_key + window_start
+    const groupsMap = new Map<string, any>();
+    for (const row of pendingJobs) {
+      const key = `${row.group_key}::${row.window_start}`;
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, {
+          groupKey: row.group_key,
+          windowStart: row.window_start,
+          ruleId: row.rule_id,
+          rulePrompt: row.rule_prompt ?? "Unknown rule",
+          executor: row.executor,
+          jobs: [],
+        });
+      }
+      groupsMap.get(key)!.jobs.push({
+        id: row.id,
+        jobType: row.job_type,
+        data: row.job_data,
+        context: row.job_context,
+        createdAt: row.created_at,
+      });
+    }
+    const pendingGroups = Array.from(groupsMap.values());
+
+    // 2. Jobs in the main queue that were created by the grouping engine
+    const queuedGroupedJobs = await db("job_queue")
+      .where("job_type", "job-grouping:grouped")
+      .orderBy("created_at", "desc")
+      .limit(50);
+
+    const mainQueueGrouped = queuedGroupedJobs.map((j: any) => {
+      let parsed: any = {};
+      try { parsed = JSON.parse(j.data); } catch {}
+      let ctx: any = {};
+      try { ctx = j.context ? JSON.parse(j.context) : {}; } catch {}
+      return {
+        id: j.id,
+        status: j.status,
+        groupKey: parsed.groupKey ?? ctx.groupKey ?? "",
+        jobCount: parsed.jobCount ?? 0,
+        ruleDescription: parsed.ruleDescription ?? "",
+        windowStart: parsed.windowStart ?? "",
+        createdAt: j.created_at,
+      };
+    });
+
+    return c.json({ pendingGroups, mainQueueGrouped });
   });
 }
