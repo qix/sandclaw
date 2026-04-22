@@ -26,6 +26,7 @@
     "@sandclaw/prompts-plugin": "^0.1.0",
     "@sandclaw/telegram-plugin": "^0.1.0",
     "@sandclaw/web-search-plugin": "^0.1.0",
+    "@sandclaw/job-grouping-plugin": "^0.1.0",
     "@sandclaw/whatsapp-mqtt-plugin": "^0.1.0",
     "@sandclaw/whatsapp-plugin": "^0.1.0"
   },

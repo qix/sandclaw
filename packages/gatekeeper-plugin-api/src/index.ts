@@ -119,6 +119,36 @@ export interface VerificationsService {
   }): Promise<{ id: number; status: "pending" | "approved" | "error" }>;
 }
 
+/** Description of a job to be created. */
+export interface JobSpec {
+  executor: "muteworker" | "confidante";
+  jobType: string;
+  data: any;
+  context?: any;
+}
+
+/**
+ * Result returned by a job interceptor.
+ * - `undefined` / `null` → continue to next interceptor / create normally
+ * - `{ handled: true }` → the interceptor consumed the job (e.g. grouped it)
+ */
+export interface JobInterceptResult {
+  handled: boolean;
+}
+
+/** Callback that can intercept job creation before it hits the queue. */
+export type JobInterceptor = (
+  job: JobSpec,
+) => Promise<JobInterceptResult | null | undefined | void>;
+
+/** Service for creating jobs and intercepting job creation. */
+export interface JobService {
+  /** Create a job. Interceptors run first; if none handles it the job is queued normally. */
+  createJob(spec: JobSpec): Promise<{ jobId: number } | { handled: true }>;
+  /** Register an interceptor that runs before every job is created. */
+  onBeforeCreateJob(interceptor: JobInterceptor): void;
+}
+
 /** Core service refs available to all plugins. */
 export const gatekeeperDeps = {
   db: createServiceRef<Knex>({ id: "core.db" }),
@@ -130,6 +160,7 @@ export const gatekeeperDeps = {
   verifications: createServiceRef<VerificationsService>({
     id: "core.verifications",
   }),
+  jobs: createServiceRef<JobService>({ id: "core.jobs" }),
 };
 
 type ResolveDeps<T extends Record<string, ServiceRef<any>>> = {

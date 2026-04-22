@@ -17,6 +17,9 @@ import type {
   VerificationsService,
   VerificationCallback,
   VerificationRendererProps,
+  JobService,
+  JobInterceptor,
+  JobSpec,
 } from "@sandclaw/gatekeeper-plugin-api";
 import type { ComponentType } from "react";
 import { WebSocketServer, WebSocket } from "ws";
@@ -188,12 +191,43 @@ export async function startGatekeeper(
     return { jobId };
   }
 
+  // JobService: wraps queueJob with interceptor support
+  const jobInterceptors: JobInterceptor[] = [];
+  const jobService: JobService = {
+    async createJob(spec: JobSpec) {
+      for (const interceptor of jobInterceptors) {
+        const result = await interceptor(spec);
+        if (result && result.handled) {
+          return { handled: true };
+        }
+      }
+      const { jobId } = await queueJob(
+        spec.executor,
+        spec.jobType,
+        spec.data,
+      );
+      // Store context if provided
+      if (spec.context != null) {
+        const ctx =
+          typeof spec.context === "string"
+            ? spec.context
+            : JSON.stringify(spec.context);
+        await db("job_queue").where("id", jobId).update({ context: ctx });
+      }
+      return { jobId };
+    },
+    onBeforeCreateJob(interceptor: JobInterceptor) {
+      jobInterceptors.push(interceptor);
+    },
+  };
+
   const services = new Map<string, any>();
   services.set("core.db", db);
   services.set("core.hooks", hooksService);
   services.set("core.components", componentsService);
   services.set("core.ws", wsService);
   services.set("core.notify", notifyService);
+  services.set("core.jobs", jobService);
 
   const initFns: Array<() => void | Promise<void>> = [];
   for (const plugin of plugins) {
@@ -357,7 +391,7 @@ export async function startGatekeeper(
   }, 2000);
 
   // 3b. Register core API routes
-  registerCoreRoutes(app, db, notifyVerificationChange, agentStatusHooks);
+  registerCoreRoutes(app, db, notifyVerificationChange, agentStatusHooks, jobService);
 
   // 4. Mount plugin routes under /api/<pluginId>/
   for (const { pluginId, handler } of allRouteHandlers) {

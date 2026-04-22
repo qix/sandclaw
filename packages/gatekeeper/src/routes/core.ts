@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 import type { Knex } from "knex";
-import type { AgentStatusEvent } from "@sandclaw/gatekeeper-plugin-api";
+import type { AgentStatusEvent, JobService } from "@sandclaw/gatekeeper-plugin-api";
 import { localTimestamp } from "@sandclaw/util";
 
 export function registerCoreRoutes(
@@ -8,6 +8,7 @@ export function registerCoreRoutes(
   db: Knex,
   onVerificationChange?: () => void,
   agentStatusHooks?: Array<(event: AgentStatusEvent) => Promise<void>>,
+  jobService?: JobService,
 ): void {
   // --- Job Queue ---
 
@@ -108,6 +109,29 @@ export function registerCoreRoutes(
     if (body.data === undefined)
       return c.json({ error: "data is required" }, 400);
 
+    // Route through JobService so interceptors (e.g. job-grouping) can act
+    if (jobService) {
+      const result = await jobService.createJob({
+        executor: body.executor as "muteworker" | "confidante",
+        jobType: body.jobType,
+        data: body.data,
+        context: body.context ?? undefined,
+      });
+      if ("handled" in result) {
+        return c.json({ handled: true, status: "grouped" });
+      }
+      const job = await db("job_queue").where("id", result.jobId).first();
+      return c.json({
+        id: job.id,
+        jobType: job.job_type,
+        data: job.data,
+        context: job.context ?? null,
+        executor: job.executor,
+        status: job.status,
+      });
+    }
+
+    // Fallback: direct insert (no interceptors)
     const now = localTimestamp();
     const [id] = await db("job_queue").insert({
       executor: body.executor,

@@ -21,6 +21,7 @@ import { createEmailPlugin } from "@sandclaw/email-plugin";
 import { createAgentStatusPlugin } from "@sandclaw/agent-status-plugin";
 import { buildWhatsappPlugin } from "@sandclaw/whatsapp-plugin";
 import { buildWhatsappMqttPlugin } from "@sandclaw/whatsapp-mqtt-plugin";
+import { createJobGroupingPlugin } from "@sandclaw/job-grouping-plugin";
 
 export type SandclawPlugin = GatekeeperPlugin &
   MuteworkerPlugin &
@@ -81,4 +82,8 @@ export const plugins: SandclawPlugin[] = [
   }),
   createBrowserPlugin(),
   createAgentStatusPlugin(),
+  createJobGroupingPlugin({
+    rulesDir: path.join(workDir, "job-grouping-rules"),
+    apiKey: process.env.ANTHROPIC_API_KEY || "",
+  }),
 ];
