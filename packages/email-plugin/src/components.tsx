@@ -281,9 +281,39 @@ export function EmailPanel() {
         container.innerHTML = '<p style="color:' + muted + ';font-size:0.85rem">No emails received yet.</p>';
         return;
       }
+      // Determine if all emails share the same domain for from/to columns
+      function getDomain(addr) {
+        if (!addr) return '';
+        var at = addr.lastIndexOf('@');
+        return at >= 0 ? addr.substring(at + 1).toLowerCase() : '';
+      }
+      function getLocal(addr) {
+        if (!addr) return '';
+        var at = addr.lastIndexOf('@');
+        return at >= 0 ? addr.substring(0, at) : addr;
+      }
+      var allAddrs = [];
+      emails.forEach(function(e) {
+        if (e.from) allAddrs.push(e.from);
+        if (e.to) allAddrs.push(e.to);
+      });
+      var domains = {};
+      allAddrs.forEach(function(a) { var d = getDomain(a); if (d) domains[d] = true; });
+      var uniqueDomains = Object.keys(domains);
+      var collapseDomain = uniqueDomains.length === 1;
+
+      function formatAddr(addr) {
+        if (!addr) return { display: '', full: '' };
+        if (collapseDomain) {
+          return { display: getLocal(addr) + '@\u2026', full: addr };
+        }
+        return { display: addr, full: addr };
+      }
+
       var html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">';
       html += '<thead><tr>';
       html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">From</th>';
+      html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">To</th>';
       html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">Subject</th>';
       html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">Received</th>';
       html += '<th style="text-align:left;padding:0.4rem 0.75rem;border-bottom:1px solid ' + border + ';color:' + muted + ';font-weight:600">Job</th>';
@@ -294,8 +324,11 @@ export function EmailPanel() {
         if (e.job_id) {
           jobCell = '<a href="?page=agent-status&job=' + encodeURIComponent(e.job_id) + '" style="color:' + accent + ';text-decoration:none;font-size:0.8rem">#' + e.job_id + '</a>';
         }
+        var fromAddr = formatAddr(e.from || '');
+        var toAddr = formatAddr(e.to || '');
         html += '<tr style="border-bottom:1px solid ' + border + '">';
-        html += '<td style="padding:0.4rem 0.75rem;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">' + escapeHtml(e.from || '') + '</td>';
+        html += '<td title="' + escapeHtml(fromAddr.full) + '" style="padding:0.4rem 0.75rem;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">' + escapeHtml(fromAddr.display) + '</td>';
+        html += '<td title="' + escapeHtml(toAddr.full) + '" style="padding:0.4rem 0.75rem;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">' + escapeHtml(toAddr.display) + '</td>';
         html += '<td style="padding:0.4rem 0.75rem">' + escapeHtml(e.subject || '(no subject)') + '</td>';
         html += '<td style="padding:0.4rem 0.75rem;white-space:nowrap;color:' + muted + '">' + date + '</td>';
         html += '<td style="padding:0.4rem 0.75rem">' + jobCell + '</td>';
