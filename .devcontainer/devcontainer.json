@@ -58,7 +58,7 @@
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
-  "postStartCommand": "sudo /usr/local/bin/setup-mitm.sh",
+  "postStartCommand": "sudo /usr/local/bin/setup-claudebox.sh",
   "waitFor": "postStartCommand"
 
 }
