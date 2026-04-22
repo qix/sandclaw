@@ -8,7 +8,7 @@ import type {
   RunAgentFn,
   RunAgentOptions,
 } from "@sandclaw/muteworker-plugin-api";
-import { JobGroupingPanel } from "./components";
+import { JobGroupingPage } from "./components";
 import { registerRoutes } from "./routes";
 import { migrations } from "./migrations";
 import { startGroupingEngine } from "./groupingEngine";
@@ -120,7 +120,7 @@ export function createJobGroupingPlugin(config: JobGroupingPluginConfig) {
             );
           }
           components.register("tabs:primary", JobGroupingTab);
-          components.register("page:job-grouping", JobGroupingPanel);
+          components.register("page:job-grouping", JobGroupingPage);
 
           // Register API routes
           routes.registerRoutes((app) =>
