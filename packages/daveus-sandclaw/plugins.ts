@@ -80,7 +80,7 @@ export const plugins: SandclawPlugin[] = [
     userEmail: process.env.FASTMAIL_EMAIL || "",
     emailQueueDir: path.join(obsidianDir, "daveus/email-queue"),
     systemPromptFile: path.join(obsidianDir, "daveus/prompts/EMAIL.md"),
-    watchFolders: ["Tickets, Once-off"],
+    watchFolders: ["Tickets, Once-off", "Stores"],
   }),
   createBrowserPlugin(),
   createAgentStatusPlugin(),
