@@ -16,7 +16,7 @@ const gatekeeperPort = 8888;
 const shared = {
   /* Model configuration */
   modelProvider: "anthropic",
-  modelId: "claude-opus-4-6",
+  modelId: "claude-opus-4-7",
 
   /* Address that the muteworker and confidante instances use to talk to gatekeeper. Should be localhost if running on the same machine. */
   gatekeeperInternalUrl: `http://localhost:${gatekeeperPort}`,
