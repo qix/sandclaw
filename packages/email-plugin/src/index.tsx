@@ -64,8 +64,9 @@ export function createEmailPlugin(config: EmailPluginConfig) {
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
           verifications: gatekeeperDeps.verifications,
+          jobs: gatekeeperDeps.jobs,
         },
-        init({ db, hooks, components, routes, verifications }) {
+        init({ db, hooks, components, routes, verifications, jobs }) {
           function EmailTab() {
             return <TabLink href="?page=email" title="Email" />;
           }
@@ -81,7 +82,7 @@ export function createEmailPlugin(config: EmailPluginConfig) {
           }
 
           routes.registerRoutes((app) => {
-            registerRoutes(app, db, config);
+            registerRoutes(app, db, config, jobs);
             if (config.emailQueueDir) {
               registerEmailQueueRoutes(app, config.emailQueueDir);
             }
@@ -115,6 +116,7 @@ export function createEmailPlugin(config: EmailPluginConfig) {
                 config,
                 db,
                 config.pollIntervalMs ?? 30000,
+                jobs,
               );
               await startCalendarInvitePolling(
                 config,
