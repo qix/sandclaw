@@ -5,6 +5,7 @@ import {
   type EmailPluginConfig,
 } from "./jmapClient";
 import { queryCalendarInvites, formatDuration } from "./calendarClient";
+import type { JobService } from "@sandclaw/gatekeeper-plugin-api";
 import { localTimestamp } from "@sandclaw/util";
 import { matchEmailQueue } from "./routes";
 import { stripHtml } from "./stripHtml";
@@ -27,6 +28,7 @@ export async function startEmailPolling(
   config: EmailPluginConfig,
   db: any,
   intervalMs: number,
+  jobService: JobService,
 ): Promise<void> {
   if (!config.apiToken) return;
 
@@ -99,9 +101,9 @@ export async function startEmailPolling(
               ? await matchEmailQueue(email.to, config.emailQueueDir)
               : null;
 
-            const [jobId] = await trx("job_queue").insert({
+            const result = await jobService.createJob({
               executor: "muteworker",
-              job_type: "email:email_received",
+              jobType: "email:email_received",
               data: JSON.stringify({
                 messageId: email.id,
                 from: email.from,
@@ -113,18 +115,17 @@ export async function startEmailPolling(
                 ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
               }),
               context: JSON.stringify({ channel: "email", from: email.from }),
-              status: "pending",
-              created_at: now,
-              updated_at: now,
             });
 
-            // Link the job_queue job to the email_received record
-            await trx("email_received")
-              .where("id", emailReceivedId)
-              .update({
-                job_id: jobId,
-                job_context: JSON.stringify({ worker: "muteworker", jobId }),
-              });
+            // Link the job_queue job to the email_received record (if not grouped)
+            if ("jobId" in result) {
+              await trx("email_received")
+                .where("id", emailReceivedId)
+                .update({
+                  job_id: result.jobId,
+                  job_context: JSON.stringify({ worker: "muteworker", jobId: result.jobId }),
+                });
+            }
           }
         });
       }

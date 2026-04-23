@@ -15,10 +15,11 @@ import {
   respondToCalendarInvite,
 } from "./calendarClient";
 import { localTimestamp } from "@sandclaw/util";
+import type { JobService } from "@sandclaw/gatekeeper-plugin-api";
 import { isWatchInboxEnabled, isWatchCalendarEnabled } from "./watch";
 import { stripHtml } from "./stripHtml";
 
-export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
+export function registerRoutes(app: any, db: any, config: EmailPluginConfig, jobService: JobService) {
   // GET /settings/watch-inbox — read current toggle state
   app.get("/settings/watch-inbox", async (c: any) => {
     const enabled = await isWatchInboxEnabled(db);
@@ -144,9 +145,9 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
           )
         : null;
 
-      const [jobId] = await db("job_queue").insert({
+      const result = await jobService.createJob({
         executor: "muteworker",
-        job_type: "email:email_received",
+        jobType: "email:email_received",
         data: JSON.stringify({
           messageId: body.messageId,
           from: body.from,
@@ -158,12 +159,9 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig) {
           ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
         }),
         context: JSON.stringify({ channel: "email", from: body.from }),
-        status: "pending",
-        created_at: now,
-        updated_at: now,
       });
 
-      return c.json({ success: true, jobId });
+      return c.json({ success: true, ...("jobId" in result ? { jobId: result.jobId } : { grouped: true }) });
     }
 
     return c.json({ success: true, queued: false });
