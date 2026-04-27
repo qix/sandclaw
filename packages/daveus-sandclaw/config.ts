@@ -5,7 +5,9 @@ import { readFileSync } from "fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const localStore = path.join(homedir(), ".config/daveus-sandclaw");
-const obsidianStore = path.join(homedir(), "obsidian/primary/daveus");
+
+export const obsidianRoot = process.env.OBSIDIAN_LOCAL_PATH || path.join(homedir(), "obsidian");
+export const obsidianStore = path.join(obsidianRoot, "primary/daveus");
 
 let localConfig: Record<string, any> = {};
 try {

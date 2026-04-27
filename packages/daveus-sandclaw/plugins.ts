@@ -23,13 +23,14 @@ import { buildWhatsappPlugin } from "@sandclaw/whatsapp-plugin";
 import { buildWhatsappMqttPlugin } from "@sandclaw/whatsapp-mqtt-plugin";
 import { createJobGroupingPlugin } from "@sandclaw/job-grouping-plugin";
 import { createHeartbeatPlugin } from "@sandclaw/heartbeat-plugin";
+import { obsidianRoot, obsidianStore } from "./config"; 
 
 export type SandclawPlugin = GatekeeperPlugin &
   MuteworkerPlugin &
   Partial<ConfidantePlugin>;
 
 const workDir = "/home/josh/code/daveus-sandclaw-workdir";
-const obsidianDir = path.join(homedir(), "obsidian/primary");
+const obsidianDir = path.join(obsidianRoot, "primary");
 
 export const plugins: SandclawPlugin[] = [
   // Core plugins (work out of the box)
@@ -80,8 +81,8 @@ export const plugins: SandclawPlugin[] = [
     apiToken: process.env.FASTMAIL_READ_API_TOKEN || "",
     writeApiToken: process.env.FASTMAIL_WRITE_API_TOKEN || "",
     userEmail: process.env.FASTMAIL_EMAIL || "",
-    emailQueueDir: path.join(obsidianDir, "daveus/email-queue"),
-    systemPromptFile: path.join(obsidianDir, "daveus/prompts/EMAIL.md"),
+    emailQueueDir: path.join(obsidianStore, "email-queue"),
+    systemPromptFile: path.join(obsidianStore, "prompts/EMAIL.md"),
     watchFolders: ["Tickets, Once-off", "Stores"],
   }),
   createBrowserPlugin(),
@@ -91,8 +92,8 @@ export const plugins: SandclawPlugin[] = [
     apiKey: process.env.ANTHROPIC_API_KEY || "",
   }),
   createHeartbeatPlugin({
-    heartbeatFile: path.join(obsidianDir, "daveus/prompts/HEARTBEAT.md"),
-    dailyFile: path.join(obsidianDir, "daveus/prompts/DAILY.md"),
+    heartbeatFile: path.join(obsidianStore, "prompts/HEARTBEAT.md"),
+    dailyFile: path.join(obsidianStore, "prompts/DAILY.md"),
     lastHeartbeatFile: path.join(config.memoryDir, "LAST_HEARTBEAT.md"),
   }),
 ];

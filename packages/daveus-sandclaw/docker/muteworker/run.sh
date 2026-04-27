@@ -12,8 +12,9 @@ if [[ "${1:-}" == "build" ]] || ! docker image inspect "$IMAGE_NAME" &>/dev/null
   if [[ "${1:-}" == "build" ]]; then exit 0; fi
 fi
 
+###  named container?--name sandclaw-muteworker \
+
 exec docker run --rm -it \
-  --name sandclaw-muteworker \
   --network=sandbox-net \
   --add-host=host.docker.internal:host-gateway \
   \

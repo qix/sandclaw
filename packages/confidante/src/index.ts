@@ -149,13 +149,14 @@ export async function confidanteScript(
 
   cli
     .command("replay <id>", "Replay a specific job by ID")
-    .action(async (id: string) => {
+    .option("-y, --yes", "Skip confirmation prompt and job details output")
+    .action(async (id: string, opts: { yes?: boolean }) => {
       const jobId = parseInt(id, 10);
       if (isNaN(jobId)) {
         console.error("Error: replay requires a numeric job ID.");
         process.exit(1);
       }
-      await handleReplayCommand(options, jobId);
+      await handleReplayCommand(options, jobId, { yes: opts.yes ?? false });
     });
 
   cli.help();
@@ -168,6 +169,7 @@ export async function confidanteScript(
 async function handleReplayCommand(
   options: ConfidanteOptions,
   replayJobId: number,
+  flags: { yes: boolean },
 ): Promise<void> {
   const config: ConfidanteConfig = { ...DEFAULT_CONFIG, ...options.config };
   const plugins = options.plugins ?? [];
@@ -202,24 +204,26 @@ async function handleReplayCommand(
     process.exit(1);
   }
 
-  // Display job details
-  console.log("\n--- Job Details ---");
-  console.log(`  ID:      ${job.id}`);
-  console.log(`  Type:    ${job.jobType}`);
-  console.log(`  Status:  ${job.status}`);
-  console.log(
-    `  Data:    ${inspect(JSON.parse(job.data), { colors: process.stdout.isTTY ?? false, depth: null }).replace(/\n/g, "\n           ")}`,
-  );
-  console.log("-------------------\n");
+  if (!flags.yes) {
+    // Display job details
+    console.log("\n--- Job Details ---");
+    console.log(`  ID:      ${job.id}`);
+    console.log(`  Type:    ${job.jobType}`);
+    console.log(`  Status:  ${job.status}`);
+    console.log(
+      `  Data:    ${inspect(JSON.parse(job.data), { colors: process.stdout.isTTY ?? false, depth: null }).replace(/\n/g, "\n           ")}`,
+    );
+    console.log("-------------------\n");
 
-  // Prompt for confirmation
-  const confirmed = await confirm("Proceed with executing this job?");
-  if (!confirmed) {
-    console.log("Aborted.");
-    for (const fn of stopHooks) {
-      await fn();
+    // Prompt for confirmation
+    const confirmed = await confirm("Proceed with executing this job?");
+    if (!confirmed) {
+      console.log("Aborted.");
+      for (const fn of stopHooks) {
+        await fn();
+      }
+      return;
     }
-    return;
   }
 
   // Execute the job using the same path as the queue loop
