@@ -137,6 +137,23 @@ export function createAgentStatusPlugin() {
 
               return c.json({ ok: true });
             });
+
+            // Lazy-loaded job context — used by Agent Status cards when
+            // started.data exceeds the inline-rendering threshold.
+            app.get("/context/:id", async (c: any) => {
+              const jobId = parseInt(c.req.param("id"), 10);
+              if (isNaN(jobId)) {
+                return c.json({ error: "Invalid job ID" }, 400);
+              }
+              const row = await db("agent_status")
+                .where({ job_id: jobId, event: "started" })
+                .orderBy("id", "desc")
+                .first();
+              if (!row || !row.data) {
+                return c.json({ error: "Not found" }, 404);
+              }
+              return c.json({ data: JSON.parse(row.data) });
+            });
           });
 
           // Register hook to handle incoming agent status events

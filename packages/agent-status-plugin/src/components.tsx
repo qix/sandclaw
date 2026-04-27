@@ -11,6 +11,8 @@ import {
 import type { AgentStatusEvent } from "@sandclaw/gatekeeper-plugin-api";
 import type { JobQueueRow } from "./state";
 
+const LARGE_CONTEXT_THRESHOLD_BYTES = 8 * 1024;
+
 interface AgentStatusPanelProps {
   events: AgentStatusEvent[];
   jobQueueMap: Map<number, JobQueueRow>;
@@ -220,6 +222,42 @@ function CollapsibleJson({
         </summary>
         {pretty}
       </details>
+    </div>
+  );
+}
+
+/**
+ * Job context slot — renders an inline collapsible JSON for small payloads,
+ * or a click-to-load placeholder for jobs whose started.data exceeds the
+ * threshold (kept out of the SSR HTML to keep payloads small).
+ */
+function JobContextSlot({
+  jobData,
+  jobId,
+}: {
+  jobData: string | undefined;
+  jobId: number;
+}) {
+  if (!jobData) return null;
+  if (jobData.length <= LARGE_CONTEXT_THRESHOLD_BYTES) {
+    return <CollapsibleJson data={jobData} />;
+  }
+  const kb = (jobData.length / 1024).toFixed(1);
+  return (
+    <div
+      className="sc-pre"
+      data-lazy-context={jobId}
+      style={{
+        fontSize: "0.75rem",
+        margin: "0.25rem 0 0",
+        cursor: "pointer",
+        color: colors.muted,
+        userSelect: "none",
+      }}
+    >
+      <span data-lazy-context-label>
+        Click to load context ({kb} KB)
+      </span>
     </div>
   );
 }
@@ -439,7 +477,7 @@ export function AgentStatusPanel({
                           Queue status: <strong>{queueStatus}</strong>
                         </div>
                       )}
-                      {jobData && <CollapsibleJson data={jobData} />}
+                      <JobContextSlot jobData={jobData} jobId={j.jobId} />
                       <div
                         style={{
                           fontSize: "0.8rem",
@@ -470,7 +508,7 @@ export function AgentStatusPanel({
 
       {/* Recent History */}
       <div style={{ marginTop: "1rem" }}>
-        <Card>
+        <Card style={{ background: "oklch(0.10 0.012 270)" }}>
           <CardHeader>
             <span style={{ fontWeight: 600, color: colors.text }}>
               Recent History
@@ -587,7 +625,7 @@ export function AgentStatusPanel({
                           Queue status: <strong>{queueStatus}</strong>
                         </div>
                       )}
-                      {jobData && <CollapsibleJson data={jobData} />}
+                      <JobContextSlot jobData={jobData} jobId={j.jobId} />
                       <div
                         style={{
                           fontSize: "0.75rem",
@@ -682,6 +720,8 @@ export function AgentStatusPanel({
     }
   }
 
+  var LARGE_CONTEXT_THRESHOLD_BYTES = ${LARGE_CONTEXT_THRESHOLD_BYTES};
+
   function makeCollapsibleJson(str) {
     var pretty;
     try { pretty = JSON.stringify(JSON.parse(str), null, 2); } catch(e) { pretty = str; }
@@ -696,6 +736,15 @@ export function AgentStatusPanel({
         '<summary style="cursor:pointer;color:${colors.muted};user-select:none;">' + preview + '</summary>' +
         full +
       '</details>' +
+    '</div>';
+  }
+
+  function makeJobContextHtml(str, jobId) {
+    if (!str) return '';
+    if (str.length <= LARGE_CONTEXT_THRESHOLD_BYTES) return makeCollapsibleJson(str);
+    var kb = (str.length / 1024).toFixed(1);
+    return '<div class="sc-pre" data-lazy-context="' + jobId + '" style="font-size:0.75rem;margin:0.25rem 0 0;cursor:pointer;color:${colors.muted};user-select:none;">' +
+      '<span data-lazy-context-label>Click to load context (' + kb + ' KB)</span>' +
     '</div>';
   }
 
@@ -729,7 +778,7 @@ export function AgentStatusPanel({
     var jobTypeHtml = jobType
       ? '<span style="margin-left:0.5rem;font-size:0.75rem;color:${colors.accent};font-weight:500;">' + escapeHtml(jobType) + '</span>'
       : '';
-    var jobDataHtml = jobData ? makeCollapsibleJson(jobData) : '';
+    var jobDataHtml = makeJobContextHtml(jobData, ev.jobId);
     var contextHtml = makeContextLineHtml(context, executor);
     a.innerHTML =
       '<div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;">' +
@@ -751,7 +800,7 @@ export function AgentStatusPanel({
     var jobTypeHtml = jobType
       ? '<span style="margin-left:0.5rem;font-size:0.75rem;color:${colors.accent};font-weight:500;">' + escapeHtml(jobType) + '</span>'
       : '';
-    var jobDataHtml = jobData ? makeCollapsibleJson(jobData) : '';
+    var jobDataHtml = makeJobContextHtml(jobData, ev.jobId);
     var contextHtml = makeContextLineHtml(context, executor);
     var errorHtml = !isSuccess && ev.data && ev.data.error
       ? '<div style="font-size:0.75rem;color:${colors.danger};margin-top:0.25rem;">' + escapeHtml(String(ev.data.error)) + '</div>'
@@ -884,6 +933,45 @@ export function AgentStatusPanel({
         }
       }
     }
+  });
+
+  // Delegate click handler for lazy-loaded job context placeholders.
+  // Document-level so it covers both Active and Recent History cards,
+  // and works for elements inserted later via WS.
+  document.addEventListener('click', function(e) {
+    var slot = e.target.closest('[data-lazy-context]');
+    if (!slot) return;
+    if (slot.getAttribute('data-loaded') === '1') return;
+    if (slot.getAttribute('data-loading') === '1') {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    var jobId = slot.getAttribute('data-lazy-context');
+    if (!jobId) return;
+    slot.setAttribute('data-loading', '1');
+    var label = slot.querySelector('[data-lazy-context-label]');
+    if (label) label.textContent = 'Loading\\u2026';
+    fetch('/api/agent-status/context/' + jobId)
+      .then(function(r) { return r.json(); })
+      .then(function(resp) {
+        if (resp && resp.error) throw new Error(resp.error);
+        var pretty;
+        try { pretty = JSON.stringify(resp.data, null, 2); }
+        catch (_) { pretty = String(resp.data); }
+        slot.setAttribute('data-loaded', '1');
+        slot.removeAttribute('data-loading');
+        slot.style.cursor = 'default';
+        slot.style.color = '';
+        slot.style.userSelect = '';
+        slot.textContent = pretty;
+      })
+      .catch(function(err) {
+        slot.removeAttribute('data-loading');
+        if (label) label.textContent = 'Failed to load context — click to retry';
+      });
   });
 
   // Delegate click handler for cancel buttons
