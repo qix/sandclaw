@@ -1,5 +1,7 @@
 FROM node:24-slim
 
+RUN apt update && apt-get install -y curl
+
 # Install Claude Code CLI
 RUN npm install -g @anthropic-ai/claude-code tsx
 

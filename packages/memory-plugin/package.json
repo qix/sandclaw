@@ -7,8 +7,8 @@
     "url": "git+https://github.com/qix/sandclaw.git",
     "directory": "packages/memory-plugin"
   },
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
   "files": [
     "dist"
   ],
@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
-    "@sandclaw/muteworker-plugin-api": "^0.1.0"
+    "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0"
   }
 }
