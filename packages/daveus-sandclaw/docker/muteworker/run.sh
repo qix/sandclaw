@@ -12,10 +12,6 @@ if [[ "${1:-}" == "build" ]] || ! docker image inspect "$IMAGE_NAME" &>/dev/null
   if [[ "${1:-}" == "build" ]]; then exit 0; fi
 fi
 
-# Ensure sandbox-net exists
-docker network inspect sandbox-net &>/dev/null || \
-  docker network create sandbox-net
-
 exec docker run --rm -it \
   --name sandclaw-muteworker \
   --network=sandbox-net \
