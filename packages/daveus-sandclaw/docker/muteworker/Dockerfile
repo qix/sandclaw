@@ -7,6 +7,9 @@ RUN npm install -g @anthropic-ai/claude-code tsx
 RUN mkdir -p /home/node/.claude /obsidian && \
   chown -R node:node /home/node/.claude
 
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 USER node
 
 WORKDIR /workspace
@@ -15,4 +18,5 @@ WORKDIR /workspace
 # Workspace is mounted at /workspace (read-only)
 # Network: sandbox-net only (no direct internet)
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["tsx", "packages/daveus-sandclaw/muteworker.ts", "worker"]

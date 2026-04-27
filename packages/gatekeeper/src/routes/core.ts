@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 import type { Knex } from "knex";
 import type { AgentStatusEvent, JobService } from "@sandclaw/gatekeeper-plugin-api";
+import { createContext } from "@sandclaw/gatekeeper-plugin-api";
 import { localTimestamp } from "@sandclaw/util";
 
 export function registerCoreRoutes(
@@ -111,12 +112,15 @@ export function registerCoreRoutes(
 
     // Route through JobService so interceptors (e.g. job-grouping) can act
     if (jobService) {
-      const result = await jobService.createJob({
-        executor: body.executor as "muteworker" | "confidante",
-        jobType: body.jobType,
-        data: body.data,
-        context: body.context ?? undefined,
-      });
+      const result = await jobService.createJob(
+        createContext(),
+        {
+          executor: body.executor as "muteworker" | "confidante",
+          jobType: body.jobType,
+          data: body.data,
+          context: body.context ?? undefined,
+        },
+      );
       if ("handled" in result) {
         return c.json({ handled: true, status: "grouped" });
       }

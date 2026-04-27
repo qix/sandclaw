@@ -16,6 +16,7 @@ import {
 } from "./calendarClient";
 import { localTimestamp } from "@sandclaw/util";
 import type { JobService } from "@sandclaw/gatekeeper-plugin-api";
+import { createContext } from "@sandclaw/gatekeeper-plugin-api";
 import { isWatchInboxEnabled, isWatchCalendarEnabled } from "./watch";
 import { stripHtml } from "./stripHtml";
 
@@ -145,21 +146,24 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig, job
           )
         : null;
 
-      const result = await jobService.createJob({
-        executor: "muteworker",
-        jobType: "email:email_received",
-        data: JSON.stringify({
-          messageId: body.messageId,
-          from: body.from,
-          to: body.to ?? config.userEmail,
-          subject: body.subject ?? "",
-          text: cleanText,
-          threadId: body.threadId ?? null,
-          history: historyEntries,
-          ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
-        }),
-        context: JSON.stringify({ channel: "email", from: body.from }),
-      });
+      const result = await jobService.createJob(
+        createContext(),
+        {
+          executor: "muteworker",
+          jobType: "email:email_received",
+          data: JSON.stringify({
+            messageId: body.messageId,
+            from: body.from,
+            to: body.to ?? config.userEmail,
+            subject: body.subject ?? "",
+            text: cleanText,
+            threadId: body.threadId ?? null,
+            history: historyEntries,
+            ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
+          }),
+          context: JSON.stringify({ channel: "email", from: body.from }),
+        },
+      );
 
       return c.json({ success: true, ...("jobId" in result ? { jobId: result.jobId } : { grouped: true }) });
     }

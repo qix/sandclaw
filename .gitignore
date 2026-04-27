@@ -1,5 +1,6 @@
 # Local environment setup
 /.direnv
+/.env.private.*
 /.envrc
 /.claude/
 /default.nix

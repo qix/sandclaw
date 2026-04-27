@@ -118,7 +118,7 @@ export function startGroupingEngine(
   }, 30_000);
 
   // Register interceptor
-  jobService.onBeforeCreateJob(async (spec) => {
+  jobService.onBeforeCreateJob(async (ctx, spec) => {
     await ensureRules();
     if (rules.length === 0) return null;
 
@@ -132,7 +132,8 @@ export function startGroupingEngine(
     ).toISOString();
 
     const nowTs = localTimestamp();
-    await db("job_grouping_pending").insert({
+    const conn = ctx.trx ?? db;
+    await conn("job_grouping_pending").insert({
       rule_id: match.ruleId,
       group_key: match.group,
       executor: spec.executor,

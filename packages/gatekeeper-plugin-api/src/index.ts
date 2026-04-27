@@ -128,6 +128,24 @@ export interface JobSpec {
 }
 
 /**
+ * Execution context for job operations. Carries optional ambient state
+ * (currently a knex transaction) so interceptors and queue writes can
+ * participate in the caller's transaction instead of deadlocking on the
+ * single sqlite connection.
+ *
+ * Always create via {@link createContext}; never construct an object literal.
+ */
+export interface Context {
+  /** When set, all DB writes performed for this operation should use this knex transaction. */
+  trx?: Knex;
+}
+
+/** Construct a {@link Context}. The only sanctioned way to create one. */
+export function createContext(opts: { trx?: Knex } = {}): Context {
+  return { trx: opts.trx };
+}
+
+/**
  * Result returned by a job interceptor.
  * - `undefined` / `null` → continue to next interceptor / create normally
  * - `{ handled: true }` → the interceptor consumed the job (e.g. grouped it)
@@ -138,13 +156,17 @@ export interface JobInterceptResult {
 
 /** Callback that can intercept job creation before it hits the queue. */
 export type JobInterceptor = (
+  ctx: Context,
   job: JobSpec,
 ) => Promise<JobInterceptResult | null | undefined | void>;
 
 /** Service for creating jobs and intercepting job creation. */
 export interface JobService {
   /** Create a job. Interceptors run first; if none handles it the job is queued normally. */
-  createJob(spec: JobSpec): Promise<{ jobId: number } | { handled: true }>;
+  createJob(
+    ctx: Context,
+    spec: JobSpec,
+  ): Promise<{ jobId: number } | { handled: true }>;
   /** Register an interceptor that runs before every job is created. */
   onBeforeCreateJob(interceptor: JobInterceptor): void;
 }

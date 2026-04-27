@@ -20,7 +20,9 @@ import type {
   JobService,
   JobInterceptor,
   JobSpec,
+  Context,
 } from "@sandclaw/gatekeeper-plugin-api";
+import { createContext } from "@sandclaw/gatekeeper-plugin-api";
 import type { ComponentType } from "react";
 import { WebSocketServer, WebSocket } from "ws";
 import { App } from "./pages/App";
@@ -162,12 +164,14 @@ export async function startGatekeeper(
 
   /** Insert a job into the queue and fire a "queued" agent status event. */
   async function queueJob(
+    ctx: Context,
     executor: "muteworker" | "confidante",
     jobType: string,
     data: any,
   ): Promise<{ jobId: number }> {
+    const conn = ctx.trx ?? db;
     const now = localTimestamp();
-    const [jobId] = await db("job_queue").insert({
+    const [jobId] = await conn("job_queue").insert({
       executor,
       job_type: jobType,
       data: typeof data === "string" ? data : JSON.stringify(data),
@@ -194,25 +198,27 @@ export async function startGatekeeper(
   // JobService: wraps queueJob with interceptor support
   const jobInterceptors: JobInterceptor[] = [];
   const jobService: JobService = {
-    async createJob(spec: JobSpec) {
+    async createJob(ctx: Context, spec: JobSpec) {
       for (const interceptor of jobInterceptors) {
-        const result = await interceptor(spec);
+        const result = await interceptor(ctx, spec);
         if (result && result.handled) {
           return { handled: true };
         }
       }
       const { jobId } = await queueJob(
+        ctx,
         spec.executor,
         spec.jobType,
         spec.data,
       );
       // Store context if provided
       if (spec.context != null) {
-        const ctx =
+        const conn = ctx.trx ?? db;
+        const ctxData =
           typeof spec.context === "string"
             ? spec.context
             : JSON.stringify(spec.context);
-        await db("job_queue").where("id", jobId).update({ context: ctx });
+        await conn("job_queue").where("id", jobId).update({ context: ctxData });
       }
       return { jobId };
     },
@@ -257,6 +263,7 @@ export async function startGatekeeper(
       },
 
       async requestVerification(options) {
+        const ctx = createContext();
         const { action, data, jobContext, autoApprove } = options;
         const now = localTimestamp();
         const [id] = await db("verification_requests").insert({
@@ -273,7 +280,13 @@ export async function startGatekeeper(
           const callback = verificationCallbacks.get(pluginId);
           if (callback) {
             try {
-              await callback({ id, action, data, jobContext }, { queueJob });
+              await callback(
+                { id, action, data, jobContext },
+                {
+                  queueJob: (executor, jobType, jobData) =>
+                    queueJob(ctx, executor, jobType, jobData),
+                },
+              );
             } catch (err) {
               const message = err instanceof Error ? err.message : String(err);
               const stack = err instanceof Error ? (err.stack ?? "") : "";
@@ -406,7 +419,10 @@ export async function startGatekeeper(
     db,
     notifyVerificationChange,
     verificationCallbacks,
-    queueJob,
+    (executor, jobType, jobData) => {
+      const ctx = createContext();
+      return queueJob(ctx, executor, jobType, jobData);
+    },
   );
 
   // 6. Favicon

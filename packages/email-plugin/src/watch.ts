@@ -6,6 +6,7 @@ import {
 } from "./jmapClient";
 import { queryCalendarInvites, formatDuration } from "./calendarClient";
 import type { JobService } from "@sandclaw/gatekeeper-plugin-api";
+import { createContext } from "@sandclaw/gatekeeper-plugin-api";
 import { localTimestamp } from "@sandclaw/util";
 import { matchEmailQueue } from "./routes";
 import { stripHtml } from "./stripHtml";
@@ -49,6 +50,7 @@ export async function startEmailPolling(
 
       for (const email of emails) {
         await db.transaction(async (trx: any) => {
+          const ctx = createContext({ trx });
           const now = localTimestamp();
           const receivedAt = localTimestamp(new Date(email.receivedAt));
           const cleanText = stripHtml(email.textBody);
@@ -101,7 +103,7 @@ export async function startEmailPolling(
               ? await matchEmailQueue(email.to, config.emailQueueDir)
               : null;
 
-            const result = await jobService.createJob({
+            const result = await jobService.createJob(ctx, {
               executor: "muteworker",
               jobType: "email:email_received",
               data: JSON.stringify({
@@ -114,7 +116,10 @@ export async function startEmailPolling(
                 history: historyEntries,
                 ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
               }),
-              context: JSON.stringify({ channel: "email", from: email.from }),
+              context: JSON.stringify({
+                channel: "email",
+                from: email.from,
+              }),
             });
 
             // Link the job_queue job to the email_received record (if not grouped)
