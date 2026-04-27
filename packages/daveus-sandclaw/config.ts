@@ -56,6 +56,8 @@ export const muteworkerConfig = {
   ...shared,
   /* Allow Claude Code's built-in file tools for direct vault access. */
   allowedBuiltInTools: ["Read", "Grep", "Glob"],
+  /* Not sure what the best value for this is */
+  maxTurns: 20,
 };
 
 export const confidanteConfig = {
