@@ -52,6 +52,7 @@ export const plugins: SandclawPlugin[] = [
   }),
   createObsidianPlugin({
     vaultRoot: obsidianDir,
+    localVaultPath: process.env.OBSIDIAN_LOCAL_PATH,
   }),
   createGmailPlugin({
     clientId: process.env.GMAIL_CLIENT_ID || "",
