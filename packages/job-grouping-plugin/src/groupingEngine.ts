@@ -1,4 +1,4 @@
-import type { JobSpec, JobService } from "@sandclaw/gatekeeper-plugin-api";
+import type { JobSpec, JobData, JobContextData, JobService } from "@sandclaw/gatekeeper-plugin-api";
 import { localTimestamp } from "@sandclaw/util";
 import { readFile } from "node:fs/promises";
 
@@ -8,8 +8,8 @@ export interface GroupingRule {
   code: (job: {
     executor: string;
     jobType: string;
-    data: any;
-    context: any;
+    data: JobData;
+    context: JobContextData | null;
   }) => { group: string; windowMs: number } | null;
 }
 
@@ -51,28 +51,11 @@ export function evaluateRules(
   rules: GroupingRule[],
   spec: JobSpec,
 ): { ruleId: number; group: string; windowMs: number } | null {
-  let parsedData: any;
-  try {
-    parsedData =
-      typeof spec.data === "string" ? JSON.parse(spec.data) : spec.data;
-  } catch {
-    parsedData = spec.data;
-  }
-  let parsedContext: any;
-  try {
-    parsedContext =
-      typeof spec.context === "string"
-        ? JSON.parse(spec.context)
-        : spec.context ?? null;
-  } catch {
-    parsedContext = spec.context ?? null;
-  }
-
   const jobForRules = {
     executor: spec.executor,
     jobType: spec.jobType,
-    data: parsedData,
-    context: parsedContext,
+    data: spec.data,
+    context: spec.context ?? null,
   };
 
   for (const rule of rules) {
@@ -138,13 +121,8 @@ export function startGroupingEngine(
       group_key: match.group,
       executor: spec.executor,
       job_type: spec.jobType,
-      job_data:
-        typeof spec.data === "string" ? spec.data : JSON.stringify(spec.data),
-      job_context: spec.context
-        ? typeof spec.context === "string"
-          ? spec.context
-          : JSON.stringify(spec.context)
-        : null,
+      job_data: JSON.stringify(spec.data),
+      job_context: spec.context ? JSON.stringify(spec.context) : null,
       window_start: windowStart,
       created_at: nowTs,
     });

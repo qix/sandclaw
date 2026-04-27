@@ -177,8 +177,8 @@ export async function connectTelegram(
       await jobs.createJob(ctx, {
         executor: "muteworker",
         jobType: "telegram:incoming_message",
-        data: JSON.stringify(payload),
-        context: JSON.stringify({ channel: "telegram", chatId }),
+        data: payload,
+        context: { channel: "telegram", chatId },
       });
     });
 

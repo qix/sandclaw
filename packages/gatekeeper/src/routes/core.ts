@@ -113,11 +113,15 @@ export function registerCoreRoutes(
 
     // Route through JobService so interceptors (e.g. job-grouping) can act
     if (jobService) {
+      const parsedData = typeof body.data === "string" ? JSON.parse(body.data) : body.data;
+      const parsedContext = body.context
+        ? typeof body.context === "string" ? JSON.parse(body.context) : body.context
+        : undefined;
       const result = await jobService.createJob(ctx, {
         executor: body.executor as "muteworker" | "confidante",
         jobType: body.jobType,
-        data: body.data,
-        context: body.context ?? undefined,
+        data: parsedData,
+        context: parsedContext,
       });
       if ("handled" in result) {
         return c.json({ handled: true, status: "grouped" });

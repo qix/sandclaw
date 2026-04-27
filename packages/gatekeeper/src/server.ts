@@ -20,6 +20,7 @@ import type {
   JobService,
   JobInterceptor,
   JobSpec,
+  JobData,
   Context,
 } from "@sandclaw/gatekeeper-plugin-api";
 import { createContext } from "@sandclaw/gatekeeper-plugin-api";
@@ -167,14 +168,14 @@ export async function startGatekeeper(
     ctx: Context,
     executor: "muteworker" | "confidante",
     jobType: string,
-    data: any,
+    data: JobData,
   ): Promise<{ jobId: number }> {
     const conn = ctx.trx ?? db;
     const now = localTimestamp();
     const [jobId] = await conn("job_queue").insert({
       executor,
       job_type: jobType,
-      data: typeof data === "string" ? data : JSON.stringify(data),
+      data: JSON.stringify(data),
       status: "pending",
       created_at: now,
       updated_at: now,
@@ -214,11 +215,7 @@ export async function startGatekeeper(
       // Store context if provided
       if (spec.context != null) {
         const conn = ctx.trx ?? db;
-        const ctxData =
-          typeof spec.context === "string"
-            ? spec.context
-            : JSON.stringify(spec.context);
-        await conn("job_queue").where("id", jobId).update({ context: ctxData });
+        await conn("job_queue").where("id", jobId).update({ context: JSON.stringify(spec.context) });
       }
       return { jobId };
     },

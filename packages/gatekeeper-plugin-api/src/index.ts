@@ -119,12 +119,21 @@ export interface VerificationsService {
   }): Promise<{ id: number; status: "pending" | "approved" | "error" }>;
 }
 
+/** Data payload for a job. Serialized to JSON before storage. */
+export type JobData = Record<string, unknown>;
+
+/** Context metadata attached to a job. Serialized to JSON before storage. */
+export interface JobContextData {
+  channel: string;
+  [key: string]: unknown;
+}
+
 /** Description of a job to be created. */
 export interface JobSpec {
   executor: "muteworker" | "confidante";
   jobType: string;
-  data: any;
-  context?: any;
+  data: JobData;
+  context?: JobContextData;
 }
 
 /**

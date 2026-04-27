@@ -150,7 +150,7 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig, job
       const result = await jobService.createJob(ctx, {
         executor: "muteworker",
         jobType: "email:email_received",
-        data: JSON.stringify({
+        data: {
           messageId: body.messageId,
           from: body.from,
           to: body.to ?? config.userEmail,
@@ -159,8 +159,8 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig, job
           threadId: body.threadId ?? null,
           history: historyEntries,
           ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
-        }),
-        context: JSON.stringify({ channel: "email", from: body.from }),
+        },
+        context: { channel: "email", from: body.from },
       });
 
       return c.json({ success: true, ...("jobId" in result ? { jobId: result.jobId } : { grouped: true }) });

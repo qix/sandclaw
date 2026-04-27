@@ -115,8 +115,8 @@ export function createHeartbeatPlugin(
             await jobs.createJob(ctx, {
               executor: "muteworker",
               jobType,
-              data: JSON.stringify({ content }),
-              context: JSON.stringify({ channel: "heartbeat" }),
+              data: { content },
+              context: { channel: "heartbeat" },
             });
           }
 

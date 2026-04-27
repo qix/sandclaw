@@ -106,7 +106,7 @@ export async function startEmailPolling(
             const result = await jobService.createJob(ctx, {
               executor: "muteworker",
               jobType: "email:email_received",
-              data: JSON.stringify({
+              data: {
                 messageId: email.id,
                 from: email.from,
                 to: email.to,
@@ -115,11 +115,11 @@ export async function startEmailPolling(
                 threadId: email.threadId ?? null,
                 history: historyEntries,
                 ...(emailQueuePrompt ? { emailQueuePrompt } : {}),
-              }),
-              context: JSON.stringify({
+              },
+              context: {
                 channel: "email",
                 from: email.from,
-              }),
+              },
             });
 
             // Link the job_queue job to the email_received record (if not grouped)
