@@ -40,6 +40,9 @@ export const gatekeeperConfig = {
   /* Port to run gatekeeper on */
   gatekeeperPort,
 
+  /* Bind to 0.0.0.0 so the muteworker docker container can reach us via host.docker.internal */
+  gatekeeperHost: "0.0.0.0",
+
   /* Local storage paths */
   dbPath: path.join(localStore, "data/db.sqlite"),
   memoryDir: path.join(localStore, "memory"),

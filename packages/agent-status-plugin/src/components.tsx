@@ -299,17 +299,19 @@ export function AgentStatusPanel({
 }: AgentStatusPanelProps) {
   const jobs = groupByJob(events);
 
-  const activeJobs = jobs.filter((j) => {
+  function isActiveJob(j: { jobId: number; events: { event: string }[] }) {
     const last = j.events[j.events.length - 1];
-    return last.event !== "completed" && last.event !== "failed";
-  });
+    if (last.event === "completed" || last.event === "failed") return false;
+    const queueStatus = jobQueueMap.get(j.jobId)?.status;
+    if (queueStatus && queueStatus !== "pending" && queueStatus !== "in_progress") {
+      return false;
+    }
+    return true;
+  }
 
-  const finishedJobs = jobs
-    .filter((j) => {
-      const last = j.events[j.events.length - 1];
-      return last.event === "completed" || last.event === "failed";
-    })
-    .reverse(); // Most recent first
+  const activeJobs = jobs.filter(isActiveJob);
+
+  const finishedJobs = jobs.filter((j) => !isActiveJob(j)).reverse(); // Most recent first
 
   return (
     <div className="sc-section">
