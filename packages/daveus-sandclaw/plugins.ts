@@ -22,6 +22,7 @@ import { createAgentStatusPlugin } from "@sandclaw/agent-status-plugin";
 import { buildWhatsappPlugin } from "@sandclaw/whatsapp-plugin";
 import { buildWhatsappMqttPlugin } from "@sandclaw/whatsapp-mqtt-plugin";
 import { createJobGroupingPlugin } from "@sandclaw/job-grouping-plugin";
+import { createHeartbeatPlugin } from "@sandclaw/heartbeat-plugin";
 
 export type SandclawPlugin = GatekeeperPlugin &
   MuteworkerPlugin &
@@ -88,5 +89,10 @@ export const plugins: SandclawPlugin[] = [
   createJobGroupingPlugin({
     rulesDir: path.join(workDir, "job-grouping-rules"),
     apiKey: process.env.ANTHROPIC_API_KEY || "",
+  }),
+  createHeartbeatPlugin({
+    heartbeatFile: path.join(obsidianDir, "daveus/prompts/HEARTBEAT.md"),
+    dailyFile: path.join(obsidianDir, "daveus/prompts/DAILY.md"),
+    lastHeartbeatFile: path.join(config.memoryDir, "LAST_HEARTBEAT.md"),
   }),
 ];

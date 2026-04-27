@@ -99,6 +99,7 @@ export function registerCoreRoutes(
 
   // POST /api/job/add — add a new job to the queue
   app.post("/api/job/add", async (c) => {
+    const ctx = createContext();
     const body = await c.req.json<{
       executor: string;
       jobType: string;
@@ -112,15 +113,12 @@ export function registerCoreRoutes(
 
     // Route through JobService so interceptors (e.g. job-grouping) can act
     if (jobService) {
-      const result = await jobService.createJob(
-        createContext(),
-        {
-          executor: body.executor as "muteworker" | "confidante",
-          jobType: body.jobType,
-          data: body.data,
-          context: body.context ?? undefined,
-        },
-      );
+      const result = await jobService.createJob(ctx, {
+        executor: body.executor as "muteworker" | "confidante",
+        jobType: body.jobType,
+        data: body.data,
+        context: body.context ?? undefined,
+      });
       if ("handled" in result) {
         return c.json({ handled: true, status: "grouped" });
       }
