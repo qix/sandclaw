@@ -1,5 +1,5 @@
 import { inspect } from "node:util";
-import { confirm } from "@sandclaw/util";
+import { confirm, localTimestamp } from "@sandclaw/util";
 import cac from "cac";
 import {
   createMuteworkerPluginContext,
@@ -152,7 +152,11 @@ function initializePlugins(plugins: MuteworkerPlugin[]) {
   };
 
   const buildSystemPrompt = async (): Promise<SystemPromptSources> => {
-    let sources: SystemPromptSources = {};
+    const now = new Date();
+    const weekday = now.toLocaleDateString("en-US", { weekday: "long" });
+    let sources: SystemPromptSources = {
+      "current-time": `Current time: ${localTimestamp(now)} (${weekday})`,
+    };
     for (const hook of buildSystemPromptHooks) {
       sources = await hook(sources);
     }

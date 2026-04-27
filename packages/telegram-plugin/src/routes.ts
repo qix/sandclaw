@@ -1,4 +1,5 @@
 import { localTimestamp } from "@sandclaw/util";
+import type { JobService } from "@sandclaw/gatekeeper-plugin-api";
 import { tgState } from "./state";
 import {
   connectTelegram,
@@ -9,6 +10,7 @@ import {
 export function registerRoutes(
   app: any,
   db: any,
+  jobs: JobService,
   operatorChatIds: ReadonlySet<string>,
 ) {
   // GET /status — current connection state
@@ -40,7 +42,7 @@ export function registerRoutes(
     token = token.trim();
 
     try {
-      await connectTelegram(db, token);
+      await connectTelegram(db, jobs, token);
       // If this was a form submission, redirect back to the plugin page
       if (!contentType.includes("application/json")) {
         return c.redirect("/?tab=telegram");

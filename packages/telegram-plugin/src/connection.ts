@@ -1,6 +1,8 @@
 import TelegramBot from "node-telegram-bot-api";
 import type { ConversationSummary } from "@sandclaw/ui";
 import { localTimestamp } from "@sandclaw/util";
+import type { JobService } from "@sandclaw/gatekeeper-plugin-api";
+import { createContext } from "@sandclaw/gatekeeper-plugin-api";
 import { tgState } from "./state";
 
 /** Look up or create a conversation row for the given chat ID, returning its auto-increment ID. */
@@ -77,7 +79,11 @@ export async function deliverMessage(db: any, chatId: string, text: string) {
   );
 }
 
-export async function connectTelegram(db: any, token: string) {
+export async function connectTelegram(
+  db: any,
+  jobs: JobService,
+  token: string,
+) {
   tgState.connectionStatus = "connecting";
   tgState.botToken = token;
 
@@ -116,65 +122,64 @@ export async function connectTelegram(db: any, token: string) {
 
     const replyToText = msg.reply_to_message?.text ?? null;
 
-    const conversationId = await getOrCreateConversationId(db, chatId);
+    await db.transaction(async (trx: any) => {
+      const ctx = createContext({ trx });
+      const conversationId = await getOrCreateConversationId(trx, chatId);
 
-    // Store in conversation_message
-    await db("conversation_message").insert({
-      conversation_id: conversationId,
-      plugin: "telegram",
-      channel: "telegram",
-      message_id: messageId,
-      thread_id: chatId,
-      from: chatId,
-      to: tgState.botUsername,
-      timestamp,
-      direction: "inbound",
-      text,
-      created_at: localTimestamp(),
-    });
+      // Store in conversation_message
+      await trx("conversation_message").insert({
+        conversation_id: conversationId,
+        plugin: "telegram",
+        channel: "telegram",
+        message_id: messageId,
+        thread_id: chatId,
+        from: chatId,
+        to: tgState.botUsername,
+        timestamp,
+        direction: "inbound",
+        text,
+        created_at: localTimestamp(),
+      });
 
-    // Fetch recent history for context
-    const recentMessages = await db("conversation_message")
-      .where({ plugin: "telegram", thread_id: chatId })
-      .orderBy("timestamp", "desc")
-      .limit(10);
+      // Fetch recent history for context
+      const recentMessages = await trx("conversation_message")
+        .where({ plugin: "telegram", thread_id: chatId })
+        .orderBy("timestamp", "desc")
+        .limit(10);
 
-    const history = recentMessages
-      .reverse()
-      .filter((m: any) => m.message_id !== messageId)
-      .map((m: any) => ({
-        role:
-          m.direction === "inbound"
-            ? ("user" as const)
-            : ("assistant" as const),
-        text: m.text || "",
-        timestamp: m.timestamp,
-      }));
+      const history = recentMessages
+        .reverse()
+        .filter((m: any) => m.message_id !== messageId)
+        .map((m: any) => ({
+          role:
+            m.direction === "inbound"
+              ? ("user" as const)
+              : ("assistant" as const),
+          text: m.text || "",
+          timestamp: m.timestamp,
+        }));
 
-    // Build payload and enqueue
-    const payload = {
-      messageId,
-      chatId,
-      firstName,
-      lastName,
-      username,
-      timestamp,
-      text,
-      isGroup,
-      groupTitle,
-      replyToText,
-      history,
-    };
+      // Build payload and enqueue via JobService so interceptors can act.
+      const payload = {
+        messageId,
+        chatId,
+        firstName,
+        lastName,
+        username,
+        timestamp,
+        text,
+        isGroup,
+        groupTitle,
+        replyToText,
+        history,
+      };
 
-    const now = localTimestamp();
-    await db("job_queue").insert({
-      executor: "muteworker",
-      job_type: "telegram:incoming_message",
-      data: JSON.stringify(payload),
-      context: JSON.stringify({ channel: "telegram", chatId }),
-      status: "pending",
-      created_at: now,
-      updated_at: now,
+      await jobs.createJob(ctx, {
+        executor: "muteworker",
+        jobType: "telegram:incoming_message",
+        data: JSON.stringify(payload),
+        context: JSON.stringify({ channel: "telegram", chatId }),
+      });
     });
 
     const displayName =

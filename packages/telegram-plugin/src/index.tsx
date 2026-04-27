@@ -52,8 +52,9 @@ export function buildTelegramPlugin(
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
           verifications: gatekeeperDeps.verifications,
+          jobs: gatekeeperDeps.jobs,
         },
-        async init({ db, hooks, components, routes, verifications }) {
+        async init({ db, hooks, components, routes, verifications, jobs }) {
           function TelegramTab() {
             const { statusColor } = useTelegramStatus();
             return (
@@ -94,7 +95,7 @@ export function buildTelegramPlugin(
           components.register("provider", TelegramProvider);
 
           routes.registerRoutes((app) =>
-            registerRoutes(app, db, operatorChatIds),
+            registerRoutes(app, db, jobs, operatorChatIds),
           );
 
           verifications.registerVerificationCallback(async (request) => {
@@ -112,12 +113,12 @@ export function buildTelegramPlugin(
                   console.log(
                     "[telegram] Found existing session, auto-reconnecting...",
                   );
-                  await connectTelegram(db, session.bot_token);
+                  await connectTelegram(db, jobs, session.bot_token);
                 } else if (options.botToken) {
                   console.log(
                     "[telegram] Connecting with configured bot token...",
                   );
-                  await connectTelegram(db, options.botToken);
+                  await connectTelegram(db, jobs, options.botToken);
                 }
               } catch (err: any) {
                 console.error("[telegram] Auto-reconnect failed:", err.message);
