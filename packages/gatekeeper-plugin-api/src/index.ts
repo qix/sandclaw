@@ -43,6 +43,25 @@ export interface AgentStatusEvent {
   createdAt: string;
 }
 
+/** Generic listener for a named hook. */
+export type HookListener<TArgs = unknown, TResult = unknown> = (
+  args: TArgs,
+) => TResult | Promise<TResult>;
+
+/** Options when running a named hook via {@link GatekeeperHooks.runHook}. */
+export interface RunHookOptions {
+  /** If true, do not throw when no listeners are registered. Default: false. */
+  allowEmpty?: boolean;
+}
+
+/** Aggregated result of running a named hook. */
+export interface RunHookResult<TResult = unknown> {
+  /** Results from each registered listener, in registration order. */
+  results: TResult[];
+  /** Number of listeners that ran. */
+  listenerCount: number;
+}
+
 /** Hooks that plugins can register to react to gatekeeper lifecycle events. */
 export interface GatekeeperHooks {
   register(hooks: {
@@ -54,6 +73,25 @@ export interface GatekeeperHooks {
   }): void;
   /** Fire an agent status event to all registered hooks. Fire-and-forget. */
   fireAgentStatus(event: AgentStatusEvent): void;
+
+  /**
+   * Register a listener for a named hook (e.g. `"reply:all"`). Multiple plugins
+   * may register listeners for the same name; all run when {@link runHook} is called.
+   */
+  registerHook<TArgs = unknown, TResult = unknown>(
+    name: string,
+    listener: HookListener<TArgs, TResult>,
+  ): void;
+
+  /**
+   * Run every listener registered for `name` in parallel, returning their results
+   * and the count. Throws when no listeners exist unless `options.allowEmpty` is set.
+   */
+  runHook<TArgs = unknown, TResult = unknown>(
+    name: string,
+    args: TArgs,
+    options?: RunHookOptions,
+  ): Promise<RunHookResult<TResult>>;
 }
 
 // ---------------------------------------------------------------------------

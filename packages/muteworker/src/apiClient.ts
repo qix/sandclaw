@@ -80,6 +80,24 @@ export class MuteworkerApiClient {
     }
   }
 
+  async postReply(args: {
+    jobId: number;
+    replyChannel: string;
+    text: string;
+    jobContext?: { worker: string; jobId: number };
+  }): Promise<void> {
+    const response = await this.request("/api/job/reply", {
+      method: "POST",
+      body: JSON.stringify(args),
+    });
+    if (!response.ok) {
+      throw await this.createError(
+        "Failed to post muteworker reply",
+        response,
+      );
+    }
+  }
+
   async markComplete(jobId: number): Promise<void> {
     const response = await this.request("/api/job/complete", {
       method: "POST",

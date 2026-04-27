@@ -87,6 +87,10 @@ export async function startGatekeeper(
   const stopHooks: Array<() => Promise<void>> = [];
   const agentStatusHooks: Array<(event: AgentStatusEvent) => Promise<void>> =
     [];
+  const namedHooks = new Map<
+    string,
+    Array<(args: unknown) => unknown | Promise<unknown>>
+  >();
   const hooksService: GatekeeperHooks = {
     register(hooks) {
       if (hooks["gatekeeper:start"])
@@ -104,6 +108,25 @@ export async function startGatekeeper(
           console.error("[agent-status] hook error:", err),
         );
       }
+    },
+    registerHook(name, listener) {
+      let list = namedHooks.get(name);
+      if (!list) {
+        list = [];
+        namedHooks.set(name, list);
+      }
+      list.push(listener as (args: unknown) => unknown | Promise<unknown>);
+    },
+    async runHook(name, args, options) {
+      const list = namedHooks.get(name) ?? [];
+      if (list.length === 0 && !options?.allowEmpty) {
+        throw new Error(`No listeners registered for hook "${name}"`);
+      }
+      const results = await Promise.all(list.map((listener) => listener(args)));
+      return {
+        results: results as never[],
+        listenerCount: list.length,
+      };
     },
   };
 
@@ -401,7 +424,14 @@ export async function startGatekeeper(
   }, 2000);
 
   // 3b. Register core API routes
-  registerCoreRoutes(app, db, notifyVerificationChange, agentStatusHooks, jobService);
+  registerCoreRoutes(
+    app,
+    db,
+    notifyVerificationChange,
+    agentStatusHooks,
+    jobService,
+    hooksService,
+  );
 
   // 4. Mount plugin routes under /api/<pluginId>/
   for (const { pluginId, handler } of allRouteHandlers) {

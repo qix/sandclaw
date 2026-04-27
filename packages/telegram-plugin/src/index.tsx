@@ -3,6 +3,7 @@ import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
+import { localTimestamp } from "@sandclaw/util";
 import { tgState } from "./state";
 import {
   connectTelegram,
@@ -101,6 +102,45 @@ export function buildTelegramPlugin(
           verifications.registerVerificationCallback(async (request) => {
             await deliverMessage(db, request.data.chatId, request.data.text);
           });
+
+          // Broadcast to every configured operator. Used both for the
+          // telegram-specific reply channel and the generic "all" channel.
+          const broadcastToOperators = async (args: {
+            text: string;
+            jobContext?: { worker: string; jobId: number };
+          }) => {
+            if (!args?.text || typeof args.text !== "string") {
+              throw new Error("reply hook requires { text: string }");
+            }
+            if (operatorChatIds.size === 0) {
+              return { delivered: 0, note: "no operators configured" };
+            }
+            let delivered = 0;
+            const errors: { chatId: string; error: string }[] = [];
+            for (const chatId of operatorChatIds) {
+              const now = localTimestamp();
+              try {
+                await db("verification_requests").insert({
+                  plugin: "telegram",
+                  action: "send_message",
+                  data: JSON.stringify({ chatId, text: args.text }),
+                  status: "approved",
+                  ...(args.jobContext
+                    ? { job_context: JSON.stringify(args.jobContext) }
+                    : {}),
+                  created_at: now,
+                  updated_at: now,
+                });
+                await deliverMessage(db, chatId, args.text);
+                delivered++;
+              } catch (err) {
+                errors.push({ chatId, error: (err as Error).message });
+              }
+            }
+            return { delivered, errors };
+          };
+          hooks.registerHook("reply:telegram", broadcastToOperators);
+          hooks.registerHook("reply:all", broadcastToOperators);
 
           hooks.register({
             async "gatekeeper:start"() {

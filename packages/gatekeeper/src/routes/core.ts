@@ -1,6 +1,10 @@
 import type { Hono } from "hono";
 import type { Knex } from "knex";
-import type { AgentStatusEvent, JobService } from "@sandclaw/gatekeeper-plugin-api";
+import type {
+  AgentStatusEvent,
+  GatekeeperHooks,
+  JobService,
+} from "@sandclaw/gatekeeper-plugin-api";
 import { createContext } from "@sandclaw/gatekeeper-plugin-api";
 import { localTimestamp } from "@sandclaw/util";
 
@@ -10,7 +14,44 @@ export function registerCoreRoutes(
   onVerificationChange?: () => void,
   agentStatusHooks?: Array<(event: AgentStatusEvent) => Promise<void>>,
   jobService?: JobService,
+  hooks?: GatekeeperHooks,
 ): void {
+  // POST /api/job/reply — record an agent reply for a job and dispatch it
+  // through the `reply:<channel>` gatekeeper hook (e.g. reply:all, reply:chat).
+  // The muteworker calls this once per job after the agent produces a reply.
+  if (hooks) {
+    app.post("/api/job/reply", async (c) => {
+      const body = await c.req.json<{
+        jobId?: number;
+        replyChannel?: string;
+        text?: string;
+        jobContext?: { worker: string; jobId: number };
+      }>();
+      if (!body.jobId) return c.json({ error: "jobId is required" }, 400);
+      if (!body.replyChannel || typeof body.replyChannel !== "string") {
+        return c.json({ error: "replyChannel is required" }, 400);
+      }
+      if (!body.text || typeof body.text !== "string") {
+        return c.json({ error: "text is required" }, 400);
+      }
+      try {
+        const result = await hooks.runHook(
+          `reply:${body.replyChannel}`,
+          {
+            text: body.text,
+            jobContext: body.jobContext ?? {
+              worker: "muteworker",
+              jobId: body.jobId,
+            },
+          },
+          { allowEmpty: true },
+        );
+        return c.json(result);
+      } catch (err) {
+        return c.json({ error: (err as Error).message }, 400);
+      }
+    });
+  }
   // --- Job Queue ---
 
   // GET /api/job/next — long-poll for the next pending job for a given executor

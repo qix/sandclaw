@@ -2,7 +2,7 @@ import type {
   MuteworkerPluginContext,
   RunAgentFn,
 } from "@sandclaw/muteworker-plugin-api";
-import { buildChatPrompt, clampReply, type IncomingChatPayload } from "./tools";
+import { buildChatPrompt, type IncomingChatPayload } from "./tools";
 
 export function createChatJobHandlers() {
   return {
@@ -21,27 +21,10 @@ export function createChatJobHandlers() {
         throw new Error(`Job ${ctx.job.id} payload missing text`);
 
       const prompt = buildChatPrompt(payload);
-      const result = await runAgent(prompt);
-
-      if (result.reply) {
-        try {
-          const reply = clampReply(result.reply);
-          await fetch(`${ctx.gatekeeperInternalUrl}/api/chat/send`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ text: reply }),
-          });
-
-          ctx.artifacts.push({
-            type: "text",
-            label: "Chat Auto-Reply",
-            value: reply,
-          });
-          ctx.logger.info("chat.auto_reply", { jobId: ctx.job.id });
-        } catch {
-          ctx.logger.warn("chat.auto_reply.failed", { jobId: ctx.job.id });
-        }
-      }
+      // The agent's reply is dispatched by the muteworker core via the
+      // job's `replyChannel` (set when the job is enqueued). No manual
+      // dispatch here.
+      await runAgent(prompt);
     },
   };
 }

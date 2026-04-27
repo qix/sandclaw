@@ -146,7 +146,38 @@ export async function executeMuteworkerJob(
         modelId: opts?.modelId,
         onStep: () => reportStatus("step"),
       });
-      return { reply: result?.reply ?? null };
+      const reply = result?.reply ?? null;
+
+      const replyChannel =
+        typeof jobData?.replyChannel === "string"
+          ? jobData.replyChannel
+          : null;
+      if (reply && replyChannel) {
+        const text = reply.trim();
+        if (text) {
+          try {
+            await args.client.postReply({
+              jobId: job.id,
+              replyChannel,
+              text,
+              jobContext: { worker: "muteworker", jobId: job.id },
+            });
+            artifacts.push({
+              type: "text",
+              label: `Reply (${replyChannel})`,
+              value: reply,
+            });
+          } catch (err) {
+            logger.warn("reply.dispatch.failed", {
+              jobId: job.id,
+              replyChannel,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+      }
+
+      return { reply };
     };
 
     // Find a plugin that handles this job type

@@ -119,7 +119,7 @@ async function enqueueJob(
   await db("job_queue").insert({
     executor: "muteworker",
     job_type: "chat:incoming_message",
-    data: JSON.stringify({ text, history }),
+    data: JSON.stringify({ text, history, replyChannel: "chat" }),
     context: JSON.stringify({
       channel: "chat",
       conversationId: convId,

@@ -10,7 +10,12 @@ import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
 import { Badge } from "@sandclaw/ui";
 import { ChatPanel, ChatVerificationRenderer } from "./components";
 import { registerRoutes } from "./routes";
-import { onChatConnect, onChatMessage } from "./websocket";
+import {
+  onChatConnect,
+  onChatMessage,
+  storeMessage,
+  getUnreadCount,
+} from "./websocket";
 import { createSendChatTool } from "./tools";
 import { createChatJobHandlers } from "./jobHandlers";
 
@@ -75,12 +80,13 @@ export function buildChatPlugin() {
       env.registerInit({
         deps: {
           db: gatekeeperDeps.db,
+          hooks: gatekeeperDeps.hooks,
           components: gatekeeperDeps.components,
           routes: gatekeeperDeps.routes,
           ws: gatekeeperDeps.ws,
           notify: gatekeeperDeps.notify,
         },
-        init({ db, components, routes, ws, notify }) {
+        init({ db, hooks, components, routes, ws, notify }) {
           components.register("tabs:channels", ChatTab);
           components.register("page:chat", ChatPanel);
 
@@ -90,6 +96,25 @@ export function buildChatPlugin() {
           ws.onMessage("chat-plugin", (client, data) =>
             onChatMessage(client, data, db, ws, notify),
           );
+
+          // Deliver an outbound message to the operator-facing chat panel.
+          // Used both for the chat-specific reply channel and the generic "all".
+          const sendToChat = async (args: { text: string }) => {
+            if (!args?.text || typeof args.text !== "string") {
+              throw new Error("reply hook requires { text: string }");
+            }
+            const msg = await storeMessage(db, "outbound", "agent", args.text);
+            const unread = await getUnreadCount(db);
+            ws.broadcast({
+              type: "chat-plugin:message",
+              unread,
+              message: msg,
+            });
+            notify.notifyCountChange();
+            return { messageId: msg.id };
+          };
+          hooks.registerHook("reply:chat", sendToChat);
+          hooks.registerHook("reply:all", sendToChat);
         },
       });
     },
