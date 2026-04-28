@@ -1,24 +1,67 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { localTimestamp } from "@sandclaw/util";
 import { resolveSecurePath, tryReadFile } from "./pathUtils";
 import { computeDiff } from "./diff";
 
 export interface FileRouteConfig {
-  /** Plugin name stored in the verification_requests table. */
-  plugin: string;
   /** Absolute path to the root directory that files are resolved against. */
   rootDir: string;
-  /** Knex database instance. */
-  db: any;
+  /**
+   * Plugin name + Knex db instance. When provided the route creates a
+   * verification request; when omitted the edit is applied immediately.
+   */
+  plugin?: string;
+  db?: any;
+  /** Called after a file is written (immediate mode only). */
+  afterWrite?: () => void;
+}
+
+/** Shared validation + find/replace logic for the edit route. */
+function parseAndApplyEdit(
+  content: string,
+  oldString: string,
+  newString: string,
+  replaceAll: boolean,
+): { nextContent: string; firstIndex: number } | { error: string } {
+  const firstIndex = content.indexOf(oldString);
+  if (firstIndex < 0) {
+    return { error: "old_string not found in file" };
+  }
+
+  if (!replaceAll) {
+    const secondIndex = content.indexOf(oldString, firstIndex + 1);
+    if (secondIndex >= 0) {
+      return {
+        error:
+          "old_string is not unique in the file. Provide more context to make it unique, or set replace_all to true.",
+      };
+    }
+  }
+
+  let nextContent: string;
+  if (replaceAll) {
+    nextContent = content.split(oldString).join(newString);
+  } else {
+    nextContent =
+      content.slice(0, firstIndex) +
+      newString +
+      content.slice(firstIndex + oldString.length);
+  }
+
+  return { nextContent, firstIndex };
 }
 
 /**
- * Register a `POST /edit` route that creates a verification request for a
- * targeted find/replace edit on a file.
+ * Register a `POST /edit` route for targeted find/replace edits.
+ *
+ * When `config.plugin` and `config.db` are provided the route creates a
+ * verification request (pending human approval). Otherwise the edit is
+ * applied immediately and the response contains the diff summary.
  */
 export function registerFileEditRoute(app: any, config: FileRouteConfig): void {
-  const { plugin, rootDir, db } = config;
+  const { rootDir } = config;
+  const verified = config.plugin != null && config.db != null;
 
   app.post("/edit", async (c: any) => {
     const body = (await c.req.json()) as {
@@ -54,78 +97,71 @@ export function registerFileEditRoute(app: any, config: FileRouteConfig): void {
     const newString = body.new_string;
     const replaceAll = body.replace_all === true;
 
-    const firstIndex = content.indexOf(oldString);
-    if (firstIndex < 0) {
-      return c.json({ error: "old_string not found in file" }, 400);
-    }
-
-    if (!replaceAll) {
-      const secondIndex = content.indexOf(oldString, firstIndex + 1);
-      if (secondIndex >= 0) {
-        return c.json(
-          {
-            error:
-              "old_string is not unique in the file. Provide more context to make it unique, or set replace_all to true.",
-          },
-          400,
-        );
-      }
-    }
-
-    let nextContent: string;
-    if (replaceAll) {
-      nextContent = content.split(oldString).join(newString);
-    } else {
-      nextContent =
-        content.slice(0, firstIndex) +
-        newString +
-        content.slice(firstIndex + oldString.length);
+    const result = parseAndApplyEdit(content, oldString, newString, replaceAll);
+    if ("error" in result) {
+      return c.json({ error: result.error }, 400);
     }
 
     const relPath = path.relative(rootDir, absPath).replace(/\\/g, "/");
-    const diff = computeDiff(content, nextContent);
-    const now = localTimestamp();
+    const diff = computeDiff(content, result.nextContent);
 
-    const verificationData = {
-      path: relPath,
-      oldString,
-      newString,
-      replaceAll,
-      previousContent: content,
-      nextContent,
-      previousBytes: Buffer.byteLength(content, "utf8"),
-      nextBytes: Buffer.byteLength(nextContent, "utf8"),
-      diff,
-      createdAt: now,
-    };
-
-    const [id] = await db("verification_requests").insert({
-      plugin,
-      action: "edit_file",
-      data: JSON.stringify(verificationData),
-      status: "pending",
-      ...(body.jobContext
-        ? { job_context: JSON.stringify(body.jobContext) }
-        : {}),
-      created_at: now,
-      updated_at: now,
-    });
-
-    return c.json(
-      {
-        verificationRequestId: id,
+    if (verified) {
+      const now = localTimestamp();
+      const verificationData = {
         path: relPath,
+        oldString,
+        newString,
+        replaceAll,
+        previousContent: content,
+        nextContent: result.nextContent,
+        previousBytes: Buffer.byteLength(content, "utf8"),
+        nextBytes: Buffer.byteLength(result.nextContent, "utf8"),
+        diff,
+        createdAt: now,
+      };
+
+      const [id] = await config.db("verification_requests").insert({
+        plugin: config.plugin,
+        action: "edit_file",
+        data: JSON.stringify(verificationData),
         status: "pending",
-        diff: {
-          added: diff.added,
-          removed: diff.removed,
-          unchanged: diff.unchanged,
-          truncated: diff.truncated,
-          totalLines: diff.totalLines,
+        ...(body.jobContext
+          ? { job_context: JSON.stringify(body.jobContext) }
+          : {}),
+        created_at: now,
+        updated_at: now,
+      });
+
+      return c.json(
+        {
+          verificationRequestId: id,
+          path: relPath,
+          status: "pending",
+          diff: {
+            added: diff.added,
+            removed: diff.removed,
+            unchanged: diff.unchanged,
+            truncated: diff.truncated,
+            totalLines: diff.totalLines,
+          },
         },
+        202,
+      );
+    }
+
+    // Immediate mode
+    await mkdir(path.dirname(absPath), { recursive: true });
+    await writeFile(absPath, result.nextContent, "utf8");
+    config.afterWrite?.();
+
+    return c.json({
+      path: relPath,
+      diff: {
+        added: diff.added,
+        removed: diff.removed,
+        unchanged: diff.unchanged,
       },
-      202,
-    );
+    });
   });
 }
 
@@ -137,7 +173,11 @@ export function registerFileWriteRoute(
   app: any,
   config: FileRouteConfig,
 ): void {
-  const { plugin, rootDir, db } = config;
+  const { rootDir } = config;
+  if (!config.plugin || !config.db) {
+    throw new Error("registerFileWriteRoute requires plugin and db");
+  }
+  const { plugin, db } = config;
 
   app.post("/write", async (c: any) => {
     const body = (await c.req.json()) as {

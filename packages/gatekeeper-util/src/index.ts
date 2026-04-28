@@ -9,7 +9,5 @@ export type { FileRouteConfig } from "./fileRoutes";
 export { createFileEditTool, createFileWriteTool } from "./fileTools";
 export type { FileToolConfig } from "./fileTools";
 
-export {
-  createFileVerificationCallback,
-} from "./fileVerification";
+export { createFileVerificationCallback } from "./fileVerification";
 export type { FileVerificationConfig } from "./fileVerification";

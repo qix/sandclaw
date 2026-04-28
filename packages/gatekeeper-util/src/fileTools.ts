@@ -11,12 +11,20 @@ export interface FileToolConfig {
   artifactLabel: string;
   /** API route base path, e.g. "/api/obsidian". */
   apiBase: string;
+  /**
+   * When true (default), the tool creates a verification request and the
+   * response tells the user to approve it. When false, the edit is applied
+   * immediately and the response shows the diff summary.
+   */
+  requireVerification?: boolean;
 }
 
 export function createFileEditTool(
   ctx: MuteworkerPluginContext,
   config: FileToolConfig,
 ) {
+  const verified = config.requireVerification !== false;
+
   return {
     name: config.name,
     label: config.label,
@@ -58,18 +66,22 @@ export function createFileEditTool(
       if (oldString === newString)
         throw new Error("old_string and new_string must differ");
 
+      const payload: Record<string, unknown> = {
+        path: notePath,
+        old_string: oldString,
+        new_string: newString,
+        replace_all: params.replace_all === true,
+      };
+      if (verified) {
+        payload.jobContext = { worker: "muteworker", jobId: ctx.job.id };
+      }
+
       const response = await fetch(
         `${ctx.gatekeeperInternalUrl}${config.apiBase}/edit`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            path: notePath,
-            old_string: oldString,
-            new_string: newString,
-            replace_all: params.replace_all === true,
-            jobContext: { worker: "muteworker", jobId: ctx.job.id },
-          }),
+          body: JSON.stringify(payload),
         },
       );
 
@@ -87,18 +99,30 @@ export function createFileEditTool(
         value: data.path,
       });
 
+      if (verified) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: [
+                `Queued edit verification #${data.verificationRequestId}.`,
+                "No file has been changed yet.",
+                `Path: ${data.path}`,
+                `Mode: edit`,
+                `Diff: +${data.diff.added} -${data.diff.removed} =${data.diff.unchanged}`,
+                `Open ${ctx.gatekeeperExternalUrl} to review and approve this change.`,
+              ].join("\n"),
+            },
+          ],
+          details: data,
+        };
+      }
+
       return {
         content: [
           {
             type: "text",
-            text: [
-              `Queued edit verification #${data.verificationRequestId}.`,
-              "No file has been changed yet.",
-              `Path: ${data.path}`,
-              `Mode: edit`,
-              `Diff: +${data.diff.added} -${data.diff.removed} =${data.diff.unchanged}`,
-              `Open ${ctx.gatekeeperExternalUrl} to review and approve this change.`,
-            ].join("\n"),
+            text: `Edited ${data.path}: +${data.diff.added} -${data.diff.removed} =${data.diff.unchanged}`,
           },
         ],
         details: data,

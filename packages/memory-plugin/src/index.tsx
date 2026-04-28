@@ -3,8 +3,6 @@ import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
-import { FileVerificationRenderer } from "@sandclaw/ui";
-import { createFileVerificationCallback } from "@sandclaw/gatekeeper-util";
 import { createMemoryTools } from "./tools";
 import { loadMemoryPrompt } from "./promptLoader";
 import { MemoryPanel } from "./components";
@@ -21,17 +19,14 @@ export interface MemoryPluginConfig {
 export function createMemoryPlugin(config: MemoryPluginConfig) {
   return {
     id: "memory" as const,
-    verificationRenderer: FileVerificationRenderer,
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({
         deps: {
           components: gatekeeperDeps.components,
-          db: gatekeeperDeps.db,
           routes: gatekeeperDeps.routes,
-          verifications: gatekeeperDeps.verifications,
         },
-        init({ components, db, routes, verifications }) {
+        init({ components, routes }) {
           function MemoryTab() {
             return <TabLink href="?page=memory" title="Memory" />;
           }
@@ -39,13 +34,7 @@ export function createMemoryPlugin(config: MemoryPluginConfig) {
           components.register("page:memory", MemoryPanel);
 
           routes.registerRoutes((app) =>
-            registerRoutes(app, config.memoryDir, db),
-          );
-
-          verifications.registerVerificationCallback(
-            createFileVerificationCallback({
-              rootDir: config.memoryDir,
-            }),
+            registerRoutes(app, config.memoryDir),
           );
         },
       });

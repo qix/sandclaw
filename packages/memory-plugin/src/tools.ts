@@ -2,7 +2,7 @@ import { TSchema } from "@mariozechner/pi-ai";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
-import { createFileEditTool, createFileWriteTool } from "@sandclaw/gatekeeper-util";
+import { createFileEditTool } from "@sandclaw/gatekeeper-util";
 
 export function createMemoryTools(
   ctx: MuteworkerPluginContext,
@@ -133,22 +133,13 @@ export function createMemoryTools(
       name: "edit_memory_file",
       label: "Edit Memory File",
       description:
-        "Create a verification request to perform a targeted string replacement in a memory file. " +
+        "Perform a targeted string replacement in a memory file. " +
         "Specify old_string (text to find) and new_string (replacement). " +
         "old_string must be unique in the file unless replace_all is true. " +
-        "No changes will be made until a human approves the verification request.",
-      artifactLabel: "Memory Edit Request",
+        "This action is applied immediately.",
+      artifactLabel: "Memory Edit",
       apiBase: "/api/memory",
-    }),
-    createFileWriteTool(ctx, {
-      name: "verified_write_memory_file",
-      label: "Verified Write Memory File",
-      description:
-        "Create a verification request to overwrite a memory file. " +
-        "The entire file will be overwritten. " +
-        "No changes will be made until a human approves the verification request.",
-      artifactLabel: "Memory Write Request",
-      apiBase: "/api/memory",
+      requireVerification: false,
     }),
   ];
 }
