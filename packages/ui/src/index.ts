@@ -9,3 +9,5 @@ export type { ConversationSummary } from "./components/ConversationList";
 export { PageHeader } from "./components/PageHeader";
 export { generateFileEditorScript } from "./fileEditorScript";
 export type { FileEditorConfig } from "./fileEditorScript";
+export { DiffViewer, FileVerificationRenderer } from "./components/DiffViewer";
+export type { DiffViewerProps } from "./components/DiffViewer";

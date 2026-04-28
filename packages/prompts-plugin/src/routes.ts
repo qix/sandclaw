@@ -1,6 +1,10 @@
 import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import path from "node:path";
 import { generateFileEditorScript } from "@sandclaw/ui";
+import {
+  registerFileEditRoute,
+  registerFileWriteRoute,
+} from "@sandclaw/gatekeeper-util";
 
 /**
  * Recursively list all files under `dirPath`, returning paths relative to it.
@@ -33,7 +37,7 @@ function validateRelativePath(inputPath: string, rootDir: string): string {
   return relative.replaceAll("\\", "/");
 }
 
-export function registerRoutes(app: any, promptsDir: string) {
+export function registerRoutes(app: any, promptsDir: string, db?: any) {
   // GET /client.js — serve the file-editor client script
   const clientJs = generateFileEditorScript({
     prefix: "prompts",
@@ -110,4 +114,18 @@ export function registerRoutes(app: any, promptsDir: string) {
       bytes: Buffer.byteLength(body.content, "utf8"),
     });
   });
+
+  // Verified edit/write routes (require db)
+  if (db) {
+    registerFileEditRoute(app, {
+      plugin: "prompts",
+      rootDir: promptsDir,
+      db,
+    });
+    registerFileWriteRoute(app, {
+      plugin: "prompts",
+      rootDir: promptsDir,
+      db,
+    });
+  }
 }

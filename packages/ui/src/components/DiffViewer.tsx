@@ -1,0 +1,181 @@
+import React from "react";
+import { colors } from "../theme";
+
+export interface DiffViewerProps {
+  filePath: string;
+  mode: string;
+  previousBytes: number;
+  nextBytes: number;
+  diff?: {
+    lines?: Array<{ type: string; text: string }>;
+    added?: number;
+    removed?: number;
+    unchanged?: number;
+    truncated?: boolean;
+  };
+}
+
+const lineColors: Record<string, React.CSSProperties> = {
+  add: { background: colors.diffAddBg, color: colors.diffAddFg },
+  remove: { background: colors.diffRemoveBg, color: colors.diffRemoveFg },
+  context: { background: "transparent", color: colors.diffContextFg },
+};
+
+const linePrefix: Record<string, string> = {
+  add: "+",
+  remove: "-",
+  context: " ",
+};
+
+export function DiffViewer({
+  filePath,
+  mode,
+  previousBytes,
+  nextBytes,
+  diff,
+}: DiffViewerProps) {
+  return (
+    <div>
+      <div
+        style={{
+          marginBottom: "0.75rem",
+          display: "flex",
+          gap: "1rem",
+          alignItems: "baseline",
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ fontSize: "0.85rem", color: colors.muted }}>
+          <strong style={{ color: colors.text }}>File:</strong>{" "}
+          <span style={{ fontFamily: "monospace" }}>{filePath}</span>
+        </div>
+        <span
+          style={{
+            padding: "0.15rem 0.5rem",
+            borderRadius: "9999px",
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            background: colors.badgeIndigoBg,
+            color: colors.badgeIndigoFg,
+          }}
+        >
+          {mode}
+        </span>
+        <span style={{ fontSize: "0.8rem", color: colors.muted }}>
+          {previousBytes} → {nextBytes} bytes
+        </span>
+      </div>
+
+      {diff && diff.lines && diff.lines.length > 0 ? (
+        <>
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              marginBottom: "0.5rem",
+              fontSize: "0.8rem",
+            }}
+          >
+            {diff.added != null && diff.added > 0 && (
+              <span style={{ color: colors.diffAddFg, fontWeight: 600 }}>
+                +{diff.added} added
+              </span>
+            )}
+            {diff.removed != null && diff.removed > 0 && (
+              <span style={{ color: colors.diffRemoveFg, fontWeight: 600 }}>
+                -{diff.removed} removed
+              </span>
+            )}
+            {diff.unchanged != null && (
+              <span style={{ color: colors.muted }}>
+                {diff.unchanged} unchanged
+              </span>
+            )}
+          </div>
+          <div
+            style={{
+              border: `1px solid ${colors.diffBorder}`,
+              borderRadius: "0.5rem",
+              overflow: "hidden",
+              fontFamily:
+                "'SF Mono', 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Menlo, Monaco, Consolas, monospace",
+              fontSize: "0.82rem",
+              lineHeight: 1.5,
+              maxHeight: "400px",
+              overflowY: "auto",
+              background: colors.diffBg,
+            }}
+          >
+            {diff.lines.map((line: any, i: number) => (
+              <div
+                key={i}
+                style={{
+                  padding: "0 0.75rem",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  ...(lineColors[line.type] ?? lineColors.context),
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: "1.2em",
+                    userSelect: "none",
+                    opacity: 0.6,
+                  }}
+                >
+                  {linePrefix[line.type] ?? " "}
+                </span>
+                {line.text}
+              </div>
+            ))}
+          </div>
+          {diff.truncated && (
+            <div
+              style={{
+                marginTop: "0.5rem",
+                fontSize: "0.8rem",
+                color: colors.muted,
+                fontStyle: "italic",
+              }}
+            >
+              Diff truncated — showing first lines only.
+            </div>
+          )}
+        </>
+      ) : (
+        <div
+          style={{
+            color: colors.muted,
+            fontStyle: "italic",
+            fontSize: "0.85rem",
+          }}
+        >
+          No diff available (new file).
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Drop-in verification renderer for plugins that use the shared file
+ * edit/write routes from `@sandclaw/gatekeeper-util`. Accepts the standard
+ * `{ action, data }` verification renderer props.
+ */
+export function FileVerificationRenderer({
+  data,
+}: {
+  action: string;
+  data: any;
+}) {
+  return (
+    <DiffViewer
+      filePath={data?.path ?? "unknown"}
+      mode={data?.oldString != null ? "edit" : "overwrite"}
+      previousBytes={data?.previousBytes ?? 0}
+      nextBytes={data?.nextBytes ?? 0}
+      diff={data?.diff}
+    />
+  );
+}

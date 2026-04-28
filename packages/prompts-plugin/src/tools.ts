@@ -2,6 +2,7 @@ import { TSchema } from "@mariozechner/pi-ai";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
+import { createFileEditTool, createFileWriteTool } from "@sandclaw/gatekeeper-util";
 
 export function createPromptTools(
   ctx: MuteworkerPluginContext,
@@ -128,6 +129,27 @@ export function createPromptTools(
         };
       },
     },
+    createFileEditTool(ctx, {
+      name: "edit_prompt_file",
+      label: "Edit Prompt File",
+      description:
+        "Create a verification request to perform a targeted string replacement in a prompt file. " +
+        "Specify old_string (text to find) and new_string (replacement). " +
+        "old_string must be unique in the file unless replace_all is true. " +
+        "No changes will be made until a human approves the verification request.",
+      artifactLabel: "Prompt Edit Request",
+      apiBase: "/api/prompts",
+    }),
+    createFileWriteTool(ctx, {
+      name: "verified_write_prompt_file",
+      label: "Verified Write Prompt File",
+      description:
+        "Create a verification request to overwrite a prompt file. " +
+        "The entire file will be overwritten. " +
+        "No changes will be made until a human approves the verification request.",
+      artifactLabel: "Prompt Write Request",
+      apiBase: "/api/prompts",
+    }),
   ];
 }
 

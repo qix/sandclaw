@@ -1,8 +1,12 @@
 import { readdir, readFile, writeFile, mkdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { localTimestamp } from "@sandclaw/util";
-import { resolveVaultPath, tryReadFile } from "./pathUtils";
-import { computeDiff } from "./diff";
+import {
+  resolveSecurePath,
+  tryReadFile,
+  computeDiff,
+  registerFileEditRoute,
+} from "@sandclaw/gatekeeper-util";
 import type { ObsidianVaultIndex } from "./vaultIndex";
 
 const LIST_SKIP_DIRS = new Set([".git", ".obsidian", ".trash", "node_modules"]);
@@ -38,7 +42,7 @@ export function registerRoutes(
     // Empty or "." means vault root
     const absDir =
       dirPath && dirPath !== "."
-        ? resolveVaultPath(vaultRoot, dirPath)
+        ? resolveSecurePath(vaultRoot, dirPath)
         : vaultRoot;
     if (!absDir) return c.json({ error: "path escapes vault" }, 400);
 
@@ -101,7 +105,7 @@ export function registerRoutes(
       }
     }
 
-    const absPath = resolveVaultPath(vaultRoot, notePath);
+    const absPath = resolveSecurePath(vaultRoot, notePath);
     if (!absPath) return c.json({ error: "path escapes vault" }, 400);
 
     let content: string;
@@ -145,7 +149,7 @@ export function registerRoutes(
     const task = (body.task ?? "").trim();
     if (!task) return c.json({ error: "task is required" }, 400);
 
-    const absPath = resolveVaultPath(vaultRoot, notePath);
+    const absPath = resolveSecurePath(vaultRoot, notePath);
     if (!absPath) return c.json({ error: "path escapes vault" }, 400);
 
     let content: string;
@@ -213,7 +217,7 @@ export function registerRoutes(
     if (typeof newContent !== "string")
       return c.json({ error: "new_content must be a string" }, 400);
 
-    const absPath = resolveVaultPath(vaultRoot, notePath);
+    const absPath = resolveSecurePath(vaultRoot, notePath);
     if (!absPath) return c.json({ error: "path escapes vault" }, 400);
 
     let content: string;
@@ -253,7 +257,10 @@ export function registerRoutes(
     return c.json({ path: relPath, original, modified: finalLine });
   });
 
-  // POST /write — create a verification request for a vault write
+  // POST /edit — shared route from gatekeeper-util
+  registerFileEditRoute(app, { plugin: "obsidian", rootDir: vaultRoot, db });
+
+  // POST /write — custom route with vault index filename resolution
   app.post("/write", async (c: any) => {
     const body = (await c.req.json()) as {
       path?: string;
@@ -281,7 +288,7 @@ export function registerRoutes(
       }
     }
 
-    const absPath = resolveVaultPath(vaultRoot, notePath);
+    const absPath = resolveSecurePath(vaultRoot, notePath);
     if (!absPath) return c.json({ error: "path escapes vault" }, 400);
 
     const relPath = path.relative(vaultRoot, absPath).replace(/\\/g, "/");

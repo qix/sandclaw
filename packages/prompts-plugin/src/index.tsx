@@ -3,6 +3,8 @@ import { gatekeeperDeps, TabLink } from "@sandclaw/gatekeeper-plugin-api";
 import type { PluginEnvironment } from "@sandclaw/gatekeeper-plugin-api";
 import { muteworkerDeps } from "@sandclaw/muteworker-plugin-api";
 import type { MuteworkerEnvironment } from "@sandclaw/muteworker-plugin-api";
+import { FileVerificationRenderer } from "@sandclaw/ui";
+import { createFileVerificationCallback } from "@sandclaw/gatekeeper-util";
 import { createPromptTools } from "./tools";
 import { loadPromptsPrompt } from "./promptLoader";
 import { PromptsPanel } from "./components";
@@ -19,14 +21,17 @@ export interface PromptsPluginConfig {
 export function createPromptsPlugin(config: PromptsPluginConfig) {
   return {
     id: "prompts" as const,
+    verificationRenderer: FileVerificationRenderer,
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({
         deps: {
           components: gatekeeperDeps.components,
+          db: gatekeeperDeps.db,
           routes: gatekeeperDeps.routes,
+          verifications: gatekeeperDeps.verifications,
         },
-        init({ components, routes }) {
+        init({ components, db, routes, verifications }) {
           function PromptsTab() {
             return <TabLink href="?page=prompts" title="Prompts" />;
           }
@@ -34,7 +39,13 @@ export function createPromptsPlugin(config: PromptsPluginConfig) {
           components.register("page:prompts", PromptsPanel);
 
           routes.registerRoutes((app) =>
-            registerRoutes(app, config.promptsDir),
+            registerRoutes(app, config.promptsDir, db),
+          );
+
+          verifications.registerVerificationCallback(
+            createFileVerificationCallback({
+              rootDir: config.promptsDir,
+            }),
           );
         },
       });

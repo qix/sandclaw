@@ -1,4 +1,5 @@
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
+import { createFileEditTool, createFileWriteTool } from "@sandclaw/gatekeeper-util";
 
 export function createSearchTool(ctx: MuteworkerPluginContext) {
   return {
@@ -325,72 +326,29 @@ export function createModifyDailyTaskTool(ctx: MuteworkerPluginContext) {
   };
 }
 
+export function createEditTool(ctx: MuteworkerPluginContext) {
+  return createFileEditTool(ctx, {
+    name: "obsidian_edit",
+    label: "Edit Obsidian Note",
+    description:
+      "Create a verification request to perform a targeted string replacement in an Obsidian note. " +
+      "Specify old_string (text to find) and new_string (replacement). " +
+      "old_string must be unique in the file unless replace_all is true. " +
+      "No changes will be made until a human approves the verification request.",
+    artifactLabel: "Obsidian Edit Request",
+    apiBase: "/api/obsidian",
+  });
+}
+
 export function createWriteTool(ctx: MuteworkerPluginContext) {
-  return {
+  return createFileWriteTool(ctx, {
     name: "obsidian_write",
     label: "Write Obsidian Note",
     description:
       "Create a verification request to write text to an Obsidian note. " +
       "The entire note will be overwritten, so be sure to read the note first if you want to preserve existing content. " +
       "No changes will be made until a human approves the verification request.",
-    parameters: {
-      type: "object",
-      properties: {
-        path: { type: "string" },
-        content: { type: "string" },
-      },
-      required: ["path", "content"],
-      additionalProperties: false,
-    } as any,
-    execute: async (_toolCallId: string, params: any) => {
-      const notePath = String(params.path ?? "").trim();
-      if (!notePath) throw new Error("path is required");
-      if (typeof params.content !== "string")
-        throw new Error("content must be a string");
-
-      const response = await fetch(
-        `${ctx.gatekeeperInternalUrl}/api/obsidian/write`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            path: notePath,
-            content: params.content,
-            jobContext: { worker: "muteworker", jobId: ctx.job.id },
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        throw new Error(
-          `Obsidian write failed (${response.status}): ${body.slice(0, 200)}`,
-        );
-      }
-
-      const data = (await response.json()) as any;
-      ctx.artifacts.push({
-        type: "text",
-        label: "Obsidian Write Request",
-        value: data.path,
-      });
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: [
-              `Queued Obsidian write verification #${data.verificationRequestId}.`,
-              "No file has been changed yet.",
-              `Path: ${data.path}`,
-              `Mode: overwrite`,
-              `Diff: +${data.diff.added} -${data.diff.removed} =${data.diff.unchanged}`,
-              `Open ${ctx.gatekeeperExternalUrl} to review and approve this change.`,
-            ].join("\n"),
-          },
-        ],
-        details: data,
-      };
-    },
-  };
+    artifactLabel: "Obsidian Write Request",
+    apiBase: "/api/obsidian",
+  });
 }

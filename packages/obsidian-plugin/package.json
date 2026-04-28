@@ -22,7 +22,9 @@
   },
   "dependencies": {
     "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/gatekeeper-util": "^0.1.0",
     "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0",
     "@sandclaw/util": "^0.1.0"
   },
   "peerDependencies": {

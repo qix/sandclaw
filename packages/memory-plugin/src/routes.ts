@@ -1,6 +1,10 @@
 import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import path from "node:path";
 import { generateFileEditorScript } from "@sandclaw/ui";
+import {
+  registerFileEditRoute,
+  registerFileWriteRoute,
+} from "@sandclaw/gatekeeper-util";
 
 async function listDir(dirPath: string): Promise<string[]> {
   const entries = await readdir(dirPath, { withFileTypes: true });
@@ -30,7 +34,7 @@ function validateRelativePath(inputPath: string, rootDir: string): string {
   return relative.replaceAll("\\", "/");
 }
 
-export function registerRoutes(app: any, memoryDir: string) {
+export function registerRoutes(app: any, memoryDir: string, db?: any) {
   const clientJs = generateFileEditorScript({
     prefix: "memory",
     apiBase: "/api/memory",
@@ -103,4 +107,18 @@ export function registerRoutes(app: any, memoryDir: string) {
       bytes: Buffer.byteLength(body.content, "utf8"),
     });
   });
+
+  // Verified edit/write routes (require db)
+  if (db) {
+    registerFileEditRoute(app, {
+      plugin: "memory",
+      rootDir: memoryDir,
+      db,
+    });
+    registerFileWriteRoute(app, {
+      plugin: "memory",
+      rootDir: memoryDir,
+      db,
+    });
+  }
 }
