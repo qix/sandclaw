@@ -36,12 +36,14 @@ export async function getOrCreateConversationId(
     .where({ plugin: PLUGIN, channel: CHANNEL, external_id: jid })
     .first();
   if (existing) return existing.id;
-  const [id] = await db("conversations").insert({
-    plugin: PLUGIN,
-    channel: CHANNEL,
-    external_id: jid,
-    created_at: localTimestamp(),
-  });
+  const [{ id }] = await db("conversations")
+    .insert({
+      plugin: PLUGIN,
+      channel: CHANNEL,
+      external_id: jid,
+      created_at: localTimestamp(),
+    })
+    .returning("id");
   return id;
 }
 

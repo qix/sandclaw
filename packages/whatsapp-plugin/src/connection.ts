@@ -26,12 +26,14 @@ export async function getOrCreateConversationId(
     .where({ plugin: "whatsapp", channel: "whatsapp", external_id: jid })
     .first();
   if (existing) return existing.id;
-  const [id] = await db("conversations").insert({
-    plugin: "whatsapp",
-    channel: "whatsapp",
-    external_id: jid,
-    created_at: localTimestamp(),
-  });
+  const [{ id }] = await db("conversations")
+    .insert({
+      plugin: "whatsapp",
+      channel: "whatsapp",
+      external_id: jid,
+      created_at: localTimestamp(),
+    })
+    .returning("id");
   return id;
 }
 

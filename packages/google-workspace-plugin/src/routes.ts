@@ -33,17 +33,19 @@ export function registerRoutes(app: any, db: any) {
       createdAt: now,
     };
 
-    const [id] = await db("verification_requests").insert({
-      plugin: GWS_PLUGIN_ID,
-      action: GWS_VERIFICATION_ACTION,
-      data: JSON.stringify(verificationData),
-      status: "pending",
-      ...(body.jobContext
-        ? { job_context: JSON.stringify(body.jobContext) }
-        : {}),
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id }] = await db("verification_requests")
+      .insert({
+        plugin: GWS_PLUGIN_ID,
+        action: GWS_VERIFICATION_ACTION,
+        data: JSON.stringify(verificationData),
+        status: "pending",
+        ...(body.jobContext
+          ? { job_context: JSON.stringify(body.jobContext) }
+          : {}),
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     return c.json({
       verificationRequestId: id,

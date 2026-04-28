@@ -67,13 +67,15 @@ export function registerRoutes(
     }
 
     const now = localTimestamp();
-    const [id] = await db("job_grouping_rules").insert({
-      prompt,
-      generated_code: generated.code,
-      description: generated.description,
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id }] = await db("job_grouping_rules")
+      .insert({
+        prompt,
+        generated_code: generated.code,
+        description: generated.description,
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     // Sync the rules file
     await syncRulesFile();

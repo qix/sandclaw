@@ -4,15 +4,15 @@
 
 The Gatekeeper is a web application that acts as the control center for the SandClaw safety framework. It sits between the safe side (muteworker) and the dangerous side (confidante), managing:
 
-- A SQLite database for queues and verification requests
+- A Postgres database for queues and verification requests
 - REST API endpoints consumed by both muteworker and confidante
 - A human-in-the-loop UI for reviewing and approving dangerous operations
 
 ## Tech Stack
 
-| Package          | Version | Purpose       |
-| ---------------- | ------- | ------------- |
-| `better-sqlite3` | ^11.x   | SQLite driver |
+| Package | Version | Purpose         |
+| ------- | ------- | --------------- |
+| `pg`    | ^8.x    | Postgres driver |
 
 ### Core Tables
 

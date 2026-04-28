@@ -36,8 +36,8 @@ import { registerCoreRoutes, registerVerificationFormRoutes } from "./routes";
 export interface GatekeeperConfig {
   /** External url */
   gatekeeperExternalUrl: string;
-  /** Path to the SQLite database file. Parent directory is created if absent. */
-  dbPath: string;
+  /** Postgres connection string. Defaults to `process.env.POSTGRES_URL`. */
+  postgresUrl?: string;
   /** TCP port to listen on. Defaults to 3000. */
   gatekeeperPort?: number;
   /** Host/IP to bind to. Defaults to "127.0.0.1". */
@@ -56,10 +56,15 @@ export async function startGatekeeper(
 ): Promise<void> {
   const { plugins, config } = options;
   const {
-    dbPath,
+    postgresUrl = process.env.POSTGRES_URL,
     gatekeeperPort = 3000,
     gatekeeperHost = "127.0.0.1",
   } = config;
+  if (!postgresUrl) {
+    throw new Error(
+      "Postgres connection string is required (set POSTGRES_URL or pass config.postgresUrl).",
+    );
+  }
   const app = new Hono();
 
   // Request logging middleware
@@ -74,7 +79,7 @@ export async function startGatekeeper(
   });
 
   // 1. Initialise DB and run core + plugin migrations
-  const db = createDb(dbPath);
+  const db = createDb(postgresUrl);
   await runCoreMigrations(db);
   for (const plugin of plugins) {
     if (plugin.migrations) {
@@ -195,14 +200,16 @@ export async function startGatekeeper(
   ): Promise<{ jobId: number }> {
     const conn = ctx.trx ?? db;
     const now = localTimestamp();
-    const [jobId] = await conn("job_queue").insert({
-      executor,
-      job_type: jobType,
-      data: JSON.stringify(data),
-      status: "pending",
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id: jobId }] = await conn("job_queue")
+      .insert({
+        executor,
+        job_type: jobType,
+        data: JSON.stringify(data),
+        status: "pending",
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     const queuedEvent: AgentStatusEvent = {
       jobId,
@@ -286,15 +293,17 @@ export async function startGatekeeper(
         const ctx = createContext();
         const { action, data, jobContext, autoApprove } = options;
         const now = localTimestamp();
-        const [id] = await db("verification_requests").insert({
-          plugin: pluginId,
-          action,
-          data: JSON.stringify(data),
-          status: "pending",
-          ...(jobContext ? { job_context: JSON.stringify(jobContext) } : {}),
-          created_at: now,
-          updated_at: now,
-        });
+        const [{ id }] = await db("verification_requests")
+          .insert({
+            plugin: pluginId,
+            action,
+            data: JSON.stringify(data),
+            status: "pending",
+            ...(jobContext ? { job_context: JSON.stringify(jobContext) } : {}),
+            created_at: now,
+            updated_at: now,
+          })
+          .returning("id");
 
         if (autoApprove) {
           const callback = verificationCallbacks.get(pluginId);

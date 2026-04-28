@@ -71,17 +71,19 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig, job
       from: config.userEmail,
     };
 
-    const [id] = await db("verification_requests").insert({
-      plugin: "email",
-      action: "send_email",
-      data: JSON.stringify(verificationData),
-      status: "pending",
-      ...(body.jobContext
-        ? { job_context: JSON.stringify(body.jobContext) }
-        : {}),
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id }] = await db("verification_requests")
+      .insert({
+        plugin: "email",
+        action: "send_email",
+        data: JSON.stringify(verificationData),
+        status: "pending",
+        ...(body.jobContext
+          ? { job_context: JSON.stringify(body.jobContext) }
+          : {}),
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     return c.json({
       verificationRequestId: id,
@@ -378,17 +380,19 @@ export function registerRoutes(app: any, db: any, config: EmailPluginConfig, job
       start,
     };
 
-    const [id] = await db("verification_requests").insert({
-      plugin: "email",
-      action: "calendar_respond",
-      data: JSON.stringify(verificationData),
-      status: "pending",
-      ...(body.jobContext
-        ? { job_context: JSON.stringify(body.jobContext) }
-        : {}),
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id }] = await db("verification_requests")
+      .insert({
+        plugin: "email",
+        action: "calendar_respond",
+        data: JSON.stringify(verificationData),
+        status: "pending",
+        ...(body.jobContext
+          ? { job_context: JSON.stringify(body.jobContext) }
+          : {}),
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     return c.json({
       verificationRequestId: id,

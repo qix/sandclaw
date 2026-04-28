@@ -180,16 +180,18 @@ export function registerCoreRoutes(
 
     // Fallback: direct insert (no interceptors)
     const now = localTimestamp();
-    const [id] = await db("job_queue").insert({
-      executor: body.executor,
-      job_type: body.jobType,
-      data:
-        typeof body.data === "string" ? body.data : JSON.stringify(body.data),
-      context: body.context ?? null,
-      status: "pending",
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id }] = await db("job_queue")
+      .insert({
+        executor: body.executor,
+        job_type: body.jobType,
+        data:
+          typeof body.data === "string" ? body.data : JSON.stringify(body.data),
+        context: body.context ?? null,
+        status: "pending",
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     const job = await db("job_queue").where("id", id).first();
 
@@ -482,15 +484,17 @@ export function registerCoreRoutes(
       Object.keys(sqCtx).length > 0 ? JSON.stringify(sqCtx) : null;
     const now = localTimestamp();
 
-    const [jobId] = await db("job_queue").insert({
-      executor: "muteworker",
-      job_type: "confidante:result",
-      data: prompt,
-      ...(context ? { context } : {}),
-      status: "pending",
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id: jobId }] = await db("job_queue")
+      .insert({
+        executor: "muteworker",
+        job_type: "confidante:result",
+        data: prompt,
+        ...(context ? { context } : {}),
+        status: "pending",
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     // Fire "queued" agent status event
     if (agentStatusHooks) {

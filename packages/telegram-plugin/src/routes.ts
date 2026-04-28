@@ -105,15 +105,17 @@ export function registerRoutes(
 
     const autoApprove = operatorChatIds.has(chatId);
     const now = localTimestamp();
-    const [id] = await db("verification_requests").insert({
-      plugin: "telegram",
-      action: "send_message",
-      data: JSON.stringify({ chatId, text }),
-      status: autoApprove ? "approved" : "pending",
-      ...(jobContext ? { job_context: JSON.stringify(jobContext) } : {}),
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id }] = await db("verification_requests")
+      .insert({
+        plugin: "telegram",
+        action: "send_message",
+        data: JSON.stringify({ chatId, text }),
+        status: autoApprove ? "approved" : "pending",
+        ...(jobContext ? { job_context: JSON.stringify(jobContext) } : {}),
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     if (autoApprove) {
       try {

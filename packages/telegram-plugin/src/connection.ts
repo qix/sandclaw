@@ -14,12 +14,14 @@ export async function getOrCreateConversationId(
     .where({ plugin: "telegram", channel: "telegram", external_id: chatId })
     .first();
   if (existing) return existing.id;
-  const [id] = await db("conversations").insert({
-    plugin: "telegram",
-    channel: "telegram",
-    external_id: chatId,
-    created_at: localTimestamp(),
-  });
+  const [{ id }] = await db("conversations")
+    .insert({
+      plugin: "telegram",
+      channel: "telegram",
+      external_id: chatId,
+      created_at: localTimestamp(),
+    })
+    .returning("id");
   return id;
 }
 

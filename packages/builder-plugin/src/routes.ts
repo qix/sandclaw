@@ -39,17 +39,19 @@ export function registerRoutes(
       createdAt: now,
     };
 
-    const [id] = await db("verification_requests").insert({
-      plugin: "builder",
-      action: BUILDER_VERIFICATION_ACTION,
-      data: JSON.stringify(verificationData),
-      status: "pending",
-      ...(body.jobContext
-        ? { job_context: JSON.stringify(body.jobContext) }
-        : {}),
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id }] = await db("verification_requests")
+      .insert({
+        plugin: "builder",
+        action: BUILDER_VERIFICATION_ACTION,
+        data: JSON.stringify(verificationData),
+        status: "pending",
+        ...(body.jobContext
+          ? { job_context: JSON.stringify(body.jobContext) }
+          : {}),
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     return c.json({
       verificationRequestId: id,
@@ -72,17 +74,19 @@ export function registerRoutes(
     const jobType = body.responseJobType || DEFAULT_BUILDER_RESULT_JOB_TYPE;
     const now = localTimestamp();
 
-    const [jobId] = await db("job_queue").insert({
-      executor: "muteworker",
-      job_type: jobType,
-      data: JSON.stringify({
-        requestId: body.requestId,
-        result: body.result,
-      }),
-      status: "pending",
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id: jobId }] = await db("job_queue")
+      .insert({
+        executor: "muteworker",
+        job_type: jobType,
+        data: JSON.stringify({
+          requestId: body.requestId,
+          result: body.result,
+        }),
+        status: "pending",
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     fireAgentStatus?.({
       jobId,

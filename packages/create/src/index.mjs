@@ -131,8 +131,10 @@ export const gatekeeperConfig = {
   gatekeeperHost: "127.0.0.1",
   gatekeeperPort,
 
+  /* Postgres connection string (defaults to process.env.POSTGRES_URL). */
+  postgresUrl: process.env.POSTGRES_URL,
+
   /* Local storage paths */
-  dbPath: path.join(__dirname, "data/db.sqlite"),
   memoryDir: path.join(__dirname, "memory"),
   promptsDir: path.join(__dirname, "prompts"),
 };

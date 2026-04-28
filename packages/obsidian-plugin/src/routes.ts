@@ -307,17 +307,19 @@ export function registerRoutes(
       createdAt: now,
     };
 
-    const [id] = await db("verification_requests").insert({
-      plugin: "obsidian",
-      action: "write_file",
-      data: JSON.stringify(verificationData),
-      status: "pending",
-      ...(body.jobContext
-        ? { job_context: JSON.stringify(body.jobContext) }
-        : {}),
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id }] = await db("verification_requests")
+      .insert({
+        plugin: "obsidian",
+        action: "write_file",
+        data: JSON.stringify(verificationData),
+        status: "pending",
+        ...(body.jobContext
+          ? { job_context: JSON.stringify(body.jobContext) }
+          : {}),
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     return c.json(
       {

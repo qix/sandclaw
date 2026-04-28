@@ -56,15 +56,17 @@ export async function startEmailPolling(
           const cleanText = stripHtml(email.textBody);
 
           // Record in email_received to prevent future duplicates
-          const [emailReceivedId] = await trx("email_received").insert({
-            message_id: email.id,
-            from: email.from,
-            to: email.to,
-            subject: email.subject,
-            thread_id: email.threadId ?? null,
-            received_at: receivedAt,
-            created_at: now,
-          });
+          const [{ id: emailReceivedId }] = await trx("email_received")
+            .insert({
+              message_id: email.id,
+              from: email.from,
+              to: email.to,
+              subject: email.subject,
+              thread_id: email.threadId ?? null,
+              received_at: receivedAt,
+              created_at: now,
+            })
+            .returning("id");
 
           await trx("conversation_message").insert({
             conversation_id: 0,
@@ -187,44 +189,50 @@ export async function startCalendarInvitePolling(
             .join(", ");
 
           // Record in calendar_invite_seen to prevent re-notification
-          const [seenId] = await trx("calendar_invite_seen").insert({
-            event_id: invite.id,
-            title: invite.title,
-            organizer_email: invite.organizer?.email ?? "",
-            start_time: invite.start
-              ? `${invite.start}${invite.timeZone ? ` (${invite.timeZone})` : ""}`
-              : "",
-            participation_status: "needs-action",
-            first_seen_at: now,
-            notified_at: now,
-          });
+          const [{ id: seenId }] = await trx("calendar_invite_seen")
+            .insert({
+              event_id: invite.id,
+              title: invite.title,
+              organizer_email: invite.organizer?.email ?? "",
+              start_time: invite.start
+                ? `${invite.start}${invite.timeZone ? ` (${invite.timeZone})` : ""}`
+                : "",
+              participation_status: "needs-action",
+              first_seen_at: now,
+              notified_at: now,
+            })
+            .returning("id");
 
           // Create a job for the muteworker to process this invite
-          const [jobId] = await trx("job_queue").insert({
-            executor: "muteworker",
-            job_type: "email:calendar_invite_received",
-            data: JSON.stringify({
-              eventId: invite.id,
-              title: invite.title,
-              organizer,
-              start: invite.start,
-              timeZone: invite.timeZone,
-              duration: invite.duration ? formatDuration(invite.duration) : "",
-              location: invite.location,
-              description: invite.description,
-              participants: attendees,
-              ...(options?.systemPromptFile
-                ? { systemPromptFile: options.systemPromptFile }
-                : {}),
-            }),
-            context: JSON.stringify({
-              channel: "calendar",
-              from: invite.organizer?.email ?? "unknown",
-            }),
-            status: "pending",
-            created_at: now,
-            updated_at: now,
-          });
+          const [{ id: jobId }] = await trx("job_queue")
+            .insert({
+              executor: "muteworker",
+              job_type: "email:calendar_invite_received",
+              data: JSON.stringify({
+                eventId: invite.id,
+                title: invite.title,
+                organizer,
+                start: invite.start,
+                timeZone: invite.timeZone,
+                duration: invite.duration
+                  ? formatDuration(invite.duration)
+                  : "",
+                location: invite.location,
+                description: invite.description,
+                participants: attendees,
+                ...(options?.systemPromptFile
+                  ? { systemPromptFile: options.systemPromptFile }
+                  : {}),
+              }),
+              context: JSON.stringify({
+                channel: "calendar",
+                from: invite.organizer?.email ?? "unknown",
+              }),
+              status: "pending",
+              created_at: now,
+              updated_at: now,
+            })
+            .returning("id");
 
           // Link the job to the calendar_invite_seen record
           await trx("calendar_invite_seen")

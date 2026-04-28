@@ -97,17 +97,19 @@ export function registerRoutes(
       createdAt: now,
     };
 
-    const [id] = await db("verification_requests").insert({
-      plugin: GITHUB_PLUGIN_ID,
-      action: GITHUB_PR_CREATED_ACTION,
-      data: JSON.stringify(data),
-      status: "pending",
-      ...(body.jobContext
-        ? { job_context: JSON.stringify(body.jobContext) }
-        : {}),
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id }] = await db("verification_requests")
+      .insert({
+        plugin: GITHUB_PLUGIN_ID,
+        action: GITHUB_PR_CREATED_ACTION,
+        data: JSON.stringify(data),
+        status: "pending",
+        ...(body.jobContext
+          ? { job_context: JSON.stringify(body.jobContext) }
+          : {}),
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     return c.json({
       verificationRequestId: id,

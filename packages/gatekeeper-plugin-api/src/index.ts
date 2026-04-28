@@ -183,8 +183,7 @@ export interface JobSpec {
 /**
  * Execution context for job operations. Carries optional ambient state
  * (currently a knex transaction) so interceptors and queue writes can
- * participate in the caller's transaction instead of deadlocking on the
- * single sqlite connection.
+ * participate in the caller's transaction.
  *
  * Always create via {@link createContext}; never construct an object literal.
  */

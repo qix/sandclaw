@@ -21,12 +21,14 @@ async function getOrCreateConversationId(db: DbHandle): Promise<number> {
     return conversationId!;
   }
 
-  const [id] = await db("conversations").insert({
-    plugin: "chat",
-    channel: "chat",
-    external_id: "operator",
-    created_at: localTimestamp(),
-  });
+  const [{ id }] = await db("conversations")
+    .insert({
+      plugin: "chat",
+      channel: "chat",
+      external_id: "operator",
+      created_at: localTimestamp(),
+    })
+    .returning("id");
   conversationId = id;
   return conversationId!;
 }
@@ -92,19 +94,21 @@ export async function storeMessage(
 ) {
   const convId = await getOrCreateConversationId(db);
   const now = localTimestamp();
-  const [id] = await db("conversation_message").insert({
-    conversation_id: convId,
-    plugin: "chat",
-    channel: "chat",
-    message_id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    thread_id: "operator",
-    from,
-    to: direction === "inbound" ? "agent" : "operator",
-    timestamp: now,
-    direction,
-    text,
-    created_at: now,
-  });
+  const [{ id }] = await db("conversation_message")
+    .insert({
+      conversation_id: convId,
+      plugin: "chat",
+      channel: "chat",
+      message_id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      thread_id: "operator",
+      from,
+      to: direction === "inbound" ? "agent" : "operator",
+      timestamp: now,
+      direction,
+      text,
+      created_at: now,
+    })
+    .returning("id");
   return { id, from, text, direction, timestamp: now };
 }
 

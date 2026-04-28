@@ -25,17 +25,19 @@ export function registerRoutes(app: any, db: any, config: GmailPluginConfig) {
       from: config.userEmail,
     };
 
-    const [id] = await db("verification_requests").insert({
-      plugin: "gmail",
-      action: "send_email",
-      data: JSON.stringify(verificationData),
-      status: "pending",
-      ...(body.jobContext
-        ? { job_context: JSON.stringify(body.jobContext) }
-        : {}),
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id }] = await db("verification_requests")
+      .insert({
+        plugin: "gmail",
+        action: "send_email",
+        data: JSON.stringify(verificationData),
+        status: "pending",
+        ...(body.jobContext
+          ? { job_context: JSON.stringify(body.jobContext) }
+          : {}),
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     return c.json({
       verificationRequestId: id,
@@ -89,23 +91,25 @@ export function registerRoutes(app: any, db: any, config: GmailPluginConfig) {
     }));
 
     // Queue as a muteworker job
-    const [jobId] = await db("job_queue").insert({
-      executor: "muteworker",
-      job_type: "gmail:incoming_email",
-      data: JSON.stringify({
-        messageId: body.messageId,
-        from: body.from,
-        to: body.to ?? config.userEmail,
-        subject: body.subject ?? "",
-        text: body.text ?? "",
-        threadId: body.threadId ?? null,
-        history: historyEntries,
-      }),
-      context: JSON.stringify({ channel: "gmail", from: body.from }),
-      status: "pending",
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id: jobId }] = await db("job_queue")
+      .insert({
+        executor: "muteworker",
+        job_type: "gmail:incoming_email",
+        data: JSON.stringify({
+          messageId: body.messageId,
+          from: body.from,
+          to: body.to ?? config.userEmail,
+          subject: body.subject ?? "",
+          text: body.text ?? "",
+          threadId: body.threadId ?? null,
+          history: historyEntries,
+        }),
+        context: JSON.stringify({ channel: "gmail", from: body.from }),
+        status: "pending",
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     return c.json({ success: true, jobId });
   });
