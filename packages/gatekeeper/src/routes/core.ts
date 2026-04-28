@@ -245,7 +245,14 @@ export function registerCoreRoutes(
       return c.json({ error: "jobId and event are required" }, 400);
     }
 
-    const validEvents = ["queued", "started", "step", "completed", "failed"];
+    const validEvents = [
+      "queued",
+      "started",
+      "step",
+      "tool_result",
+      "completed",
+      "failed",
+    ];
     if (!validEvents.includes(body.event)) {
       return c.json(
         { error: `event must be one of: ${validEvents.join(", ")}` },

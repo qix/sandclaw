@@ -33,7 +33,13 @@ export interface JobContext {
 /** Event emitted by the muteworker to report agent execution status. */
 export interface AgentStatusEvent {
   jobId: number;
-  event: "queued" | "started" | "step" | "completed" | "failed";
+  event:
+    | "queued"
+    | "started"
+    | "step"
+    | "tool_result"
+    | "completed"
+    | "failed";
   prompt?: string;
   systemPrompt?: string;
   /** Structured map of system prompt sources: { PromptFilename: Source }. */

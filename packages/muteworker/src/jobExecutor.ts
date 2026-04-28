@@ -144,7 +144,9 @@ export async function executeMuteworkerJob(
         systemPrompt: effectiveSystemPrompt,
         mcpToolDefs,
         modelId: opts?.modelId,
-        onStep: () => reportStatus("step"),
+        onStep: (stepData) => reportStatus("step", { data: stepData }),
+        onToolResult: (toolResult) =>
+          reportStatus("tool_result", { data: toolResult }),
       });
       const reply = result?.reply ?? null;
 

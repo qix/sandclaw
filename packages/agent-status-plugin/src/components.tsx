@@ -268,6 +268,406 @@ function formatDuration(ms: number): string {
   return `${s}s`;
 }
 
+/** A small inline pill — used for tool names, event subtypes, etc. */
+function Pill({
+  children,
+  tone = "default",
+}: {
+  children: React.ReactNode;
+  tone?: "default" | "danger" | "accent";
+}) {
+  const bg =
+    tone === "danger"
+      ? colors.danger
+      : tone === "accent"
+        ? colors.accent
+        : colors.border;
+  const fg =
+    tone === "default" ? colors.text : "white";
+  return (
+    <span
+      style={{
+        background: bg,
+        color: fg,
+        borderRadius: "0.25rem",
+        padding: "0.05rem 0.35rem",
+        fontSize: "0.65rem",
+        fontWeight: 600,
+        textTransform: "uppercase",
+        letterSpacing: "0.03em",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** A short pre block for inline content (text, thinking, tool args). */
+function InlineBlock({
+  label,
+  content,
+  tone,
+  initiallyOpen = true,
+}: {
+  label?: string;
+  content: string;
+  tone?: "muted" | "danger" | "thinking";
+  initiallyOpen?: boolean;
+}) {
+  const color =
+    tone === "danger"
+      ? colors.danger
+      : tone === "thinking"
+        ? "oklch(0.74 0.16 320)"
+        : colors.text;
+  const lines = content.split("\n");
+  const truncated = lines.length > 8;
+  const preview = truncated ? lines.slice(0, 8).join("\n") + "\n…" : content;
+  const body = (
+    <pre
+      className="sc-pre"
+      style={{
+        fontSize: "0.75rem",
+        margin: "0.25rem 0 0",
+        overflow: "auto",
+        maxHeight: "20rem",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+        color,
+      }}
+    >
+      {content}
+    </pre>
+  );
+  return (
+    <div style={{ marginTop: "0.35rem" }}>
+      {label && (
+        <div
+          style={{
+            fontSize: "0.7rem",
+            color: colors.muted,
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.03em",
+            marginBottom: "0.15rem",
+          }}
+        >
+          {label}
+        </div>
+      )}
+      {truncated ? (
+        <details open={initiallyOpen} style={{ margin: 0 }}>
+          <summary
+            style={{
+              cursor: "pointer",
+              userSelect: "none",
+              color: colors.muted,
+              fontSize: "0.75rem",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--sc-font-mono, monospace)",
+                color,
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {preview}
+            </span>
+          </summary>
+          {body}
+        </details>
+      ) : (
+        body
+      )}
+    </div>
+  );
+}
+
+/** Friendly one-line summary of a tool input. */
+function summarizeToolInput(input: unknown): string {
+  if (input == null) return "";
+  if (typeof input === "string") return input;
+  if (typeof input === "object") {
+    try {
+      const s = JSON.stringify(input);
+      return s.length > 120 ? s.slice(0, 120) + "…" : s;
+    } catch {
+      return String(input);
+    }
+  }
+  return String(input);
+}
+
+/**
+ * Render a "step" or "tool_result" event with structured content.
+ * Falls back to JsonTreeView for unknown shapes / extra keys.
+ */
+function StepEventBody({
+  event,
+  data,
+}: {
+  event: string;
+  data: Record<string, unknown>;
+}) {
+  // Muteworker step shape
+  const text = typeof data.text === "string" ? data.text : undefined;
+  const thinking =
+    typeof data.thinking === "string" ? data.thinking : undefined;
+  const toolUses = Array.isArray(data.toolUses)
+    ? (data.toolUses as Array<{ id?: string; name?: string; input?: unknown }>)
+    : undefined;
+  const stopReason =
+    typeof data.stopReason === "string" || data.stopReason === null
+      ? (data.stopReason as string | null)
+      : undefined;
+  const usage =
+    data.usage && typeof data.usage === "object"
+      ? (data.usage as { input?: number; output?: number })
+      : undefined;
+
+  // Confidante (builder-plugin) shape: { step: "name", ...rest }
+  const stepName = typeof data.step === "string" ? data.step : undefined;
+  // Browser-plugin shape: { subtype, message, tool, result }
+  const subtype = typeof data.subtype === "string" ? data.subtype : undefined;
+  const message = typeof data.message === "string" ? data.message : undefined;
+  const tool =
+    data.tool && typeof data.tool === "object"
+      ? (data.tool as { name?: string; input?: unknown })
+      : undefined;
+  const result =
+    data.result && typeof data.result === "object"
+      ? (data.result as Record<string, unknown>)
+      : undefined;
+
+  // Tool result event (muteworker)
+  const toolUseId =
+    typeof data.toolUseId === "string" ? data.toolUseId : undefined;
+  const toolResultName =
+    typeof data.name === "string" ? data.name : undefined;
+  const toolResultContent =
+    typeof data.content === "string" ? data.content : undefined;
+  const isError = data.isError === true;
+
+  const recognizedKeys = new Set([
+    "text",
+    "thinking",
+    "toolUses",
+    "stopReason",
+    "usage",
+    "step",
+    "subtype",
+    "message",
+    "tool",
+    "result",
+    "toolUseId",
+    "name",
+    "content",
+    "isError",
+  ]);
+  const extras: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (!recognizedKeys.has(k)) extras[k] = v;
+  }
+
+  const hasAny =
+    text ||
+    thinking ||
+    (toolUses && toolUses.length > 0) ||
+    stepName ||
+    subtype ||
+    message ||
+    tool ||
+    result ||
+    toolResultContent ||
+    Object.keys(extras).length > 0;
+
+  if (!hasAny) {
+    if (stopReason !== undefined || usage) {
+      return (
+        <div
+          style={{
+            fontSize: "0.7rem",
+            color: colors.muted,
+            display: "flex",
+            gap: "0.75rem",
+            marginTop: "0.25rem",
+          }}
+        >
+          {stopReason && <span>stop: {stopReason}</span>}
+          {usage?.input != null && <span>in: {usage.input}t</span>}
+          {usage?.output != null && <span>out: {usage.output}t</span>}
+        </div>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <div style={{ marginTop: "0.25rem" }}>
+      {/* Top-line pills: tool names, step name, subtype */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "0.4rem",
+          alignItems: "center",
+          marginTop: "0.15rem",
+        }}
+      >
+        {stepName && <Pill tone="accent">{stepName}</Pill>}
+        {subtype && (
+          <Pill tone={subtype === "error" ? "danger" : "default"}>
+            {subtype}
+          </Pill>
+        )}
+        {event === "tool_result" && (
+          <>
+            <Pill tone={isError ? "danger" : "accent"}>
+              {isError ? "tool error" : "tool result"}
+            </Pill>
+            {toolResultName && <Pill>{toolResultName}</Pill>}
+            {toolUseId && !toolResultName && (
+              <span style={{ fontSize: "0.7rem", color: colors.muted }}>
+                {toolUseId.slice(0, 8)}
+              </span>
+            )}
+          </>
+        )}
+        {toolUses?.map((t, i) => (
+          <Pill key={i} tone="accent">
+            🛠 {t.name || "tool"}
+          </Pill>
+        ))}
+      </div>
+
+      {message && !text && (
+        <div
+          style={{
+            fontSize: "0.8rem",
+            marginTop: "0.35rem",
+            color: colors.text,
+          }}
+        >
+          {message}
+        </div>
+      )}
+
+      {text && <InlineBlock content={text} />}
+
+      {thinking && (
+        <InlineBlock
+          label="Thinking"
+          content={thinking}
+          tone="thinking"
+          initiallyOpen={false}
+        />
+      )}
+
+      {toolUses && toolUses.length > 0 && (
+        <div style={{ marginTop: "0.35rem" }}>
+          {toolUses.map((t, i) => {
+            const summary = summarizeToolInput(t.input);
+            return (
+              <div
+                key={i}
+                style={{
+                  fontSize: "0.75rem",
+                  color: colors.muted,
+                  marginTop: i === 0 ? 0 : "0.2rem",
+                }}
+              >
+                <span style={{ color: colors.accent, fontWeight: 600 }}>
+                  {t.name || "tool"}
+                </span>
+                {summary && (
+                  <span style={{ marginLeft: "0.4rem" }}>({summary})</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {tool && (
+        <div
+          style={{
+            fontSize: "0.75rem",
+            color: colors.muted,
+            marginTop: "0.25rem",
+          }}
+        >
+          <span style={{ color: colors.accent, fontWeight: 600 }}>
+            {tool.name || "tool"}
+          </span>
+          {tool.input != null && (
+            <span style={{ marginLeft: "0.4rem" }}>
+              ({summarizeToolInput(tool.input)})
+            </span>
+          )}
+        </div>
+      )}
+
+      {toolResultContent && (
+        <InlineBlock
+          content={toolResultContent}
+          tone={isError ? "danger" : undefined}
+          initiallyOpen={false}
+        />
+      )}
+
+      {result && Object.keys(result).length > 0 && (
+        <div style={{ marginTop: "0.35rem" }}>
+          <JsonTreeView data={result} />
+        </div>
+      )}
+
+      {(stopReason !== undefined || usage) && (
+        <div
+          style={{
+            fontSize: "0.7rem",
+            color: colors.muted,
+            display: "flex",
+            gap: "0.75rem",
+            marginTop: "0.35rem",
+          }}
+        >
+          {stopReason && <span>stop: {stopReason}</span>}
+          {usage?.input != null && <span>in: {usage.input}t</span>}
+          {usage?.output != null && <span>out: {usage.output}t</span>}
+        </div>
+      )}
+
+      {Object.keys(extras).length > 0 && (
+        <div style={{ marginTop: "0.35rem" }}>
+          <JsonTreeView data={extras} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Short label for the event type column on the timeline. */
+function eventLabel(event: string): { text: string; color: string } {
+  switch (event) {
+    case "queued":
+      return { text: "queued", color: colors.muted };
+    case "started":
+      return { text: "started", color: colors.accent };
+    case "step":
+      return { text: "step", color: colors.text };
+    case "tool_result":
+      return { text: "tool result", color: colors.text };
+    case "completed":
+      return { text: "completed", color: colors.success };
+    case "failed":
+      return { text: "failed", color: colors.danger };
+    default:
+      return { text: event, color: colors.text };
+  }
+}
+
 function formatTime(ts: string | number): string {
   return new Date(ts).toLocaleTimeString();
 }
@@ -1243,47 +1643,77 @@ export function AgentJobDetailPanel({
                 No events recorded for this job.
               </p>
             ) : (
-              events.map((ev, i) => (
-                <div
-                  key={i}
-                  style={{
-                    padding: "0.5rem 0.75rem",
-                    borderBottom:
-                      i < events.length - 1
-                        ? `1px solid ${colors.border}`
-                        : undefined,
-                    fontSize: "0.8rem",
-                  }}
-                >
+              events.map((ev, i) => {
+                const label = eventLabel(ev.event);
+                const isStructured =
+                  ev.event === "step" || ev.event === "tool_result";
+                const stepIndex =
+                  ev.event === "step"
+                    ? events
+                        .slice(0, i + 1)
+                        .filter((e) => e.event === "step").length
+                    : undefined;
+                return (
                   <div
+                    key={i}
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginBottom: "0.25rem",
+                      padding: "0.5rem 0.75rem",
+                      borderBottom:
+                        i < events.length - 1
+                          ? `1px solid ${colors.border}`
+                          : undefined,
+                      fontSize: "0.8rem",
                     }}
                   >
-                    <span
+                    <div
                       style={{
-                        fontWeight: 600,
-                        color:
-                          ev.event === "failed"
-                            ? colors.danger
-                            : ev.event === "completed"
-                              ? colors.success
-                              : colors.text,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "0.25rem",
+                        alignItems: "center",
                       }}
                     >
-                      {ev.event}
-                    </span>
-                    <span style={{ color: colors.muted, fontSize: "0.75rem" }}>
-                      {formatTime(ev.createdAt)}
-                    </span>
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: label.color,
+                        }}
+                      >
+                        {label.text}
+                        {stepIndex != null && (
+                          <span
+                            style={{
+                              marginLeft: "0.4rem",
+                              fontSize: "0.7rem",
+                              color: colors.muted,
+                              fontWeight: 400,
+                            }}
+                          >
+                            #{stepIndex}
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        style={{ color: colors.muted, fontSize: "0.75rem" }}
+                      >
+                        {formatTime(ev.createdAt)}
+                      </span>
+                    </div>
+                    {ev.data && Object.keys(ev.data).length > 0 ? (
+                      isStructured ? (
+                        <StepEventBody
+                          event={ev.event}
+                          data={ev.data as Record<string, unknown>}
+                        />
+                      ) : (
+                        <JsonTreeView
+                          data={ev.data as Record<string, unknown>}
+                        />
+                      )
+                    ) : null}
                   </div>
-                  {ev.data && Object.keys(ev.data).length > 0 && (
-                    <JsonTreeView data={ev.data as Record<string, unknown>} />
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </CardBody>
         </Card>
