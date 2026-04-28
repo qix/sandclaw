@@ -1,7 +1,7 @@
 {
   "name": "@sandclaw/gatekeeper-util",
   "version": "0.1.0",
-  "description": "Shared utilities for Sandclaw gatekeeper plugins — diff, path validation, file edit/write helpers",
+  "description": "Shared utilities for Sandclaw gatekeeper plugins — file editor routes/scripts, diff, path validation, file edit/write helpers",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/qix/sandclaw.git",
@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0",
     "@sandclaw/util": "^0.1.0"
   },
   "devDependencies": {

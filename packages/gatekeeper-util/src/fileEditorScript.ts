@@ -1,4 +1,4 @@
-import { colors } from "./theme";
+import { colors } from "@sandclaw/ui";
 
 export interface FileEditorConfig {
   /** Element ID prefix, e.g. "prompts" or "skills" */

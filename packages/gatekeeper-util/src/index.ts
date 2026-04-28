@@ -11,3 +11,9 @@ export type { FileToolConfig } from "./fileTools";
 
 export { createFileVerificationCallback } from "./fileVerification";
 export type { FileVerificationConfig } from "./fileVerification";
+
+export { registerFileEditorRoutes, listDir } from "./fileEditorRoutes";
+export type { FileEditorRoutesOptions } from "./fileEditorRoutes";
+
+export { generateFileEditorScript } from "./fileEditorScript";
+export type { FileEditorConfig } from "./fileEditorScript";
