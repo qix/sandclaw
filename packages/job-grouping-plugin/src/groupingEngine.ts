@@ -140,7 +140,7 @@ export function startGroupingEngine(
     const now = Date.now();
     const groups = await db("job_grouping_pending")
       .select("group_key", "window_start", "executor", "job_type", "rule_id")
-      .groupBy("group_key", "window_start")
+      .groupBy("group_key", "window_start", "executor", "job_type", "rule_id")
       .orderBy("window_start", "asc");
 
     for (const group of groups) {

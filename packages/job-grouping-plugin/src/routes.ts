@@ -177,7 +177,7 @@ export function registerRoutes(
         "job_type",
         "executor",
       )
-      .groupBy("group_key", "window_start")
+      .groupBy("group_key", "window_start", "job_type", "executor")
       .orderBy("window_start", "desc");
 
     return c.json({ groups: pending });
