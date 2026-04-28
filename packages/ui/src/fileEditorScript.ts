@@ -35,9 +35,20 @@ export function generateFileEditorScript(config: FileEditorConfig): string {
 
   var currentFile = null;
   var savedContent = '';
+  var isDirty = false;
   var cmEditor = null;
   var cmState = null;
   var cmExtensions = null;
+
+  function setDirty(dirty) {
+    isDirty = dirty;
+    dirtyEl.style.display = dirty ? 'inline' : 'none';
+  }
+
+  function confirmDiscardIfDirty() {
+    if (!isDirty) return true;
+    return window.confirm('You have unsaved changes that will be lost. Discard them?');
+  }
 
   // ── Load file list FIRST — no CodeMirror dependency ──
   try { loadFileList(); } catch(e) { console.error('loadFileList failed:', e); }
@@ -74,8 +85,7 @@ export function generateFileEditorScript(config: FileEditorConfig): string {
 
     var updateListener = EditorView.updateListener.of(function(update) {
       if (update.docChanged) {
-        var dirty = update.state.doc.toString() !== savedContent;
-        dirtyEl.style.display = dirty ? 'inline' : 'none';
+        setDirty(update.state.doc.toString() !== savedContent);
       }
     });
 
@@ -149,6 +159,8 @@ export function generateFileEditorScript(config: FileEditorConfig): string {
       });
       item.addEventListener('click', function(e) {
         e.preventDefault();
+        if (file === currentFile) return;
+        if (!confirmDiscardIfDirty()) return;
         openFile(file);
       });
       fileListEl.appendChild(item);
@@ -173,7 +185,7 @@ export function generateFileEditorScript(config: FileEditorConfig): string {
     currentFile = filePath;
     filenameEl.textContent = filePath;
     filenameEl.style.color = '${colors.text}';
-    dirtyEl.style.display = 'none';
+    setDirty(false);
     saveBtn.style.display = 'inline-flex';
     statusEl.style.display = 'none';
     highlightActiveFile();
@@ -214,7 +226,7 @@ export function generateFileEditorScript(config: FileEditorConfig): string {
           statusEl.style.display = 'inline';
         } else {
           savedContent = content;
-          dirtyEl.style.display = 'none';
+          setDirty(false);
           statusEl.textContent = 'Saved';
           statusEl.style.color = '${colors.success}';
           statusEl.style.display = 'inline';
@@ -232,6 +244,14 @@ export function generateFileEditorScript(config: FileEditorConfig): string {
       });
   });
 
+  // Warn before closing/navigating away with unsaved changes
+  window.addEventListener('beforeunload', function(e) {
+    if (!isDirty) return;
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  });
+
   // Ctrl/Cmd+S to save
   document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -243,6 +263,7 @@ export function generateFileEditorScript(config: FileEditorConfig): string {
   });
 
   newBtn.addEventListener('click', function() {
+    if (!confirmDiscardIfDirty()) return;
     var name = prompt('${newFilePrompt}');
     if (!name) return;
     if (!name.endsWith('.md')) name += '.md';
