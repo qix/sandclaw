@@ -1,27 +1,7 @@
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
-import { READ_METHODS, GWS_RESULT_JOB_TYPE } from "./constants";
-import { gwsExec, type GoogleWorkspacePluginConfig } from "./gwsClient";
+import { GWS_RESULT_JOB_TYPE } from "./constants";
 
-/**
- * Extract the "method" from a parsed args list.
- * The method is the last positional arg before any `--flag` or `--flag=value`.
- *
- * Example: ["drive", "files", "list", "--params", "{}"] → "list"
- */
-function extractMethod(args: string[]): string | null {
-  let lastPositional: string | null = null;
-  for (const arg of args) {
-    if (typeof arg !== "string") continue;
-    if (arg.startsWith("--")) break;
-    lastPositional = arg;
-  }
-  return lastPositional;
-}
-
-export function createReadTool(
-  ctx: MuteworkerPluginContext,
-  config: GoogleWorkspacePluginConfig,
-) {
+export function createReadTool(ctx: MuteworkerPluginContext) {
   return {
     name: "google_workspace_read",
     label: "Google Workspace Read",
@@ -56,32 +36,44 @@ export function createReadTool(
       if (!Array.isArray(command) || !command.length)
         throw new Error("command is required and must be a non-empty array");
 
-      const parsed = command.filter((a): a is string => typeof a === "string");
-      if (!parsed.length) throw new Error("No valid string arguments provided");
+      const response = await fetch(
+        `${ctx.gatekeeperInternalUrl}/api/google-workspace/read`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ command }),
+        },
+      );
 
-      const method = extractMethod(parsed);
-      if (!method || !READ_METHODS.has(method)) {
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        let errorText = body.slice(0, 2000);
+        try {
+          const parsed = JSON.parse(body) as { error?: string };
+          if (parsed.error) errorText = parsed.error;
+        } catch {
+          // body wasn't JSON; use the raw text
+        }
         return {
           content: [
             {
               type: "text",
-              text: `Method "${method ?? "(none)"}" is not in the read-only whitelist. Use google_workspace_exec for write operations.`,
+              text: `gws read failed (${response.status}): ${errorText}`,
             },
           ],
         };
       }
 
-      // Add --format json if not already present
-      if (!parsed.includes("--format")) {
-        parsed.push("--format", "json");
-      }
-
-      const result = await gwsExec(config, parsed);
+      const result = (await response.json()) as {
+        stdout: string;
+        stderr: string;
+        exitCode: number;
+      };
 
       ctx.artifacts.push({
         type: "text",
         label: "GWS Read",
-        value: parsed.join(" ").slice(0, 200),
+        value: command.join(" ").slice(0, 200),
       });
 
       if (result.exitCode !== 0) {

@@ -40,7 +40,7 @@ export function createGoogleWorkspacePlugin(
         init({ db, components, routes, verifications }) {
           components.register("page:google-workspace", GoogleWorkspacePanel);
 
-          routes.registerRoutes((app) => registerRoutes(app, db));
+          routes.registerRoutes((app) => registerRoutes(app, db, config));
 
           verifications.registerVerificationCallback(
             async (request, { queueJob }) => {
@@ -63,7 +63,7 @@ export function createGoogleWorkspacePlugin(
         deps: { tools: muteworkerDeps.tools },
         init({ tools }) {
           tools.registerTools((ctx) => [
-            createReadTool(ctx, config),
+            createReadTool(ctx),
             createExecTool(ctx),
           ]);
         },

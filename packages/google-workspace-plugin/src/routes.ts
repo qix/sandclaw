@@ -3,11 +3,64 @@ import { localTimestamp } from "@sandclaw/util";
 import {
   GWS_PLUGIN_ID,
   GWS_VERIFICATION_ACTION,
-  GWS_CONFIDANTE_JOB_TYPE,
   GWS_RESULT_JOB_TYPE,
+  READ_METHODS,
 } from "./constants";
+import { gwsExec, type GoogleWorkspacePluginConfig } from "./gwsClient";
 
-export function registerRoutes(app: any, db: any) {
+/**
+ * The last positional argument before any `--flag` is treated as the gws
+ * "method" (e.g. `list`, `get`). Used to enforce the read-only allowlist.
+ */
+function extractMethod(args: string[]): string | null {
+  let lastPositional: string | null = null;
+  for (const arg of args) {
+    if (typeof arg !== "string") continue;
+    if (arg.startsWith("--")) break;
+    lastPositional = arg;
+  }
+  return lastPositional;
+}
+
+export function registerRoutes(
+  app: any,
+  db: any,
+  config: GoogleWorkspacePluginConfig,
+) {
+  // POST /read — execute a read-only gws command directly on the gatekeeper
+  app.post("/read", async (c: any) => {
+    const body = (await c.req.json()) as { command?: unknown };
+    const command = body.command;
+    if (!Array.isArray(command) || command.length === 0) {
+      return c.json(
+        { error: "command is required and must be a non-empty array" },
+        400,
+      );
+    }
+
+    const args = command.filter((a): a is string => typeof a === "string");
+    if (args.length === 0) {
+      return c.json({ error: "No valid string arguments provided" }, 400);
+    }
+
+    const method = extractMethod(args);
+    if (!method || !READ_METHODS.has(method)) {
+      return c.json(
+        {
+          error: `Method "${method ?? "(none)"}" is not in the read-only whitelist. Use the exec tool for write operations.`,
+        },
+        400,
+      );
+    }
+
+    if (!args.includes("--format")) {
+      args.push("--format", "json");
+    }
+
+    const result = await gwsExec(config, args);
+    return c.json(result);
+  });
+
   // POST /request — create a verification request for a gws exec command
   app.post("/request", async (c: any) => {
     const body = (await c.req.json()) as {

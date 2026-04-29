@@ -33,8 +33,8 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fsSL https://deb.nodesource.com/setup_25.x | bash - \
     && apt-get install -y nodejs
 
-# 3. Claude Code CLI + tsx + Google Workspace CLI (gws)
-RUN npm install -g @anthropic-ai/claude-code tsx @googleworkspace/cli
+# 3. Claude Code CLI + tsx
+RUN npm install -g @anthropic-ai/claude-code tsx
 
 # 4. Create 'dev' user, allow it to run the startup script with sudo
 RUN useradd --home-dir /home/dev --create-home --user-group dev && \
