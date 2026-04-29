@@ -120,17 +120,20 @@ export function registerFileEditRoute(app: any, config: FileRouteConfig): void {
         createdAt: now,
       };
 
-      const [id] = await config.db("verification_requests").insert({
-        plugin: config.plugin,
-        action: "edit_file",
-        data: JSON.stringify(verificationData),
-        status: "pending",
-        ...(body.jobContext
-          ? { job_context: JSON.stringify(body.jobContext) }
-          : {}),
-        created_at: now,
-        updated_at: now,
-      });
+      const [{ id }] = await config
+        .db("verification_requests")
+        .insert({
+          plugin: config.plugin,
+          action: "edit_file",
+          data: JSON.stringify(verificationData),
+          status: "pending",
+          ...(body.jobContext
+            ? { job_context: JSON.stringify(body.jobContext) }
+            : {}),
+          created_at: now,
+          updated_at: now,
+        })
+        .returning("id");
 
       return c.json(
         {
@@ -209,17 +212,19 @@ export function registerFileWriteRoute(
       createdAt: now,
     };
 
-    const [id] = await db("verification_requests").insert({
-      plugin,
-      action: "write_file",
-      data: JSON.stringify(verificationData),
-      status: "pending",
-      ...(body.jobContext
-        ? { job_context: JSON.stringify(body.jobContext) }
-        : {}),
-      created_at: now,
-      updated_at: now,
-    });
+    const [{ id }] = await db("verification_requests")
+      .insert({
+        plugin,
+        action: "write_file",
+        data: JSON.stringify(verificationData),
+        status: "pending",
+        ...(body.jobContext
+          ? { job_context: JSON.stringify(body.jobContext) }
+          : {}),
+        created_at: now,
+        updated_at: now,
+      })
+      .returning("id");
 
     return c.json(
       {
