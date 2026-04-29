@@ -46,7 +46,7 @@ export const gatekeeperConfig = {
   gatekeeperHost: "0.0.0.0",
 
   /* Local storage paths */
-  memoryDir: path.join(localStore, "memory"),
+  memoryDir: path.join(obsidianStore, "memory"),
   promptsDir: path.join(obsidianStore, "prompts"),
   skillsDir: path.join(__dirname, "skills"),
 };

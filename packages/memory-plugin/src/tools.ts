@@ -1,5 +1,5 @@
 import { TSchema } from "@mariozechner/pi-ai";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
 import { createFileEditTool } from "@sandclaw/gatekeeper-util";
@@ -9,68 +9,6 @@ export function createMemoryTools(
   memoryDir: string,
 ) {
   return [
-    {
-      name: "list_memory_files",
-      label: "List Memory Files",
-      description:
-        "List all files available under memory/. Use this before reading or writing memory files.",
-      parameters: {
-        type: "object",
-        properties: {},
-        additionalProperties: false,
-      } as unknown as TSchema,
-      execute: async () => {
-        const files = await listDir(memoryDir).catch((error) => {
-          if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-          throw error;
-        });
-        return {
-          content: [
-            {
-              type: "text",
-              text:
-                files.length > 0
-                  ? files.join("\n")
-                  : "No memory files found in memory/.",
-            },
-          ],
-          details: { files },
-        };
-      },
-    },
-    {
-      name: "read_memory_file",
-      label: "Read Memory File",
-      description:
-        "Read a UTF-8 text file from memory/. Path must be relative to memory/.",
-      parameters: {
-        type: "object",
-        properties: { path: { type: "string" } },
-        required: ["path"],
-        additionalProperties: false,
-      } as unknown as TSchema,
-      execute: async (_toolCallId: string, params: any) => {
-        const relativePath = validateRelativePath(
-          String(params.path),
-          memoryDir,
-          "memory/",
-        );
-        const absolutePath = path.join(memoryDir, relativePath);
-        const contents = await readFile(absolutePath, "utf8");
-        ctx.artifacts.push({
-          type: "text",
-          label: "Memory Read",
-          value: relativePath,
-        });
-        return {
-          content: [{ type: "text", text: contents }],
-          details: {
-            path: relativePath,
-            bytes: Buffer.byteLength(contents, "utf8"),
-          },
-        };
-      },
-    },
     {
       name: "write_memory_file",
       label: "Write Memory File",
@@ -159,19 +97,4 @@ function validateRelativePath(
     throw new Error(`Path escapes ${label} and is not allowed`);
   }
   return relative.replaceAll("\\", "/");
-}
-
-async function listDir(dirPath: string): Promise<string[]> {
-  const entries = await readdir(dirPath, { withFileTypes: true });
-  const files = await Promise.all(
-    entries.map(async (entry) => {
-      const abs = path.join(dirPath, entry.name);
-      if (entry.isDirectory()) {
-        const sub = await listDir(abs);
-        return sub.map((f) => `${entry.name}/${f}`);
-      }
-      return entry.isFile() ? [entry.name] : [];
-    }),
-  );
-  return files.flat().sort((a, b) => a.localeCompare(b));
 }
