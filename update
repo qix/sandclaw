@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+# 1. npm install at the workspace root
+# 2. Rebuild the daveus muteworker docker image
+# 3. Restart watch processes inside the running ./tmux-dev session
+
+SESSION="sandclaw-dev"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Restart commands keyed by tmux pane @name. Must match ./tmux-dev.
+declare -A RESTART_COMMANDS=(
+  [gatekeeper]="./gatekeeper --watch"
+  [muteworker]="./muteworker --watch worker"
+  [confidante]="./confidante --watch worker"
+)
+
+# Docker images to rebuild: "<image-tag>:<dockerfile-dir>"
+DOCKER_IMAGES=(
+  "sandclaw-muteworker:$SCRIPT_DIR/packages/daveus-sandclaw/docker/muteworker"
+  "browser-plugin:$SCRIPT_DIR/packages/browser-plugin/docker"
+  "builder-plugin:$SCRIPT_DIR/packages/builder-plugin/docker"
+)
+
+step() { printf '\n\033[1;36m==>\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33mwarn:\033[0m %s\n' "$*" >&2; }
+
+step "npm install ($SCRIPT_DIR)"
+(cd "$SCRIPT_DIR" && npm install)
+
+for entry in "${DOCKER_IMAGES[@]}"; do
+  tag="${entry%%:*}"
+  dir="${entry#*:}"
+  step "Rebuilding docker image '$tag' from $dir"
+  docker build -t "$tag" "$dir"
+done
+
+if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+  warn "tmux session '$SESSION' is not running — start it with ./tmux-dev"
+  exit 0
+fi
+
+step "Restarting watch processes in tmux session '$SESSION'"
+mapfile -t PANE_LINES < <(
+  tmux list-panes -s -t "$SESSION" -F '#{pane_id} #{@name}'
+)
+
+for line in "${PANE_LINES[@]}"; do
+  pane_id="${line%% *}"
+  pane_name="${line#* }"
+  cmd="${RESTART_COMMANDS[$pane_name]:-}"
+  if [[ -z "$cmd" ]]; then
+    continue
+  fi
+  printf '   %-12s %s\n' "$pane_name" "$cmd"
+  tmux send-keys -t "$pane_id" C-c
+  sleep 0.5
+  tmux send-keys -t "$pane_id" "$cmd" Enter
+done
+
+step "Done."
