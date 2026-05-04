@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -eo pipefail
+set -x
+
+if ! tmux has-session -t sandclaw-dev 2>/dev/null; then
+  tmux new-session -d -s sandclaw-dev -c "$PWD" \; \
+    set-option -p @name "gatekeeper" \; \
+    send-keys "./gatekeeper --watch" Enter \; \
+    split-window -v -c "$PWD" \; \
+    set-option -p @name "muteworker" \; \
+    send-keys "./muteworker --watch worker" Enter \; \
+    split-window -v -c "$PWD" \; \
+    set-option -p @name "confidante" \; \
+    send-keys "./confidante --watch worker" Enter \; \
+    set-option -g mouse on \; \
+    set-option -g pane-border-status top \; \
+    set-option -g pane-border-format " [ #[bold]#{@name}#[nobold] ] #{pane_title} "
+fi
+
+exec tmux attach-session -t sandclaw-dev

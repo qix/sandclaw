@@ -16,9 +16,3 @@ dist/
 /logs/
 /example-src/
 /prev-source/
-/tmux-dev
-
-/confidante
-/gatekeeper
-/muteworker
-/tsx-watch

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -eo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DOCKER_RUN="$SCRIPT_DIR/packages/daveus-sandclaw/docker/muteworker/run.sh"
+
+case "${1:-}" in
+  build)
+    exec "$DOCKER_RUN" build
+    ;;
+  --watch)
+    shift
+    exec "$DOCKER_RUN" \
+      tsx watch --clear-screen=false \
+      '--include=/workspace/packages' \
+      '--include=/workspace/*.ts' \
+      packages/daveus-sandclaw/muteworker.ts "$@"
+    ;;
+  "")
+    exec "$DOCKER_RUN"
+    ;;
+  *)
+    exec "$DOCKER_RUN" tsx packages/daveus-sandclaw/muteworker.ts "$@"
+    ;;
+esac

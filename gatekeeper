@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -eo pipefail
+cd packages/daveus-sandclaw
+runner="tsx"
+if [[ "$1" == "--watch" ]]; then
+	shift
+	runner="../../tsx-watch"
+fi
+exec $runner ./gatekeeper.ts "$@"
