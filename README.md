@@ -57,6 +57,7 @@ Sandclaw has a minimal core, and most of the logic is implemented by plugins. Ea
 | `@sandclaw/prompts-plugin`     | Handles system prompts                       |
 | `@sandclaw/chat-plugin`        | Chat interface for talking to your agent     |
 | `@sandclaw/web-search-plugin`  | Web search via Brave API                     |
+| `@sandclaw/http-plugin`        | Allow-listed HTTP requests for the muteworker |
 | `@sandclaw/browser-plugin`     | Browser automation (runs on the Confidante)  |
 | `@sandclaw/github-plugin`      | Create PRs, download code, manage repos      |
 | `@sandclaw/gmail-plugin`       | Read and send Gmail messages                 |

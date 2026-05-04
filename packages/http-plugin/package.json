@@ -1,0 +1,36 @@
+{
+  "name": "@sandclaw/http-plugin",
+  "version": "0.1.0",
+  "description": "Sandclaw HTTP plugin — allow-listed HTTP requests for the muteworker",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qix/sandclaw.git",
+    "directory": "packages/http-plugin"
+  },
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@sandclaw/gatekeeper-plugin-api": "^0.1.0",
+    "@sandclaw/muteworker-plugin-api": "^0.1.0",
+    "@sandclaw/ui": "^0.1.0",
+    "@sandclaw/util": "^0.1.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "typescript": "*"
+  }
+}

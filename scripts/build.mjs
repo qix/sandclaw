@@ -22,6 +22,7 @@ const layer2 = [
   "@sandclaw/github-plugin",
   "@sandclaw/gmail-plugin",
   "@sandclaw/google-maps-plugin",
+  "@sandclaw/http-plugin",
   "@sandclaw/memory-plugin",
   "@sandclaw/muteworker",
   "@sandclaw/obsidian-plugin",
