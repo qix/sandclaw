@@ -12,6 +12,7 @@ export function registerRoutes(
   db: any,
   jobs: JobService,
   operatorChatIds: ReadonlySet<string>,
+  openaiApiKey?: string | null,
 ) {
   // GET /status — current connection state
   app.get("/status", (_c: any) => {
@@ -42,7 +43,7 @@ export function registerRoutes(
     token = token.trim();
 
     try {
-      await connectTelegram(db, jobs, token);
+      await connectTelegram(db, jobs, token, openaiApiKey);
       // If this was a form submission, redirect back to the plugin page
       if (!contentType.includes("application/json")) {
         return c.redirect("/?tab=telegram");

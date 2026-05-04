@@ -11,6 +11,7 @@ export interface IncomingTelegramPayload {
   isGroup?: boolean;
   groupTitle?: string | null;
   replyToText?: string | null;
+  transcribedFromVoice?: boolean;
   history?: Array<{
     role: "user" | "assistant";
     text: string;
@@ -52,6 +53,11 @@ export function buildTelegramPrompt(
     ...(isOperator
       ? [
           "NOTE: This sender is a trusted operator. Do NOT use the send_telegram_message tool to reply — just respond with your message text directly.",
+        ]
+      : []),
+    ...(payload.transcribedFromVoice
+      ? [
+          "[Transcribed from voice message] The following text was automatically transcribed from an audio voice note. The sender spoke this rather than typing it — tone may be more conversational.",
         ]
       : []),
     ...historyLines,

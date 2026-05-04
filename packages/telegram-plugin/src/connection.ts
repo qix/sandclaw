@@ -4,6 +4,7 @@ import { localTimestamp } from "@sandclaw/util";
 import type { JobService } from "@sandclaw/gatekeeper-plugin-api";
 import { createContext } from "@sandclaw/gatekeeper-plugin-api";
 import { tgState } from "./state";
+import { transcribeVoiceMessage } from "./transcribe";
 
 /** Look up or create a conversation row for the given chat ID, returning its auto-increment ID. */
 export async function getOrCreateConversationId(
@@ -85,6 +86,7 @@ export async function connectTelegram(
   db: any,
   jobs: JobService,
   token: string,
+  openaiApiKey?: string | null,
 ) {
   tgState.connectionStatus = "connecting";
   tgState.botToken = token;
@@ -109,11 +111,49 @@ export async function connectTelegram(
 
   // Handle incoming messages
   bot.on("message", async (msg) => {
-    // Ignore non-text messages
-    if (!msg.text) return;
+    // Determine message text — either direct text or transcribed from voice
+    let text: string | null = msg.text ?? null;
+    let transcribedFromVoice = false;
+
+    if (!text && msg.voice) {
+      // Voice message — attempt transcription
+      if (!openaiApiKey) {
+        console.warn(
+          "[telegram] Received voice message but no OPENAI_API_KEY configured — ignoring",
+        );
+        const chatId = String(msg.chat.id);
+        try {
+          await bot.sendMessage(
+            chatId,
+            "Sorry, voice message transcription is not configured. Please send a text message instead.",
+          );
+        } catch {}
+        return;
+      }
+
+      try {
+        text = await transcribeVoiceMessage(bot, msg.voice.file_id, openaiApiKey);
+        transcribedFromVoice = true;
+        console.log(
+          `[telegram] Transcribed voice message (${msg.voice.duration}s) from chat ${msg.chat.id}`,
+        );
+      } catch (err) {
+        console.error("[telegram] Voice transcription failed:", err);
+        const chatId = String(msg.chat.id);
+        try {
+          await bot.sendMessage(
+            chatId,
+            "Sorry, I couldn't transcribe your voice message. Please try again or send a text message.",
+          );
+        } catch {}
+        return;
+      }
+    }
+
+    // Ignore messages with no text content (photos, stickers, etc.)
+    if (!text) return;
 
     const chatId = String(msg.chat.id);
-    const text = msg.text;
     const messageId = String(msg.message_id);
     const timestamp = localTimestamp(new Date(msg.date * 1000));
     const firstName = msg.from?.first_name ?? null;
@@ -173,6 +213,7 @@ export async function connectTelegram(
         isGroup,
         groupTitle,
         replyToText,
+        transcribedFromVoice,
         history,
       };
 
@@ -186,7 +227,8 @@ export async function connectTelegram(
 
     const displayName =
       [firstName, lastName].filter(Boolean).join(" ") || username || chatId;
-    console.log(`[telegram] Queued incoming message from ${displayName}`);
+    const msgType = transcribedFromVoice ? "voice message" : "message";
+    console.log(`[telegram] Queued incoming ${msgType} from ${displayName}`);
 
     // Refresh conversation list
     loadRecentConversations(db).catch((err) =>
