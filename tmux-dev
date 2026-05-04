@@ -4,6 +4,12 @@ set -x
 
 SESSION="sandclaw-dev"
 
+if [[ "${1:-}" == "restart" ]]; then
+  if tmux has-session -t "$SESSION" 2>/dev/null; then
+    tmux kill-session -t "$SESSION"
+  fi
+fi
+
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   tmux new-session -d -s "$SESSION" -n services -c "$PWD" \; \
     set-option -p @name "chat" \; \
