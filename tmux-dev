@@ -6,6 +6,9 @@ SESSION="sandclaw-dev"
 
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   tmux new-session -d -s "$SESSION" -n services -c "$PWD" \; \
+    set-option -p @name "chat" \; \
+    send-keys "sleep 2 && ./chat" Enter \; \
+    split-window -h -l 60% -c "$PWD" \; \
     set-option -p @name "gatekeeper" \; \
     send-keys "./gatekeeper --watch" Enter \; \
     split-window -v -c "$PWD" \; \
@@ -14,15 +17,10 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
     split-window -v -c "$PWD" \; \
     set-option -p @name "confidante" \; \
     send-keys "./confidante --watch worker" Enter \; \
+    select-layout -t "$SESSION:services" main-vertical \; \
     set-option -g mouse on \; \
     set-option -g pane-border-status top \; \
     set-option -g pane-border-format " [ #[bold]#{@name}#[nobold] ] #{pane_title} "
-
-  tmux new-window -t "$SESSION" -n chat -c "$PWD" \; \
-    set-option -p @name "chat" \; \
-    send-keys "sleep 2 && ./chat" Enter
-
-  tmux select-window -t "$SESSION:services"
 fi
 
 exec tmux attach-session -t "$SESSION"

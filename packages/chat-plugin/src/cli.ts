@@ -115,17 +115,26 @@ function markRead(): void {
   }).catch(() => {});
 }
 
+const RECONNECT_INITIAL_MS = 1000;
+const RECONNECT_MAX_MS = 5000;
+
 let ws: WebSocket | null = null;
-let reconnectDelay = 1000;
 let pendingOutbound: string[] = [];
+let everConnected = false;
+let retryAnnounced = false;
+let reconnectDelay = RECONNECT_INITIAL_MS;
 
 function connect(): void {
-  info(`Connecting to ${wsUrl}…`);
+  if (!everConnected && !retryAnnounced) {
+    info(`Connecting to ${wsUrl}…`);
+  }
   const sock = new WebSocket(wsUrl);
   ws = sock;
 
   sock.on("open", () => {
-    reconnectDelay = 1000;
+    everConnected = true;
+    retryAnnounced = false;
+    reconnectDelay = RECONNECT_INITIAL_MS;
     info("Connected");
     while (pendingOutbound.length > 0) {
       const text = pendingOutbound.shift()!;
@@ -155,14 +164,17 @@ function connect(): void {
   sock.on("close", () => {
     if (ws !== sock) return;
     ws = null;
-    info(`Disconnected — reconnecting in ${(reconnectDelay / 1000).toFixed(1)}s`);
+    if (!retryAnnounced) {
+      info("Disconnected — retrying every 5 seconds…");
+      retryAnnounced = true;
+    }
     setTimeout(connect, reconnectDelay);
-    reconnectDelay = Math.min(reconnectDelay * 2, 15000);
+    reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS);
   });
 
-  sock.on("error", (err) => {
-    info(`Socket error: ${(err as Error).message}`);
-  });
+  // Errors are followed by a `close`, which is what the user sees. Swallow
+  // the per-attempt error noise so the retry message stays the only output.
+  sock.on("error", () => {});
 }
 
 function sendMessage(text: string): void {
