@@ -48,69 +48,109 @@ function broadcastUpdate(ws: WebSocketService): void {
   ws.broadcast({ type: "http:update" });
 }
 
-export function registerHttpRoutes(
-  app: Hono,
+interface PreparedRequest {
+  method: string;
+  url: string;
+  domain: string;
+  jobId: number | null;
+  requestHeaders: Record<string, string>;
+  requestBody: string | undefined;
+}
+
+interface PreparedError {
+  status: number;
+  payload: Record<string, unknown>;
+  blockedRow?: HttpRequestRow;
+}
+
+async function prepareAndAuthorize(
   db: Knex,
   ws: WebSocketService,
-): void {
-  // Muteworker entry point — execute (or block) an HTTP request.
-  app.post("/request", async (c: any) => {
-    const body = await c.req.json().catch(() => ({}));
-    const method = normalizeMethod(body.method);
-    const parsed = parseUrl(body.url);
-    if (!method) {
-      return c.json({ error: "Invalid or missing 'method'" }, 400);
-    }
-    if (!parsed) {
-      return c.json({ error: "Invalid or missing 'url'" }, 400);
-    }
+  body: any,
+): Promise<{ ok: true; data: PreparedRequest } | { ok: false; error: PreparedError }> {
+  const method = normalizeMethod(body.method);
+  const parsed = parseUrl(body.url);
+  if (!method) {
+    return {
+      ok: false,
+      error: { status: 400, payload: { error: "Invalid or missing 'method'" } },
+    };
+  }
+  if (!parsed) {
+    return {
+      ok: false,
+      error: { status: 400, payload: { error: "Invalid or missing 'url'" } },
+    };
+  }
 
-    const url = parsed.toString();
-    const domain = parsed.hostname.toLowerCase();
-    const jobId =
-      body.jobContext && typeof body.jobContext.jobId === "number"
-        ? body.jobContext.jobId
-        : null;
+  const url = parsed.toString();
+  const domain = parsed.hostname.toLowerCase();
+  const jobId =
+    body.jobContext && typeof body.jobContext.jobId === "number"
+      ? body.jobContext.jobId
+      : null;
 
-    if (!isAllowed(method, domain)) {
-      const row = await recordRequest(db, {
-        jobId,
-        method,
-        url,
-        domain,
-        outcome: "blocked",
-        statusCode: null,
-        responseBytes: null,
-        error: null,
-      });
-      broadcastUpdate(ws);
-      return c.json(
-        {
+  if (!isAllowed(method, domain)) {
+    const row = await recordRequest(db, {
+      jobId,
+      method,
+      url,
+      domain,
+      outcome: "blocked",
+      statusCode: null,
+      responseBytes: null,
+      error: null,
+    });
+    broadcastUpdate(ws);
+    return {
+      ok: false,
+      error: {
+        status: 403,
+        payload: {
           allowed: false,
           method,
           domain,
           requestId: row.id,
           message: `Request blocked. Operator must allow ${method} on ${domain} from the HTTP page.`,
         },
-        403,
-      );
-    }
+        blockedRow: row,
+      },
+    };
+  }
 
-    const requestHeaders: Record<string, string> = {};
-    if (body.headers && typeof body.headers === "object") {
-      for (const [key, value] of Object.entries(body.headers)) {
-        if (typeof value === "string") requestHeaders[key] = value;
-      }
+  const requestHeaders: Record<string, string> = {};
+  if (body.headers && typeof body.headers === "object") {
+    for (const [key, value] of Object.entries(body.headers)) {
+      if (typeof value === "string") requestHeaders[key] = value;
     }
+  }
 
-    let requestBody: BodyInit | undefined;
-    if (
-      method !== "GET" &&
-      method !== "HEAD" &&
-      typeof body.body === "string"
-    ) {
-      requestBody = body.body;
+  const requestBody =
+    method !== "GET" && method !== "HEAD" && typeof body.body === "string"
+      ? body.body
+      : undefined;
+
+  return {
+    ok: true,
+    data: { method, url, domain, jobId, requestHeaders, requestBody },
+  };
+}
+
+export function registerHttpRoutes(
+  app: Hono,
+  db: Knex,
+  ws: WebSocketService,
+): void {
+  // Muteworker entry point — execute (or block) an HTTP request and return the
+  // body inline (truncated to MAX_RESPONSE_BYTES).
+  app.post("/request", async (c: any) => {
+    const body = await c.req.json().catch(() => ({}));
+    const prep = await prepareAndAuthorize(db, ws, body);
+    if (!prep.ok) {
+      return c.json(prep.error.payload, prep.error.status);
     }
+    const { method, url, domain, jobId, requestHeaders, requestBody } =
+      prep.data;
 
     try {
       const response = await fetch(url, {
@@ -181,6 +221,134 @@ export function registerHttpRoutes(
     }
   });
 
+  // Streaming download — same auth/allow-list as /request, but pipes the raw
+  // upstream body back to the caller and returns metadata in custom response
+  // headers. Used by the muteworker tool when output_path is set.
+  app.post("/download", async (c: any) => {
+    const body = await c.req.json().catch(() => ({}));
+    const prep = await prepareAndAuthorize(db, ws, body);
+    if (!prep.ok) {
+      return c.json(prep.error.payload, prep.error.status);
+    }
+    const { method, url, domain, jobId, requestHeaders, requestBody } =
+      prep.data;
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: requestHeaders,
+        body: requestBody,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const row = await recordRequest(db, {
+        jobId,
+        method,
+        url,
+        domain,
+        outcome: "error",
+        statusCode: null,
+        responseBytes: null,
+        error: message,
+      });
+      broadcastUpdate(ws);
+      return c.json(
+        {
+          allowed: true,
+          method,
+          domain,
+          requestId: row.id,
+          error: message,
+        },
+        502,
+      );
+    }
+
+    // Reserve a request id up front so the caller knows it before the stream
+    // finishes. We update bytes/error after the stream completes.
+    const placeholder = await recordRequest(db, {
+      jobId,
+      method,
+      url,
+      domain,
+      outcome: "allowed",
+      statusCode: response.status,
+      responseBytes: null,
+      error: null,
+    });
+    broadcastUpdate(ws);
+
+    const responseHeaders: Record<string, string> = {};
+    response.headers.forEach((v, k) => {
+      responseHeaders[k] = v;
+    });
+
+    const upstreamBody = response.body;
+    if (!upstreamBody) {
+      await db("http_requests")
+        .where({ id: placeholder.id })
+        .update({ response_bytes: 0 });
+      return c.body(new Uint8Array(0), 200, {
+        "X-Http-Status": String(response.status),
+        "X-Http-Status-Text": response.statusText,
+        "X-Http-Url": url,
+        "X-Http-Method": method,
+        "X-Http-Domain": domain,
+        "X-Http-Request-Id": String(placeholder.id),
+        "X-Http-Headers": safeJsonHeader(responseHeaders),
+      });
+    }
+
+    let bytes = 0;
+    const counted = new ReadableStream({
+      async start(controller) {
+        const reader = upstreamBody.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) {
+              bytes += value.byteLength;
+              controller.enqueue(value);
+            }
+          }
+          controller.close();
+          await db("http_requests")
+            .where({ id: placeholder.id })
+            .update({ response_bytes: bytes });
+          broadcastUpdate(ws);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          controller.error(err);
+          await db("http_requests")
+            .where({ id: placeholder.id })
+            .update({
+              outcome: "error",
+              response_bytes: bytes,
+              error: message,
+            });
+          broadcastUpdate(ws);
+        }
+      },
+      cancel(reason) {
+        upstreamBody.cancel(reason).catch(() => {});
+      },
+    });
+
+    return c.body(counted, 200, {
+      "Content-Type":
+        responseHeaders["content-type"] ?? "application/octet-stream",
+      "X-Http-Status": String(response.status),
+      "X-Http-Status-Text": response.statusText,
+      "X-Http-Url": url,
+      "X-Http-Method": method,
+      "X-Http-Domain": domain,
+      "X-Http-Request-Id": String(placeholder.id),
+      "X-Http-Headers": safeJsonHeader(responseHeaders),
+    });
+  });
+
   // Recent requests + allow list snapshot for the UI to refresh from.
   app.get("/state", async (c: any) => {
     return c.json({
@@ -226,6 +394,15 @@ export function registerHttpRoutes(
     broadcastUpdate(ws);
     return c.json({ ok: true, method, domain });
   });
+}
+
+// HTTP header values can't contain newlines or non-ASCII reliably; encode
+// the upstream headers as an ASCII-safe JSON string for the X-Http-Headers
+// custom header.
+function safeJsonHeader(value: unknown): string {
+  return JSON.stringify(value).replace(/[^ -~]/g, (ch) =>
+    "\\u" + ch.charCodeAt(0).toString(16).padStart(4, "0"),
+  );
 }
 
 interface InsertRequestArgs {

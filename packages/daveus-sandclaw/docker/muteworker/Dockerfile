@@ -17,6 +17,9 @@ RUN apt-get update && apt-get install -y \
     nftables \
     dnsutils \
     jq \
+    libxml2-utils \
+    xmlstarlet \
+    xml2 \
     procps \
     ripgrep \
     build-essential \
