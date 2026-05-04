@@ -29,6 +29,10 @@ export interface TelegramGatekeeperPluginOptions {
   operatorChatIds?: string[];
   /** Bot token to connect with on startup, bypassing the UI setup flow. */
   botToken?: string;
+  /** OpenAI API key for Whisper voice-message transcription.
+   *  Falls back to OPENAI_API_KEY env var. If neither is set, voice
+   *  messages will be ignored with an error reply to the sender. */
+  openaiApiKey?: string;
 }
 
 export function buildTelegramPlugin(
@@ -37,6 +41,8 @@ export function buildTelegramPlugin(
   const operatorChatIds: ReadonlySet<string> = new Set(
     options.operatorChatIds ?? [],
   );
+  const resolvedOpenaiApiKey =
+    options.openaiApiKey || process.env.OPENAI_API_KEY || null;
 
   return {
     id: "telegram" as const,
@@ -96,7 +102,7 @@ export function buildTelegramPlugin(
           components.register("provider", TelegramProvider);
 
           routes.registerRoutes((app) =>
-            registerRoutes(app, db, jobs, operatorChatIds),
+            registerRoutes(app, db, jobs, operatorChatIds, resolvedOpenaiApiKey),
           );
 
           verifications.registerVerificationCallback(async (request) => {
@@ -153,12 +159,12 @@ export function buildTelegramPlugin(
                   console.log(
                     "[telegram] Found existing session, auto-reconnecting...",
                   );
-                  await connectTelegram(db, jobs, session.bot_token);
+                  await connectTelegram(db, jobs, session.bot_token, resolvedOpenaiApiKey);
                 } else if (options.botToken) {
                   console.log(
                     "[telegram] Connecting with configured bot token...",
                   );
-                  await connectTelegram(db, jobs, options.botToken);
+                  await connectTelegram(db, jobs, options.botToken, resolvedOpenaiApiKey);
                 }
               } catch (err: any) {
                 console.error("[telegram] Auto-reconnect failed:", err.message);
