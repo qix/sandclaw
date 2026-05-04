@@ -57,16 +57,18 @@ export function registerRoutes(
     });
   });
 
-  // POST /result — confidante posts browse results back
+  // POST /result — confidante posts browse results back (success or failure)
   app.post("/result", async (c: any) => {
     const body = (await c.req.json()) as {
       requestId: string;
       responseJobType?: string;
-      result: string;
+      result?: string;
+      error?: string;
     };
 
     if (!body.requestId) return c.json({ error: "requestId is required" }, 400);
-    if (!body.result) return c.json({ error: "result is required" }, 400);
+    if (!body.result && !body.error)
+      return c.json({ error: "result or error is required" }, 400);
 
     const jobType = body.responseJobType || DEFAULT_BROWSER_RESULT_JOB_TYPE;
     const now = localTimestamp();
@@ -77,7 +79,8 @@ export function registerRoutes(
         job_type: jobType,
         data: JSON.stringify({
           requestId: body.requestId,
-          result: body.result,
+          ...(body.result !== undefined && { result: body.result }),
+          ...(body.error !== undefined && { error: body.error }),
         }),
         status: "pending",
         created_at: now,
