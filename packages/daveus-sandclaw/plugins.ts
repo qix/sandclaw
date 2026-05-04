@@ -7,6 +7,7 @@ import { buildChatPlugin } from "@sandclaw/chat-plugin";
 import { createPromptsPlugin } from "@sandclaw/prompts-plugin";
 import { createSkillsPlugin } from "@sandclaw/skills-plugin";
 import { createMemoryPlugin } from "@sandclaw/memory-plugin";
+import { createHttpPlugin } from "@sandclaw/http-plugin";
 import { createWebSearchPlugin } from "@sandclaw/web-search-plugin";
 import { createBrowserPlugin } from "@sandclaw/browser-plugin";
 import { createGithubPlugin } from "@sandclaw/github-plugin";
@@ -86,6 +87,7 @@ export const plugins: SandclawPlugin[] = [
     watchFolders: ["Tickets, Once-off", "Stores"],
   }),
   createBrowserPlugin(),
+  createHttpPlugin(),
   createAgentStatusPlugin(),
   createJobGroupingPlugin({
     rulesDir: path.join(workDir, "job-grouping-rules"),
