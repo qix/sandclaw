@@ -4,7 +4,13 @@ import type {
 } from "@sandclaw/muteworker-plugin-api";
 import { buildChatPrompt, type IncomingChatPayload } from "./tools";
 
-export function createChatJobHandlers() {
+export interface ChatJobHandlerOptions {
+  /** Local-FS path the agent can use to read full conversation history. */
+  conversationLogFile?: string | null;
+}
+
+export function createChatJobHandlers(options: ChatJobHandlerOptions = {}) {
+  const conversationLogFile = options.conversationLogFile ?? null;
   return {
     async "chat:incoming_message"(
       ctx: MuteworkerPluginContext,
@@ -20,7 +26,7 @@ export function createChatJobHandlers() {
       if (!payload.text)
         throw new Error(`Job ${ctx.job.id} payload missing text`);
 
-      const prompt = buildChatPrompt(payload);
+      const prompt = buildChatPrompt(payload, { conversationLogFile });
       // The agent's reply is dispatched by the muteworker core via the
       // job's `replyChannel` (set when the job is enqueued). No manual
       // dispatch here.

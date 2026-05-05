@@ -51,9 +51,15 @@ async function downloadAttachment(
   };
 }
 
+export interface TelegramJobHandlerOptions {
+  conversationLogFile?: string | null;
+}
+
 export function createTelegramJobHandlers(
   operatorChatIds: ReadonlySet<string>,
+  options: TelegramJobHandlerOptions = {},
 ) {
+  const conversationLogFile = options.conversationLogFile ?? null;
   return {
     async "telegram:incoming_message"(
       ctx: MuteworkerPluginContext,
@@ -109,7 +115,12 @@ export function createTelegramJobHandlers(
       const typingInterval = setInterval(sendTyping, 4000);
 
       const isOperator = operatorChatIds.has(String(payload.chatId));
-      const prompt = buildTelegramPrompt(payload, isOperator, localAttachments);
+      const prompt = buildTelegramPrompt(
+        payload,
+        isOperator,
+        localAttachments,
+        { conversationLogFile },
+      );
       let result: Awaited<ReturnType<RunAgentFn>>;
       try {
         result = await runAgent(prompt);

@@ -39,7 +39,12 @@ export const plugins: SandclawPlugin[] = [
   createSkillsPlugin({ skillsDir: config.skillsDir }),
   createMemoryPlugin({ memoryDir: config.memoryDir }),
 
-  buildChatPlugin(),
+  buildChatPlugin({
+    conversationLogFile: path.join(
+      obsidianRoot,
+      "conversations/sandclaw/chat.jsonnl",
+    ),
+  }),
   /* buildWhatsappPlugin({
     operatorJids: ["218519480315934@lid"],
     operatorOnly: true,
@@ -53,6 +58,10 @@ export const plugins: SandclawPlugin[] = [
 
     operatorChatIds: ["8045164163"],
     photosDir: path.join(obsidianRoot, "conversations/sandclaw/photos"),
+    conversationLogFile: path.join(
+      obsidianRoot,
+      "conversations/sandclaw/telegram.jsonnl",
+    ),
   }),
   createObsidianPlugin({
     vaultRoot: obsidianDir,

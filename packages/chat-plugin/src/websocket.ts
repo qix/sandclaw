@@ -2,7 +2,7 @@ import type {
   NotifyService,
   WebSocketService,
 } from "@sandclaw/gatekeeper-plugin-api";
-import { localTimestamp } from "@sandclaw/util";
+import { appendJsonLine, localTimestamp } from "@sandclaw/util";
 
 export type DbHandle = any;
 
@@ -91,15 +91,17 @@ export async function storeMessage(
   direction: "inbound" | "outbound",
   from: string,
   text: string,
+  conversationLogFile?: string | null,
 ) {
   const convId = await getOrCreateConversationId(db);
   const now = localTimestamp();
+  const messageId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const [{ id }] = await db("conversation_message")
     .insert({
       conversation_id: convId,
       plugin: "chat",
       channel: "chat",
-      message_id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      message_id: messageId,
       thread_id: "operator",
       from,
       to: direction === "inbound" ? "agent" : "operator",
@@ -109,6 +111,21 @@ export async function storeMessage(
       created_at: now,
     })
     .returning("id");
+
+  if (conversationLogFile) {
+    appendJsonLine(conversationLogFile, {
+      timestamp: now,
+      channel: "chat",
+      direction,
+      from,
+      to: direction === "inbound" ? "agent" : "operator",
+      messageId,
+      text,
+    }).catch((err) =>
+      console.error("[chat] Failed to append conversation log:", err),
+    );
+  }
+
   return { id, from, text, direction, timestamp: now };
 }
 
@@ -157,10 +174,17 @@ export async function onChatMessage(
   db: DbHandle,
   pipe: WebSocketService,
   notify: NotifyService,
+  conversationLogFile?: string | null,
 ) {
   if (data.type !== "chat-plugin:message" || !data.text) return;
 
-  const msg = await storeMessage(db, "inbound", "operator", data.text);
+  const msg = await storeMessage(
+    db,
+    "inbound",
+    "operator",
+    data.text,
+    conversationLogFile,
+  );
   const unread = await getUnreadCount(db);
   pipe.broadcast({ type: "chat-plugin:message", unread, message: msg });
   notify.notifyCountChange();

@@ -69,12 +69,24 @@ function ChatTab() {
   );
 }
 
-export function buildChatPlugin() {
+export interface ChatPluginOptions {
+  /**
+   * Absolute path to a newline-delimited JSON file where every chat message
+   * (inbound and outbound) is appended. The same option resolves to different
+   * paths inside the muteworker container vs. on the gatekeeper host, which
+   * is fine — each side uses its own view.
+   */
+  conversationLogFile?: string;
+}
+
+export function buildChatPlugin(options: ChatPluginOptions = {}) {
+  const conversationLogFile = options.conversationLogFile ?? null;
+
   return {
     id: "chat" as const,
     verificationRenderer: ChatVerificationRenderer,
 
-    jobHandlers: createChatJobHandlers(),
+    jobHandlers: createChatJobHandlers({ conversationLogFile }),
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({
@@ -90,11 +102,13 @@ export function buildChatPlugin() {
           components.register("tabs:channels", ChatTab);
           components.register("page:chat", ChatPanel);
 
-          routes.registerRoutes((app) => registerRoutes(app, db, ws, notify));
+          routes.registerRoutes((app) =>
+            registerRoutes(app, db, ws, notify, conversationLogFile),
+          );
 
           ws.onConnect((client) => onChatConnect(client, db));
           ws.onMessage("chat-plugin", (client, data) =>
-            onChatMessage(client, data, db, ws, notify),
+            onChatMessage(client, data, db, ws, notify, conversationLogFile),
           );
 
           // Deliver an outbound message to the operator-facing chat panel.
@@ -103,7 +117,13 @@ export function buildChatPlugin() {
             if (!args?.text || typeof args.text !== "string") {
               throw new Error("reply hook requires { text: string }");
             }
-            const msg = await storeMessage(db, "outbound", "agent", args.text);
+            const msg = await storeMessage(
+              db,
+              "outbound",
+              "agent",
+              args.text,
+              conversationLogFile,
+            );
             const unread = await getUnreadCount(db);
             ws.broadcast({
               type: "chat-plugin:message",
@@ -129,6 +149,3 @@ export function buildChatPlugin() {
     },
   };
 }
-
-/** Default plugin instance. */
-export const chatPlugin = buildChatPlugin();

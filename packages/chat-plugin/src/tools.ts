@@ -9,16 +9,33 @@ export interface IncomingChatPayload {
   }>;
 }
 
-export function buildChatPrompt(payload: IncomingChatPayload): string {
+export interface BuildChatPromptOptions {
+  /** Local-FS path containing the full chat log as NDJSON. */
+  conversationLogFile?: string | null;
+}
+
+export function buildChatPrompt(
+  payload: IncomingChatPayload,
+  options: BuildChatPromptOptions = {},
+): string {
   const body = payload.text?.trim() || "[No text content]";
   const historyLines = payload.history?.length
     ? [
-        "--- Conversation History ---",
+        "--- Conversation History (recent) ---",
         ...payload.history.map(
           (h) =>
             `[${h.timestamp}] ${h.role === "assistant" ? "Assistant" : "User"}: ${h.text}`,
         ),
-        "----------------------------",
+        "-------------------------------------",
+      ]
+    : [];
+
+  const logHint = options.conversationLogFile
+    ? [
+        `Full chat history is appended as NDJSON at: ${options.conversationLogFile}`,
+        "If you need more context than the recent history above, use the Read tool",
+        "to inspect that file, or the Bash tool with grep / jq / tail to query it",
+        "(e.g. `tail -n 200 <file> | jq .`).",
       ]
     : [];
 
@@ -26,6 +43,7 @@ export function buildChatPrompt(payload: IncomingChatPayload): string {
     "--- Message received from Chat UI ---",
     "Sender: Operator (trusted, direct browser chat)",
     "NOTE: This is the operator chatting directly. Respond with your message text directly.",
+    ...logHint,
     ...historyLines,
     "Latest message:",
     body,

@@ -9,6 +9,7 @@ export function registerRoutes(
   db: any,
   ws: WebSocketService,
   notify: NotifyService,
+  conversationLogFile?: string | null,
 ) {
   // POST /send — store an outbound message and broadcast via WebSocket pipe
   app.post("/send", async (c: any) => {
@@ -19,7 +20,13 @@ export function registerRoutes(
       return c.json({ error: "text is required" }, 400);
     }
 
-    const msg = await storeMessage(db, "outbound", "agent", text);
+    const msg = await storeMessage(
+      db,
+      "outbound",
+      "agent",
+      text,
+      conversationLogFile,
+    );
     const unread = await getUnreadCount(db);
     ws.broadcast({ type: "chat-plugin:message", unread, message: msg });
     notify.notifyCountChange();

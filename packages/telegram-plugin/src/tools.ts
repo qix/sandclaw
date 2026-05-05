@@ -35,10 +35,16 @@ export interface LocalAttachment {
   mimeType: string | null;
 }
 
+export interface BuildTelegramPromptOptions {
+  /** Local-FS path containing the full telegram log as NDJSON. */
+  conversationLogFile?: string | null;
+}
+
 export function buildTelegramPrompt(
   payload: IncomingTelegramPayload,
   isOperator: boolean,
   localAttachments: LocalAttachment[] = [],
+  options: BuildTelegramPromptOptions = {},
 ): string {
   const displayName =
     [payload.firstName, payload.lastName].filter(Boolean).join(" ") ||
@@ -79,6 +85,15 @@ export function buildTelegramPrompt(
         ? "[Photo only — see attached media above]"
         : "[No text content]";
 
+  const logHint = options.conversationLogFile
+    ? [
+        `Full telegram history is appended as NDJSON at: ${options.conversationLogFile}`,
+        "If you need more context than the recent history above, use the Read tool",
+        "to inspect that file, or the Bash tool with grep / jq / tail to query it",
+        `(e.g. \`grep '"chatId":"${payload.chatId}"' <file> | tail -n 50 | jq .\`).`,
+      ]
+    : [];
+
   return [
     "--- Message received from Telegram ---",
     `Sender: ${displayName}`,
@@ -98,6 +113,7 @@ export function buildTelegramPrompt(
           "[Transcribed from voice message] The following text was automatically transcribed from an audio voice note. The sender spoke this rather than typing it — tone may be more conversational.",
         ]
       : []),
+    ...logHint,
     ...historyLines,
     "Latest Telegram message:",
     messageBody,

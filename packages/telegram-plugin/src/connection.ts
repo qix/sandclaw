@@ -4,7 +4,7 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import TelegramBot from "node-telegram-bot-api";
 import type { ConversationSummary } from "@sandclaw/ui";
-import { localTimestamp } from "@sandclaw/util";
+import { appendJsonLine, localTimestamp } from "@sandclaw/util";
 import type { JobService } from "@sandclaw/gatekeeper-plugin-api";
 import { createContext } from "@sandclaw/gatekeeper-plugin-api";
 import { tgState } from "./state";
@@ -74,19 +74,36 @@ export async function deliverMessage(db: any, chatId: string, text: string) {
   if (!tgState.bot) throw new Error("Telegram bot not connected");
   await tgState.bot.sendMessage(chatId, text);
   const conversationId = await getOrCreateConversationId(db, chatId);
+  const messageId = `sent-${Date.now()}`;
+  const now = localTimestamp();
   await db("conversation_message").insert({
     conversation_id: conversationId,
     plugin: "telegram",
     channel: "telegram",
-    message_id: `sent-${Date.now()}`,
+    message_id: messageId,
     thread_id: chatId,
     from: tgState.botUsername,
     to: chatId,
-    timestamp: localTimestamp(),
+    timestamp: now,
     direction: "outbound",
     text,
-    created_at: localTimestamp(),
+    created_at: now,
   });
+
+  if (tgState.conversationLogFile) {
+    appendJsonLine(tgState.conversationLogFile, {
+      timestamp: now,
+      channel: "telegram",
+      direction: "outbound",
+      chatId,
+      messageId,
+      from: tgState.botUsername,
+      to: chatId,
+      text,
+    }).catch((err) =>
+      console.error("[telegram] Failed to append conversation log:", err),
+    );
+  }
 
   loadRecentConversations(db).catch((err) =>
     console.error("[telegram] Failed to load recent conversations:", err),
@@ -262,6 +279,26 @@ export async function connectTelegram(
         context: { channel: "telegram", chatId },
       });
     });
+
+    if (tgState.conversationLogFile) {
+      appendJsonLine(tgState.conversationLogFile, {
+        timestamp,
+        channel: "telegram",
+        direction: "inbound",
+        chatId,
+        messageId,
+        from: { firstName, lastName, username, chatId },
+        to: tgState.botUsername,
+        isGroup,
+        groupTitle,
+        replyToText,
+        text: text ?? null,
+        caption,
+        attachments,
+      }).catch((err) =>
+        console.error("[telegram] Failed to append conversation log:", err),
+      );
+    }
 
     const displayName =
       [firstName, lastName].filter(Boolean).join(" ") || username || chatId;

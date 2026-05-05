@@ -36,6 +36,11 @@ export interface TelegramGatekeeperPluginOptions {
   /** Absolute directory where incoming photos are saved on the gatekeeper FS.
    *  Required for photo support. */
   photosDir: string;
+  /**
+   * Absolute path to a newline-delimited JSON file where every telegram
+   * message (inbound and outbound) is appended for the agent to inspect.
+   */
+  conversationLogFile?: string;
 }
 
 export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions) {
@@ -48,13 +53,17 @@ export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions) {
     throw new Error("buildTelegramPlugin: photosDir is required");
   }
   tgState.photosDir = options.photosDir;
+  const conversationLogFile = options.conversationLogFile ?? null;
+  tgState.conversationLogFile = conversationLogFile;
 
   return {
     id: "telegram" as const,
     verificationRenderer: TelegramVerificationRenderer,
     migrations,
 
-    jobHandlers: createTelegramJobHandlers(operatorChatIds),
+    jobHandlers: createTelegramJobHandlers(operatorChatIds, {
+      conversationLogFile,
+    }),
 
     registerGateway(env: PluginEnvironment) {
       env.registerInit({

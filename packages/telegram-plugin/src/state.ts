@@ -15,6 +15,8 @@ export interface TelegramState {
   recentConversations: ConversationSummary[];
   /** Absolute directory where incoming photos are persisted. Set during init. */
   photosDir: string | null;
+  /** Absolute path to the NDJSON conversation log. Null disables logging. */
+  conversationLogFile: string | null;
 }
 
 const STATE_KEY = "__sandclaw_telegram_state__";
@@ -28,6 +30,7 @@ if (!_g[STATE_KEY]) {
     botToken: null,
     recentConversations: [],
     photosDir: null,
+    conversationLogFile: null,
   };
 }
 
