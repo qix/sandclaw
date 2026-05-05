@@ -52,6 +52,7 @@ export const plugins: SandclawPlugin[] = [
     botToken: process.env.TELEGRAM_BOT_TOKEN,
 
     operatorChatIds: ["8045164163"],
+    photosDir: path.join(obsidianRoot, "conversations/sandclaw/photos"),
   }),
   createObsidianPlugin({
     vaultRoot: obsidianDir,

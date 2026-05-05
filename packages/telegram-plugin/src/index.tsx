@@ -33,16 +33,21 @@ export interface TelegramGatekeeperPluginOptions {
    *  Falls back to OPENAI_API_KEY env var. If neither is set, voice
    *  messages will be ignored with an error reply to the sender. */
   openaiApiKey?: string;
+  /** Absolute directory where incoming photos are saved on the gatekeeper FS.
+   *  Required for photo support. */
+  photosDir: string;
 }
 
-export function buildTelegramPlugin(
-  options: TelegramGatekeeperPluginOptions = {},
-) {
+export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions) {
   const operatorChatIds: ReadonlySet<string> = new Set(
     options.operatorChatIds ?? [],
   );
   const resolvedOpenaiApiKey =
     options.openaiApiKey || process.env.OPENAI_API_KEY || null;
+  if (!options.photosDir) {
+    throw new Error("buildTelegramPlugin: photosDir is required");
+  }
+  tgState.photosDir = options.photosDir;
 
   return {
     id: "telegram" as const,
@@ -187,4 +192,3 @@ export function buildTelegramPlugin(
   };
 }
 
-export const telegramPlugin = buildTelegramPlugin();

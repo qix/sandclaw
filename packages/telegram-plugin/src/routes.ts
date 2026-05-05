@@ -1,3 +1,5 @@
+import { createReadStream, statSync } from "node:fs";
+import { Readable } from "node:stream";
 import { localTimestamp } from "@sandclaw/util";
 import type { JobService } from "@sandclaw/gatekeeper-plugin-api";
 import { tgState } from "./state";
@@ -133,6 +135,32 @@ export function registerRoutes(
     return c.json({
       verificationRequestId: id,
       verificationStatus: autoApprove ? "approved" : "pending",
+    });
+  });
+
+  // GET /attachment/:id — stream a stored photo (or other media) back. Used by
+  // the muteworker job handler to fetch attachments from the gatekeeper.
+  app.get("/attachment/:id", async (c: any) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) {
+      return c.json({ error: "invalid id" }, 400);
+    }
+    const row = await db("telegram_attachments").where({ id }).first();
+    if (!row) {
+      return c.json({ error: "attachment not found" }, 404);
+    }
+    let size: number;
+    try {
+      size = statSync(row.file_path).size;
+    } catch {
+      return c.json({ error: "attachment file missing" }, 410);
+    }
+    const stream = Readable.toWeb(createReadStream(row.file_path));
+    return c.body(stream as any, 200, {
+      "Content-Type": row.mime_type ?? "application/octet-stream",
+      "Content-Length": String(size),
+      "X-Telegram-Attachment-Id": String(row.id),
+      "X-Telegram-Attachment-Kind": row.kind,
     });
   });
 }

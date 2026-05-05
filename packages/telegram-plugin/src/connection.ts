@@ -1,3 +1,7 @@
+import { createWriteStream, existsSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import TelegramBot from "node-telegram-bot-api";
 import type { ConversationSummary } from "@sandclaw/ui";
 import { localTimestamp } from "@sandclaw/util";
@@ -5,6 +9,13 @@ import type { JobService } from "@sandclaw/gatekeeper-plugin-api";
 import { createContext } from "@sandclaw/gatekeeper-plugin-api";
 import { tgState } from "./state";
 import { transcribeVoiceMessage } from "./transcribe";
+
+interface StoredAttachment {
+  id: number;
+  kind: "photo";
+  mimeType: string | null;
+  fileSize: number | null;
+}
 
 /** Look up or create a conversation row for the given chat ID, returning its auto-increment ID. */
 export async function getOrCreateConversationId(
@@ -111,17 +122,25 @@ export async function connectTelegram(
 
   // Handle incoming messages
   bot.on("message", async (msg) => {
-    // Determine message text — either direct text or transcribed from voice
-    let text: string | null = msg.text ?? null;
+    const chatId = String(msg.chat.id);
+    const messageId = String(msg.message_id);
+    const photos = Array.isArray(msg.photo) && msg.photo.length > 0
+      ? msg.photo
+      : null;
+    const caption = msg.caption ?? null;
+
+    // Determine text content: prefer explicit text, then caption, then a
+    // transcribed voice note. We only transcribe when there's no text/caption
+    // already present so we don't waste a Whisper call on voice notes that
+    // also carry a typed caption.
+    let text: string | null = msg.text ?? caption ?? null;
     let transcribedFromVoice = false;
 
     if (!text && msg.voice) {
-      // Voice message — attempt transcription
       if (!openaiApiKey) {
         console.warn(
           "[telegram] Received voice message but no OPENAI_API_KEY configured — ignoring",
         );
-        const chatId = String(msg.chat.id);
         try {
           await bot.sendMessage(
             chatId,
@@ -132,14 +151,17 @@ export async function connectTelegram(
       }
 
       try {
-        text = await transcribeVoiceMessage(bot, msg.voice.file_id, openaiApiKey);
+        text = await transcribeVoiceMessage(
+          bot,
+          msg.voice.file_id,
+          openaiApiKey,
+        );
         transcribedFromVoice = true;
         console.log(
           `[telegram] Transcribed voice message (${msg.voice.duration}s) from chat ${msg.chat.id}`,
         );
       } catch (err) {
         console.error("[telegram] Voice transcription failed:", err);
-        const chatId = String(msg.chat.id);
         try {
           await bot.sendMessage(
             chatId,
@@ -150,11 +172,25 @@ export async function connectTelegram(
       }
     }
 
-    // Ignore messages with no text content (photos, stickers, etc.)
-    if (!text) return;
+    if (!text && !photos) return; // ignore unsupported media (stickers, video, etc.)
 
-    const chatId = String(msg.chat.id);
-    const messageId = String(msg.message_id);
+    let attachments: StoredAttachment[] = [];
+    if (photos) {
+      try {
+        attachments = await persistPhotoAttachment(
+          db,
+          bot,
+          chatId,
+          messageId,
+          photos,
+          caption,
+        );
+      } catch (err) {
+        console.error("[telegram] Failed to persist photo:", err);
+      }
+    }
+
+    const messageBody = buildInboundMessageText(text, attachments);
     const timestamp = localTimestamp(new Date(msg.date * 1000));
     const firstName = msg.from?.first_name ?? null;
     const lastName = msg.from?.last_name ?? null;
@@ -179,7 +215,7 @@ export async function connectTelegram(
         to: tgState.botUsername,
         timestamp,
         direction: "inbound",
-        text,
+        text: messageBody,
         created_at: localTimestamp(),
       });
 
@@ -209,12 +245,14 @@ export async function connectTelegram(
         lastName,
         username,
         timestamp,
-        text,
+        text: text ?? null,
+        caption,
         isGroup,
         groupTitle,
         replyToText,
         transcribedFromVoice,
         history,
+        attachments,
       };
 
       await jobs.createJob(ctx, {
@@ -240,6 +278,96 @@ export async function connectTelegram(
   bot.on("polling_error", (err) => {
     console.error("[telegram] Polling error:", err.message);
   });
+}
+
+function buildInboundMessageText(
+  text: string | null | undefined,
+  attachments: StoredAttachment[],
+): string {
+  const parts: string[] = [];
+  if (attachments.length > 0) {
+    const photoCount = attachments.filter((a) => a.kind === "photo").length;
+    if (photoCount > 0) {
+      parts.push(photoCount === 1 ? "[Photo]" : `[${photoCount} photos]`);
+    }
+  }
+  if (text && text.trim()) parts.push(text);
+  return parts.join(" ").trim() || "[Empty message]";
+}
+
+async function persistPhotoAttachment(
+  db: any,
+  bot: TelegramBot,
+  chatId: string,
+  messageId: string,
+  photos: Array<{ file_id: string; file_unique_id: string; file_size?: number }>,
+  caption: string | null,
+): Promise<StoredAttachment[]> {
+  if (!tgState.photosDir) {
+    throw new Error("photosDir not configured");
+  }
+  const largest = photos[photos.length - 1];
+
+  // De-dupe: if we've already stored this exact photo (same file_unique_id) for
+  // this chat, reuse the existing row + file.
+  const existing = await db("telegram_attachments")
+    .where({ chat_id: chatId, file_unique_id: largest.file_unique_id })
+    .first();
+  if (existing) {
+    return [
+      {
+        id: existing.id,
+        kind: "photo",
+        mimeType: existing.mime_type,
+        fileSize: existing.file_size,
+      },
+    ];
+  }
+
+  // Resolve telegram's stored path so we can pick a sensible extension.
+  const fileMeta = await bot.getFile(largest.file_id);
+  const remotePath = (fileMeta as any).file_path as string | undefined;
+  const ext = remotePath ? path.extname(remotePath) || ".jpg" : ".jpg";
+  const chatDir = path.join(tgState.photosDir, chatId);
+  await mkdir(chatDir, { recursive: true });
+  const target = path.join(chatDir, `${largest.file_unique_id}${ext}`);
+
+  if (!existsSync(target)) {
+    const stream = bot.getFileStream(largest.file_id);
+    await pipeline(stream, createWriteStream(target));
+  }
+
+  const mimeType =
+    ext === ".png"
+      ? "image/png"
+      : ext === ".webp"
+        ? "image/webp"
+        : ext === ".gif"
+          ? "image/gif"
+          : "image/jpeg";
+
+  const [{ id }] = await db("telegram_attachments")
+    .insert({
+      message_id: messageId,
+      chat_id: chatId,
+      kind: "photo",
+      file_path: target,
+      file_unique_id: largest.file_unique_id,
+      mime_type: mimeType,
+      file_size: largest.file_size ?? null,
+      caption,
+      created_at: localTimestamp(),
+    })
+    .returning("id");
+
+  return [
+    {
+      id,
+      kind: "photo",
+      mimeType,
+      fileSize: largest.file_size ?? null,
+    },
+  ];
 }
 
 export async function disconnectTelegram(db: any) {

@@ -13,6 +13,8 @@ export interface TelegramState {
   botUsername: string | null;
   botToken: string | null;
   recentConversations: ConversationSummary[];
+  /** Absolute directory where incoming photos are persisted. Set during init. */
+  photosDir: string | null;
 }
 
 const STATE_KEY = "__sandclaw_telegram_state__";
@@ -25,6 +27,7 @@ if (!_g[STATE_KEY]) {
     botUsername: null,
     botToken: null,
     recentConversations: [],
+    photosDir: null,
   };
 }
 

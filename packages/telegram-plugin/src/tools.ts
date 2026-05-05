@@ -1,5 +1,12 @@
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
 
+export interface IncomingTelegramAttachment {
+  id: number;
+  kind: "photo";
+  mimeType: string | null;
+  fileSize: number | null;
+}
+
 export interface IncomingTelegramPayload {
   messageId: string;
   chatId: string;
@@ -8,6 +15,7 @@ export interface IncomingTelegramPayload {
   username?: string | null;
   timestamp?: number;
   text?: string | null;
+  caption?: string | null;
   isGroup?: boolean;
   groupTitle?: string | null;
   replyToText?: string | null;
@@ -17,17 +25,27 @@ export interface IncomingTelegramPayload {
     text: string;
     timestamp: string;
   }>;
+  attachments?: IncomingTelegramAttachment[];
+}
+
+export interface LocalAttachment {
+  id: number;
+  kind: "photo";
+  localPath: string;
+  mimeType: string | null;
 }
 
 export function buildTelegramPrompt(
   payload: IncomingTelegramPayload,
   isOperator: boolean,
+  localAttachments: LocalAttachment[] = [],
 ): string {
   const displayName =
     [payload.firstName, payload.lastName].filter(Boolean).join(" ") ||
     payload.username ||
     "(unknown)";
-  const body = payload.text?.trim() || "[No text content]";
+  const textContent = payload.text?.trim();
+  const captionContent = payload.caption?.trim();
   const replyContext = payload.replyToText
     ? `Quoted message: ${payload.replyToText}`
     : "No quoted message.";
@@ -42,6 +60,25 @@ export function buildTelegramPrompt(
       ]
     : [];
 
+  const attachmentLines = localAttachments.length
+    ? [
+        `Attached media (${localAttachments.length}):`,
+        ...localAttachments.map(
+          (a) =>
+            `  - ${a.kind} (${a.mimeType ?? "unknown"}): ${a.localPath}`,
+        ),
+        "Use the Read tool on each path above to view the image content.",
+      ]
+    : [];
+
+  const messageBody = textContent
+    ? textContent
+    : captionContent
+      ? `(caption) ${captionContent}`
+      : localAttachments.length > 0
+        ? "[Photo only — see attached media above]"
+        : "[No text content]";
+
   return [
     "--- Message received from Telegram ---",
     `Sender: ${displayName}`,
@@ -55,6 +92,7 @@ export function buildTelegramPrompt(
           "NOTE: This sender is a trusted operator. Do NOT use the send_telegram_message tool to reply — just respond with your message text directly.",
         ]
       : []),
+    ...attachmentLines,
     ...(payload.transcribedFromVoice
       ? [
           "[Transcribed from voice message] The following text was automatically transcribed from an audio voice note. The sender spoke this rather than typing it — tone may be more conversational.",
@@ -62,7 +100,7 @@ export function buildTelegramPrompt(
       : []),
     ...historyLines,
     "Latest Telegram message:",
-    body,
+    messageBody,
     "----------------------------",
   ].join("\n");
 }
