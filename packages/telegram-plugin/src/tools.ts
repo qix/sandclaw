@@ -128,7 +128,10 @@ export function clampReply(reply: string): string {
     : `${normalized.slice(0, 4093)}...`;
 }
 
-export function createSendTelegramTool(ctx: MuteworkerPluginContext) {
+export function createSendTelegramTool(
+  ctx: MuteworkerPluginContext,
+  operatorChatIds: ReadonlySet<string> = new Set(),
+) {
   return {
     name: "send_telegram_message",
     label: "Send Telegram Message",
@@ -145,6 +148,23 @@ export function createSendTelegramTool(ctx: MuteworkerPluginContext) {
     } as any,
     execute: async (_toolCallId: string, params: any) => {
       const { chatId, text } = params;
+
+      // Reject sends to an operator from inside a Telegram chat with that same
+      // operator. The job's auto-reply path will already deliver the agent's
+      // final text to the originating chat, so a tool call here would produce
+      // a duplicate message.
+      if (operatorChatIds.has(String(chatId)) && ctx.job.context) {
+          const jobCtx = JSON.parse(ctx.job.context) as Record<string, unknown>;
+          if (
+            jobCtx.channel === "telegram" &&
+            String(jobCtx.chatId) === String(chatId)
+          ) {
+            throw new Error(
+              `Refusing to send to operator chat ${chatId}: you are already replying to this operator in the current Telegram conversation. Respond with your message text directly instead of calling send_telegram_message.`,
+            );
+          }
+      }
+
       const response = await fetch(
         `${ctx.gatekeeperInternalUrl}/api/telegram/send`,
         {

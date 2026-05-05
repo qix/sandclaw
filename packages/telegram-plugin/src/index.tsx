@@ -194,7 +194,9 @@ export function buildTelegramPlugin(options: TelegramGatekeeperPluginOptions) {
       env.registerInit({
         deps: { tools: muteworkerDeps.tools },
         init({ tools }) {
-          tools.registerTools((ctx) => [createSendTelegramTool(ctx)]);
+          tools.registerTools((ctx) => [
+            createSendTelegramTool(ctx, operatorChatIds),
+          ]);
         },
       });
     },
