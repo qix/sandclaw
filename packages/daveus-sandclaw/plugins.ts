@@ -24,6 +24,7 @@ import { buildWhatsappPlugin } from "@sandclaw/whatsapp-plugin";
 import { buildWhatsappMqttPlugin } from "@sandclaw/whatsapp-mqtt-plugin";
 import { createJobGroupingPlugin } from "@sandclaw/job-grouping-plugin";
 import { createHeartbeatPlugin } from "@sandclaw/heartbeat-plugin";
+import { createVestaboardPlugin } from "@sandclaw/vestaboard-plugin";
 import { obsidianRoot, obsidianStore } from "./config"; 
 
 export type SandclawPlugin = GatekeeperPlugin &
@@ -107,5 +108,8 @@ export const plugins: SandclawPlugin[] = [
     heartbeatFile: path.join(obsidianStore, "prompts/HEARTBEAT.md"),
     dailyFile: path.join(obsidianStore, "prompts/DAILY.md"),
     lastHeartbeatFile: path.join(config.memoryDir, "LAST_HEARTBEAT.md"),
+  }),
+  createVestaboardPlugin({
+    webhookUrl: process.env.VESTABOARD_POST_WEBHOOK_URL || "",
   }),
 ];

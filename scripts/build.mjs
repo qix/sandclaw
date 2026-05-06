@@ -28,6 +28,7 @@ const layer2 = [
   "@sandclaw/obsidian-plugin",
   "@sandclaw/prompts-plugin",
   "@sandclaw/telegram-plugin",
+  "@sandclaw/vestaboard-plugin",
   "@sandclaw/web-search-plugin",
   "@sandclaw/whatsapp-plugin",
 ];
