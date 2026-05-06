@@ -749,7 +749,14 @@ export function AgentStatusPanel({
 
   const activeJobs = jobs.filter(isActiveJob);
 
-  const finishedJobs = jobs.filter((j) => !isActiveJob(j)).reverse(); // Most recent first
+  const allFinishedJobs = jobs.filter((j) => !isActiveJob(j)).reverse(); // Most recent first
+  const HISTORY_PAGE_SIZE = 20;
+  const finishedJobs = allFinishedJobs.slice(0, HISTORY_PAGE_SIZE);
+  const nextCursor =
+    finishedJobs.length > 0
+      ? finishedJobs[finishedJobs.length - 1].jobId
+      : null;
+  const hasMoreHistory = allFinishedJobs.length > HISTORY_PAGE_SIZE;
 
   return (
     <div className="sc-section">
@@ -925,7 +932,11 @@ export function AgentStatusPanel({
             </span>
           </CardHeader>
           <CardBody>
-            <div id="agent-status-history">
+            <div
+              id="agent-status-history"
+              data-next-cursor={nextCursor ?? ""}
+              data-has-more={hasMoreHistory ? "1" : ""}
+            >
               {finishedJobs.length === 0 ? (
                 <p
                   style={{
@@ -1061,6 +1072,52 @@ export function AgentStatusPanel({
                 })
               )}
             </div>
+            {/* Pagination controls */}
+            <div
+              id="agent-status-pagination"
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "0.75rem 0 0.25rem",
+                borderTop: `1px solid ${colors.border}`,
+                marginTop: "0.5rem",
+              }}
+            >
+              <button
+                id="agent-status-page-newer"
+                disabled
+                className="sc-btn sc-btn-default"
+                style={{
+                  fontSize: "0.8rem",
+                  padding: "0.35rem 0.75rem",
+                  cursor: "pointer",
+                }}
+              >
+                &larr; Newer
+              </button>
+              <span
+                id="agent-status-page-info"
+                style={{
+                  fontSize: "0.75rem",
+                  color: colors.muted,
+                }}
+              >
+                Page 1
+              </span>
+              <button
+                id="agent-status-page-older"
+                disabled={!hasMoreHistory}
+                className="sc-btn sc-btn-default"
+                style={{
+                  fontSize: "0.8rem",
+                  padding: "0.35rem 0.75rem",
+                  cursor: "pointer",
+                }}
+              >
+                Older &rarr;
+              </button>
+            </div>
           </CardBody>
         </Card>
       </div>
@@ -1079,6 +1136,16 @@ export function AgentStatusPanel({
   // Track jobs in memory: { jobId -> { events: [], el: DOM } }
   var activeJobs = {};
   var finishedCount = parseInt((historyCountEl && historyCountEl.textContent.replace(/[()]/g, '')) || '0', 10);
+
+  // Pagination state
+  var newerBtn = document.getElementById('agent-status-page-newer');
+  var olderBtn = document.getElementById('agent-status-page-older');
+  var pageInfo = document.getElementById('agent-status-page-info');
+  var pageCursorStack = []; // cursors used to fetch previous pages
+  var currentFetchCursor = null; // null = page 1 (SSR)
+  var nextCursor = historyEl.getAttribute('data-next-cursor') || null;
+  var currentPage = 1;
+  var onPaginatedPage = false; // true when viewing page 2+
 
   // Initialize active jobs from SSR
   var ssrActive = activeEl.querySelectorAll('.agent-status-job');
@@ -1311,15 +1378,18 @@ export function AgentStatusPanel({
       delete activeJobs[ev.jobId];
       updateActiveCount();
 
-      // Remove "no completed jobs" placeholder
-      var hEmpty = historyEl.querySelector('p');
-      if (hEmpty) hEmpty.remove();
+      // Only add to history DOM when on page 1 (not paginated)
+      if (!onPaginatedPage) {
+        // Remove "no completed jobs" placeholder
+        var hEmpty = historyEl.querySelector('p');
+        if (hEmpty) hEmpty.remove();
 
-      // Prepend to history
-      var hEl = createHistoryJobEl(ev, stepCount, jobType, jobData, context, executor);
-      historyEl.insertBefore(hEl, historyEl.firstChild);
-      finishedCount++;
-      if (historyCountEl) historyCountEl.textContent = '(' + finishedCount + ')';
+        // Prepend to history
+        var hEl = createHistoryJobEl(ev, stepCount, jobType, jobData, context, executor);
+        historyEl.insertBefore(hEl, historyEl.firstChild);
+        finishedCount++;
+        if (historyCountEl) historyCountEl.textContent = '(' + finishedCount + ')';
+      }
     }
 
     // Handle job-cancelled WS event
@@ -1400,6 +1470,95 @@ export function AgentStatusPanel({
         btn.disabled = false;
       });
   });
+
+  // ── Cursor-based pagination for Recent History ──
+
+  function createHistoryJobElFromApi(job) {
+    var a = document.createElement('a');
+    a.href = '?page=agent-status&job=' + job.jobId;
+    a.style.cssText = 'display:block;padding:0.75rem;background:${colors.surface};border-radius:0.5rem;border:1px solid ${colors.border};margin-bottom:0.5rem;text-decoration:none;color:inherit;';
+    var jobTypeHtml = job.jobType
+      ? '<span style="margin-left:0.5rem;font-size:0.75rem;color:${colors.accent};font-weight:500;">' + escapeHtml(job.jobType) + '</span>'
+      : '';
+    var contextHtml = makeContextLineHtml(job.context, job.executor);
+    var statusColor = job.isSuccess ? '${colors.success}' : '${colors.danger}';
+    var statusText = job.isSuccess ? 'Completed' : 'Failed';
+    var errorHtml = !job.isSuccess && job.error
+      ? '<div style="font-size:0.75rem;color:${colors.danger};margin-top:0.25rem;">' + escapeHtml(String(job.error)) + '</div>'
+      : '';
+    a.innerHTML =
+      '<div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;">' +
+        '<span style="font-weight:600;font-size:0.875rem;">Job #' + job.jobId + jobTypeHtml + '</span>' +
+        '<span style="font-size:0.75rem;color:' + statusColor + ';font-weight:600;">' + statusText + '</span>' +
+      '</div>' +
+      contextHtml +
+      '<div style="font-size:0.75rem;color:${colors.muted};display:flex;gap:1rem;margin-top:0.5rem;">' +
+        '<span>' + job.stepCount + ' step' + (job.stepCount !== 1 ? 's' : '') + '</span>' +
+        (job.durationMs != null ? '<span>' + formatDuration(job.durationMs) + '</span>' : '') +
+        (job.startedAt ? '<span>' + formatTime(job.startedAt) + '</span>' : '') +
+      '</div>' +
+      errorHtml;
+    return a;
+  }
+
+  function renderHistoryPage(data) {
+    historyEl.innerHTML = '';
+    if (data.jobs.length === 0) {
+      historyEl.innerHTML = '<p style="color:${colors.muted};font-size:0.875rem;text-align:center;padding:1rem 0;">No completed jobs</p>';
+    } else {
+      for (var i = 0; i < data.jobs.length; i++) {
+        historyEl.appendChild(createHistoryJobElFromApi(data.jobs[i]));
+      }
+    }
+    nextCursor = data.nextCursor;
+    if (olderBtn) olderBtn.disabled = !data.nextCursor;
+    if (newerBtn) newerBtn.disabled = pageCursorStack.length === 0;
+    if (pageInfo) pageInfo.textContent = 'Page ' + currentPage;
+    if (historyCountEl) historyCountEl.textContent = '(' + data.jobs.length + ')';
+  }
+
+  function fetchHistoryPage(beforeCursor) {
+    var url = '/api/agent-status/history?limit=20';
+    if (beforeCursor) url += '&before=' + beforeCursor;
+    return fetch(url).then(function(r) { return r.json(); });
+  }
+
+  if (olderBtn) {
+    olderBtn.addEventListener('click', function() {
+      if (!nextCursor || olderBtn.disabled) return;
+      olderBtn.disabled = true;
+      pageCursorStack.push(currentFetchCursor);
+      currentFetchCursor = nextCursor;
+      currentPage++;
+      onPaginatedPage = true;
+      fetchHistoryPage(currentFetchCursor).then(renderHistoryPage);
+    });
+  }
+
+  if (newerBtn) {
+    newerBtn.addEventListener('click', function() {
+      if (pageCursorStack.length === 0 || newerBtn.disabled) return;
+      newerBtn.disabled = true;
+      var prevCursor = pageCursorStack.pop();
+      currentPage--;
+      if (prevCursor === null) {
+        // Going back to page 1 — full reload for fresh data + WS state
+        window.location.href = '?page=agent-status';
+        return;
+      }
+      currentFetchCursor = prevCursor;
+      onPaginatedPage = pageCursorStack.length > 0 || currentFetchCursor !== null;
+      fetchHistoryPage(currentFetchCursor).then(renderHistoryPage);
+    });
+  }
+
+  // On initial load, determine older button state from SSR hint.
+  // If SSR couldn't determine whether there are more items (in-memory
+  // state is capped at 200 events), the button stays as SSR set it
+  // and the first click will resolve via API.
+  if (olderBtn) {
+    olderBtn.disabled = !nextCursor || historyEl.getAttribute('data-has-more') !== '1';
+  }
 })();
 `,
         }}

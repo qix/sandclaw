@@ -138,6 +138,102 @@ export function createAgentStatusPlugin() {
               return c.json({ ok: true });
             });
 
+            // Cursor-based paginated history of finished jobs.
+            app.get("/history", async (c: any) => {
+              const limit = Math.min(
+                100,
+                Math.max(
+                  1,
+                  parseInt(c.req.query("limit") || "20", 10) || 20,
+                ),
+              );
+              const beforeParam = c.req.query("before");
+              const beforeCursor = beforeParam
+                ? parseInt(beforeParam, 10)
+                : undefined;
+
+              let query = db("job_queue").whereNotIn("status", [
+                "pending",
+                "in_progress",
+              ]);
+
+              if (beforeCursor && !isNaN(beforeCursor)) {
+                query = query.where("id", "<", beforeCursor);
+              }
+
+              query = query.orderBy("id", "desc").limit(limit + 1);
+
+              const rows: any[] = await query;
+              const hasMore = rows.length > limit;
+              const items = hasMore ? rows.slice(0, limit) : rows;
+
+              if (items.length === 0) {
+                return c.json({ jobs: [], nextCursor: null });
+              }
+
+              const jobIds = items.map((r: any) => r.id);
+
+              const events: any[] = await db("agent_status")
+                .whereIn("job_id", jobIds)
+                .orderBy("id", "asc");
+
+              const eventsByJob = new Map<number, any[]>();
+              for (const ev of events) {
+                if (!eventsByJob.has(ev.job_id))
+                  eventsByJob.set(ev.job_id, []);
+                eventsByJob.get(ev.job_id)!.push(ev);
+              }
+
+              const jobs = items.map((row: any) => {
+                const jobEvents = eventsByJob.get(row.id) || [];
+                const queued = jobEvents.find(
+                  (e: any) => e.event === "queued",
+                );
+                const started = jobEvents.find(
+                  (e: any) => e.event === "started",
+                );
+                const terminal = jobEvents.find(
+                  (e: any) =>
+                    e.event === "completed" || e.event === "failed",
+                );
+                const stepCount = jobEvents.filter(
+                  (e: any) => e.event === "step",
+                ).length;
+
+                const terminalData = terminal?.data
+                  ? JSON.parse(terminal.data)
+                  : null;
+                const queuedData = queued?.data
+                  ? JSON.parse(queued.data)
+                  : null;
+
+                return {
+                  jobId: row.id,
+                  isSuccess:
+                    terminal?.event === "completed" ||
+                    row.status === "complete",
+                  stepCount,
+                  durationMs: terminalData?.durationMs ?? null,
+                  error:
+                    terminal?.event === "failed"
+                      ? (terminalData?.error ?? null)
+                      : null,
+                  jobType: row.job_type,
+                  executor: row.executor,
+                  context: queuedData?.context ?? null,
+                  startedAt: started?.created_at ?? null,
+                  endedAt:
+                    terminal?.created_at ?? row.updated_at,
+                };
+              });
+
+              const nextCursor = hasMore
+                ? items[items.length - 1].id
+                : null;
+
+              return c.json({ jobs, nextCursor });
+            });
+
             // Lazy-loaded job context — used by Agent Status cards when
             // started.data exceeds the inline-rendering threshold.
             app.get("/context/:id", async (c: any) => {
