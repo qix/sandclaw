@@ -8,6 +8,19 @@ export interface VestaboardConfig {
   webhookUrl: string;
 }
 
+const COLOR_CELLS = new Set(["R", "O", "Y", "G", "B", "W", "L"]);
+
+function validateMessage(input: string): void {
+  for (const ch of input) {
+    if (ch >= "A" && ch <= "Z" && !COLOR_CELLS.has(ch)) {
+      throw new Error(
+        `Uppercase letter ${JSON.stringify(ch)} is not a valid color code. ` +
+          `Use lowercase for text, or one of R/O/Y/G/B/W/L for colored squares.`,
+      );
+    }
+  }
+}
+
 export function createVestaboardWriteTool(
   ctx: MuteworkerPluginContext,
   config: VestaboardConfig,
@@ -16,14 +29,20 @@ export function createVestaboardWriteTool(
     name: "vestaboard_set_message",
     label: "Vestaboard Set Message",
     description:
-      "Display a message on the Vestaboard (22 columns x 6 rows). Letters are rendered lowercase. Supported characters: a-z, 0-9, space, and ! @ # $ ( ) - + & = ; : ' \" % , . / ? °. Throws if the message contains unsupported characters or is too long to fit.",
+      "Display a message on the Vestaboard (22 columns x 6 rows). " +
+      "Letters are rendered lowercase. Supported characters: a-z, 0-9, space, and ! @ # $ ( ) - + & = ; : ' \" % , . / ? °. " +
+      "You can also paint solid color squares by including these uppercase letters as cells: " +
+      "R=Red, O=Orange, Y=Yellow, G=Green, B=Blue, W=White, L=Black. " +
+      "Each color letter is rendered as a single 1-cell colored square (e.g. \"RRRRR hello RRRRR\" puts 5 red squares on each side of \"hello\"). " +
+      "Any other uppercase letter is rejected — use lowercase for text. " +
+      "Throws if the message contains unsupported characters or is too long to fit.",
     parameters: {
       type: "object",
       properties: {
         message: {
           type: "string",
           description:
-            "The message to display. Will be lowercased and word-wrapped to fit the 22x6 board, centered horizontally and vertically.",
+            "The message to display. Use lowercase letters for text. Uppercase R/O/Y/G/B/W/L render as colored squares (Red/Orange/Yellow/Green/Blue/White/bLack); any other uppercase letter is rejected. Word-wrapped to fit 22x6, centered horizontally and vertically.",
         },
       },
       required: ["message"],
@@ -41,12 +60,12 @@ export function createVestaboardWriteTool(
         );
       }
 
-      const lowered = message.toLowerCase();
+      validateMessage(message);
 
       let wrapped: string;
       try {
         const attempt = attemptWrap(
-          lowered,
+          message,
           Vestaboard.width,
           Vestaboard.height,
           { horizontalCenter: true, verticalCenter: true },
@@ -83,7 +102,7 @@ export function createVestaboardWriteTool(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           display: board.current,
-          message: lowered,
+          message: message,
           wrapped,
         }),
       });
@@ -108,7 +127,7 @@ export function createVestaboardWriteTool(
             text: `Vestaboard updated:\n${wrapped}`,
           },
         ],
-        details: { message: lowered, wrapped },
+        details: { message: message, wrapped },
       };
     },
   };
