@@ -1,30 +1,7 @@
 import { TSchema } from "@mariozechner/pi-ai";
 import type { MuteworkerPluginContext } from "@sandclaw/muteworker-plugin-api";
-import { UnsupportedChar, Vestaboard } from "./vestaboard";
-import { attemptWrap } from "./wrap";
 
-export interface VestaboardConfig {
-  /** Webhook URL that accepts the rendered display payload (same env as VESTABOARD_POST_WEBHOOK_URL). */
-  webhookUrl: string;
-}
-
-const COLOR_CELLS = new Set(["R", "O", "Y", "G", "B", "W", "L"]);
-
-function validateMessage(input: string): void {
-  for (const ch of input) {
-    if (ch >= "A" && ch <= "Z" && !COLOR_CELLS.has(ch)) {
-      throw new Error(
-        `Uppercase letter ${JSON.stringify(ch)} is not a valid color code. ` +
-          `Use lowercase for text, or one of R/O/Y/G/B/W/L for colored squares.`,
-      );
-    }
-  }
-}
-
-export function createVestaboardWriteTool(
-  ctx: MuteworkerPluginContext,
-  config: VestaboardConfig,
-) {
+export function createVestaboardWriteTool(ctx: MuteworkerPluginContext) {
   return {
     name: "vestaboard_set_message",
     label: "Vestaboard Set Message",
@@ -49,70 +26,39 @@ export function createVestaboardWriteTool(
       additionalProperties: false,
     } as unknown as TSchema,
     execute: async (_toolCallId: string, params: any) => {
-      const rawMessage =
+      const message =
         typeof params.message === "string" ? params.message : "";
-      const message = rawMessage.replace(/\t/g, " ").trim();
-      if (!message) throw new Error("message cannot be empty");
+      if (!message.trim()) throw new Error("message cannot be empty");
 
-      if (!config.webhookUrl) {
-        throw new Error(
-          "Vestaboard is not configured: webhookUrl is empty (set VESTABOARD_POST_WEBHOOK_URL).",
-        );
-      }
-
-      validateMessage(message);
-
-      let wrapped: string;
+      let response: Response;
       try {
-        const attempt = attemptWrap(
-          message,
-          Vestaboard.width,
-          Vestaboard.height,
-          { horizontalCenter: true, verticalCenter: true },
+        response = await fetch(
+          `${ctx.gatekeeperInternalUrl}/api/vestaboard/send`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message }),
+          },
         );
-        if (!attempt.complete) {
-          throw new Error(
-            `Message is too long to fit on the Vestaboard (max ${Vestaboard.width} columns x ${Vestaboard.height} rows).`,
-          );
-        }
-        wrapped = attempt.result;
       } catch (err) {
-        if (err instanceof UnsupportedChar) {
-          throw new Error(
-            `Message contains an unsupported character: ${JSON.stringify(err.char)}`,
-          );
-        }
-        throw err;
+        const detail = err instanceof Error ? err.message : String(err);
+        throw new Error(`Failed to reach gatekeeper: ${detail}`);
       }
 
-      const board = new Vestaboard();
-      try {
-        board.write(0, 0, wrapped);
-      } catch (err) {
-        if (err instanceof UnsupportedChar) {
-          throw new Error(
-            `Message contains an unsupported character: ${JSON.stringify(err.char)}`,
-          );
-        }
-        throw err;
-      }
-
-      const response = await fetch(config.webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          display: board.current,
-          message: message,
-          wrapped,
-        }),
-      });
+      const data = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        message?: string;
+        wrapped?: string;
+        error?: string;
+      };
 
       if (!response.ok) {
-        const body = await response.text().catch(() => "");
         throw new Error(
-          `Vestaboard webhook failed with status ${response.status}: ${body.slice(0, 300)}`,
+          data.error ?? `Gatekeeper returned ${response.status}`,
         );
       }
+
+      const wrapped = data.wrapped ?? message;
 
       ctx.artifacts.push({
         type: "text",
@@ -121,13 +67,8 @@ export function createVestaboardWriteTool(
       });
 
       return {
-        content: [
-          {
-            type: "text",
-            text: `Vestaboard updated:\n${wrapped}`,
-          },
-        ],
-        details: { message: message, wrapped },
+        content: [{ type: "text", text: `Vestaboard updated:\n${wrapped}` }],
+        details: { message: data.message ?? message, wrapped },
       };
     },
   };
